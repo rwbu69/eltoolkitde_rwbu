@@ -1,7 +1,7 @@
 @echo off
 setlocal EnableExtensions
 
-REM Launcher untuk MediaToolkit.ps1
+REM Launcher untuk ElToolkitDeRWBU.ps1
 REM - Double-click friendly (tidak langsung nutup)
 REM - Pakai pwsh (PowerShell 7) jika ada, fallback ke powershell
 REM - Bypass ExecutionPolicy
@@ -62,7 +62,7 @@ pause
 exit /b %EXITCODE%
 
 :NO_PS1
-echo ERROR: Tidak menemukan MediaToolkit.ps1 di:
+echo ERROR: Tidak menemukan ElToolkitDeRWBU.ps1 di:
 echo %PS1%
 pause
 exit /b 1

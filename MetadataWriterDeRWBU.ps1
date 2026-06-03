@@ -53,11 +53,20 @@ function Wait-Toolkit {
 function ConvertTo-ToolkitPath {
     param([string]$Text)
 
-    if ($null -eq $Text) { return $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
     $clean = $Text.Trim()
-    if ($clean.StartsWith('"') -and $clean.EndsWith('"')) {
-        $clean = $clean.Trim('"')
+
+    if ($clean.StartsWith('& ')) {
+        $clean = $clean.Substring(2).Trim()
     }
+
+    if ($clean -match '^["''](.*)["'']$') {
+        $clean = $Matches[1]
+    }
+    
+    $clean = $clean.Trim()
+    $clean = $clean -replace '"', ''
+    
     return $clean
 }
 
@@ -81,7 +90,34 @@ function Read-ExistingPath {
     )
 
     while ($true) {
+        Write-Host '(Tips: Kosongkan lalu ENTER untuk memilih lewat Jendela Dialog GUI)' -ForegroundColor Cyan
         $raw = Read-Host $Prompt
+
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            Add-Type -AssemblyName System.Windows.Forms
+            $form = New-Object System.Windows.Forms.Form
+            $form.TopMost = $true
+            $form.ShowInTaskbar = $false
+            $form.WindowState = 'Minimized'
+
+            if ($Kind -eq 'Folder') {
+                $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                $dialog.Description = "Pilih Folder"
+                $dialog.ShowNewFolderButton = $true
+                if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+                    return $dialog.SelectedPath
+                }
+            } else {
+                $dialog = New-Object System.Windows.Forms.OpenFileDialog
+                $dialog.Title = "Pilih File"
+                if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+                    return $dialog.FileName
+                }
+            }
+            Write-Host 'Dialog dibatalkan. Silakan input ulang.' -ForegroundColor Yellow
+            continue
+        }
+
         $path = ConvertTo-ToolkitPath $raw
 
         if ([string]::IsNullOrWhiteSpace($path)) {
@@ -253,14 +289,19 @@ function Write-Mp3Metadata {
         throw 'FFmpeg tidak ditemukan di PATH.'
     }
 
-    $inputDir = Split-Path -Parent $InputFile
+    # Resolusi path absolut untuk mencegah kesalahan direktori kerja
+    $resolvedInput = (Get-Item -LiteralPath $InputFile).FullName
+    $inputDir = Split-Path -Parent $resolvedInput
     $tempName = (".{0}.tmp.mp3" -f ([System.IO.Path]::GetRandomFileName()))
     $tempPath = Join-Path $inputDir $tempName
 
     # Build ffmpeg args
     $coverPath = $null
     if ($Tags.ContainsKey('cover')) {
-        $coverPath = ConvertTo-ToolkitPath $Tags['cover']
+        $rawCover = ConvertTo-ToolkitPath $Tags['cover']
+        if ($rawCover -and (Test-Path -LiteralPath $rawCover -PathType Leaf)) {
+            $coverPath = (Get-Item -LiteralPath $rawCover).FullName
+        }
     }
 
     $metaPairs = @()
@@ -271,42 +312,49 @@ function Write-Mp3Metadata {
         $metaPairs += @('-metadata', ("{0}={1}" -f $k, $val))
     }
 
-    if ($coverPath -and (Test-Path -LiteralPath $coverPath -PathType Leaf)) {
-        # Attach cover image
-        $params = @(
-            '-hide_banner','-y',
-            '-i', $InputFile,
-            '-i', $coverPath,
-            '-map', '0:a',
-            '-map', '1:v',
-            '-c', 'copy',
-            '-id3v2_version', '3',
-            '-write_id3v1', '1'
-        ) + $metaPairs + @(
-            '-metadata:s:v', 'title=Album cover',
-            '-metadata:s:v', 'comment=Cover (front)',
-            $tempPath
-        )
+    try {
+        if ($coverPath) {
+            # Attach cover image
+            $params = @(
+                '-hide_banner','-y',
+                '-i', $resolvedInput,
+                '-i', $coverPath,
+                '-map', '0:a',
+                '-map', '1:v',
+                '-c', 'copy',
+                '-id3v2_version', '3',
+                '-write_id3v1', '1'
+            ) + $metaPairs + @(
+                '-metadata:s:v', 'title=Album cover',
+                '-metadata:s:v', 'comment=Cover (front)',
+                $tempPath
+            )
 
-        Invoke-External -Exe 'ffmpeg' -Params $params
-    } else {
-        # Metadata only (copy audio)
-        $params = @(
-            '-hide_banner','-y',
-            '-i', $InputFile,
-            '-map', '0:a',
-            '-c', 'copy',
-            '-id3v2_version', '3',
-            '-write_id3v1', '1'
-        ) + $metaPairs + @(
-            $tempPath
-        )
+            Invoke-External -Exe 'ffmpeg' -Params $params
+        } else {
+            # Metadata only (copy audio)
+            $params = @(
+                '-hide_banner','-y',
+                '-i', $resolvedInput,
+                '-map', '0:a',
+                '-c', 'copy',
+                '-id3v2_version', '3',
+                '-write_id3v1', '1'
+            ) + $metaPairs + @(
+                $tempPath
+            )
 
-        Invoke-External -Exe 'ffmpeg' -Params $params
+            Invoke-External -Exe 'ffmpeg' -Params $params
+        }
+
+        # Replace original
+        Move-Item -LiteralPath $tempPath -Destination $resolvedInput -Force
+    } finally {
+        # Bersihkan file temp jika proses gagal atau diinterupsi
+        if (Test-Path -LiteralPath $tempPath) {
+            Remove-Item -LiteralPath $tempPath -Force -ErrorAction SilentlyContinue
+        }
     }
-
-    # Replace original
-    Move-Item -LiteralPath $tempPath -Destination $InputFile -Force
 }
 
 function Edit-Mp3MetadataInteractive {
@@ -359,7 +407,27 @@ function Edit-Mp3MetadataInteractive {
 
     Write-Host ''
     Write-Host 'Cover art (optional):' -ForegroundColor White
+    Write-Host '(Tips: Ketik "?" lalu ENTER untuk memilih via Jendela Dialog GUI)' -ForegroundColor Cyan
     $cover = Read-Host 'Drag & drop file cover (jpg/png) atau ENTER untuk skip: '
+    
+    if ($cover.Trim() -eq '?') {
+        Add-Type -AssemblyName System.Windows.Forms
+        $form = New-Object System.Windows.Forms.Form
+        $form.TopMost = $true
+        $form.ShowInTaskbar = $false
+        $form.WindowState = 'Minimized'
+
+        $dialog = New-Object System.Windows.Forms.OpenFileDialog
+        $dialog.Title = "Pilih File Cover (jpg/png)"
+        $dialog.Filter = "Image Files (*.jpg;*.jpeg;*.png)|*.jpg;*.jpeg;*.png|All Files (*.*)|*.*"
+        if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+            $cover = $dialog.FileName
+        } else {
+            Write-Host 'Dialog dibatalkan.' -ForegroundColor Yellow
+            $cover = ''
+        }
+    }
+
     $cover = ConvertTo-ToolkitPath $cover
     if ($cover -and (Test-Path -LiteralPath $cover -PathType Leaf)) {
         $tagsToWrite['cover'] = $cover

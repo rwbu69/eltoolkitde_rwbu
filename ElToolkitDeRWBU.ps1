@@ -73,15 +73,24 @@ function Clear-AndHeader {
 
 function ConvertTo-ToolkitPath {
     # Normalisasi input path:
-    # - Drag & drop di terminal biasanya membungkus path dengan quote.
-    # - Fungsi ini menghapus quote di ujung-ujung dan merapikan whitespace.
+    # - Menghapus awalan `& ` dari drag & drop di PS7/Windows Terminal
+    # - Menghapus quote (ganda/tunggal) pembungkus dan merapikan whitespace
     param([string]$Text)
 
-    if ($null -eq $Text) { return $null }
+    if ([string]::IsNullOrWhiteSpace($Text)) { return $null }
     $clean = $Text.Trim()
-    if ($clean.StartsWith('"') -and $clean.EndsWith('"')) {
-        $clean = $clean.Trim('"')
+
+    if ($clean.StartsWith('& ')) {
+        $clean = $clean.Substring(2).Trim()
     }
+
+    if ($clean -match '^["''](.*)["'']$') {
+        $clean = $Matches[1]
+    }
+    
+    $clean = $clean.Trim()
+    $clean = $clean -replace '"', ''
+    
     return $clean
 }
 
@@ -141,8 +150,34 @@ function Read-ExistingPath {
     )
 
     while ($true) {
+        Write-Host '(Tips: Kosongkan lalu ENTER untuk memilih lewat Jendela Dialog GUI)' -ForegroundColor Cyan
         $raw = Read-Host $Prompt
         if ($AllowEmpty -and [string]::IsNullOrWhiteSpace($raw)) { return $null }
+
+        if ([string]::IsNullOrWhiteSpace($raw)) {
+            Add-Type -AssemblyName System.Windows.Forms
+            $form = New-Object System.Windows.Forms.Form
+            $form.TopMost = $true
+            $form.ShowInTaskbar = $false
+            $form.WindowState = 'Minimized'
+
+            if ($Kind -eq 'Folder') {
+                $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+                $dialog.Description = "Pilih Folder"
+                $dialog.ShowNewFolderButton = $true
+                if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+                    return $dialog.SelectedPath
+                }
+            } else {
+                $dialog = New-Object System.Windows.Forms.OpenFileDialog
+                $dialog.Title = "Pilih File"
+                if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+                    return $dialog.FileName
+                }
+            }
+            Write-Host 'Dialog dibatalkan. Silakan input ulang.' -ForegroundColor Yellow
+            continue
+        }
 
         $path = ConvertTo-ToolkitPath $raw
         if ([string]::IsNullOrWhiteSpace($path)) {
@@ -490,13 +525,26 @@ function Start-ToolkitYtDlpMenu {
         Write-Host '[3] Download Audio ONLY (MP3)'
         Write-Host '[4] Ganti Folder Tujuan'
         Write-Host '[5] Pilih ulang sumber cookie'
+        Write-Host '[6] Perbarui (Update) yt-dlp'
         Write-Host '[0] Kembali'
         Write-Host ''
 
-        $choice = Read-Choice -Prompt 'Pilih: ' -Valid @('1','2','3','4','5','0')
+        $choice = Read-Choice -Prompt 'Pilih: ' -Valid @('1','2','3','4','5','6','0')
         if ($choice -eq '0') { return }
         if ($choice -eq '4') { Select-DownloadOutputDir; continue }
         if ($choice -eq '5') { $script:CookieSource = $null; $script:CookieBrowser = $null; Write-Host 'Sumber cookie di-reset.' -ForegroundColor Green; Wait-Toolkit; continue }
+        if ($choice -eq '6') {
+            try {
+                Write-Host ''
+                Write-Host 'Memeriksa dan memperbarui yt-dlp...' -ForegroundColor Cyan
+                Invoke-External -Exe 'yt-dlp' -Params @('-U')
+                Write-Host 'yt-dlp berhasil diperbarui!' -ForegroundColor Green
+            } catch {
+                Write-Host ("Gagal memperbarui yt-dlp: {0}" -f $_.Exception.Message) -ForegroundColor Red
+            }
+            Wait-Toolkit
+            continue
+        }
 
         Write-Host ''
         Write-Host '[1] Pakai Nomor (1. Judul.mp4)'
@@ -560,9 +608,29 @@ function Select-TargetDir {
     Write-Host ''
     Write-Host 'Di mana kamu ingin menyimpan hasilnya?' -ForegroundColor White
     Write-Host '- Drag & drop folder tujuan, lalu ENTER' -ForegroundColor DarkGray
-    Write-Host '- Atau tekan ENTER untuk default: "Hasil_Proses"' -ForegroundColor DarkGray
+    Write-Host '- Ketik "?" lalu ENTER untuk memilih via Jendela Dialog GUI' -ForegroundColor DarkGray
+    Write-Host '- Atau tekan ENTER kosong untuk default: "Hasil_Proses"' -ForegroundColor DarkGray
 
     $raw = Read-Host 'Folder Tujuan: '
+
+    if ($raw.Trim() -eq '?') {
+        Add-Type -AssemblyName System.Windows.Forms
+        $form = New-Object System.Windows.Forms.Form
+        $form.TopMost = $true
+        $form.ShowInTaskbar = $false
+        $form.WindowState = 'Minimized'
+
+        $dialog = New-Object System.Windows.Forms.FolderBrowserDialog
+        $dialog.Description = "Pilih Folder Tujuan"
+        $dialog.ShowNewFolderButton = $true
+        if ($dialog.ShowDialog($form) -eq [System.Windows.Forms.DialogResult]::OK) {
+            $raw = $dialog.SelectedPath
+        } else {
+            Write-Host 'Dialog dibatalkan. Menggunakan folder default.' -ForegroundColor Yellow
+            $raw = ''
+        }
+    }
+
     $raw = ConvertTo-ToolkitPath $raw
 
     if ([string]::IsNullOrWhiteSpace($raw)) {
@@ -576,10 +644,9 @@ function Select-TargetDir {
 function Get-VideoFiles {
     param([Parameter(Mandatory)][string]$Folder)
 
-    $ext = @('*.mp4','*.mkv','*.avi','*.mov','*.webm')
-    $files = foreach ($pattern in $ext) {
-        Get-ChildItem -LiteralPath $Folder -Filter $pattern -File -ErrorAction SilentlyContinue
-    }
+    $extRegex = '\.(mp4|mkv|avi|mov|webm)$'
+    $files = Get-ChildItem -LiteralPath $Folder -File -ErrorAction SilentlyContinue |
+             Where-Object { $_.Extension -match $extRegex }
 
     return $files | Sort-Object Name
 }
@@ -666,6 +733,7 @@ function Invoke-FFmpegMirror {
     # - `-pix_fmt yuv420p` dipilih untuk kompatibilitas MP4 yang paling luas.
     Invoke-External -Exe 'ffmpeg' -Params @(
         '-hide_banner',
+        '-hwaccel', 'auto',
         '-i', $InputFile,
         '-map', '0:v:0',
         '-map', '0:a:0?',
@@ -673,8 +741,30 @@ function Invoke-FFmpegMirror {
         '-c:v', 'libx264',
         '-pix_fmt', 'yuv420p',
         '-crf', '18',
-        '-preset', 'medium',
+        '-preset', 'fast',
+        '-threads', '0',
         '-c:a', 'copy',
+        $OutputFile
+    )
+}
+
+function Invoke-FFmpegConvertWebmToMp4 {
+    # Convert WebM (atau video lain) ke MP4 (H.264 + AAC)
+    param(
+        [Parameter(Mandatory)][string]$InputFile,
+        [Parameter(Mandatory)][string]$OutputFile
+    )
+
+    Invoke-External -Exe 'ffmpeg' -Params @(
+        '-hide_banner',
+        '-hwaccel', 'auto',
+        '-i', $InputFile,
+        '-c:v', 'libx264',
+        '-pix_fmt', 'yuv420p',
+        '-preset', 'fast',
+        '-crf', '18',
+        '-c:a', 'aac',
+        '-b:a', '192k',
         $OutputFile
     )
 }
@@ -694,10 +784,12 @@ function Start-ToolkitFFmpegMenu {
         Write-Host 'B. Batch Mirror (folder)'
         Write-Host 'C. Batch Rename (folder)'
         Write-Host 'D. Batch Mirror + Rename (folder)'
+        Write-Host 'E. Single Convert WebM -> MP4 (1 file)'
+        Write-Host 'F. Batch Convert WebM -> MP4 (folder)'
         Write-Host '0. Kembali'
         Write-Host ''
 
-        $choice = Read-Choice -Prompt 'Pilih (A/B/C/D/0): ' -Valid @('A','B','C','D','0','a','b','c','d')
+        $choice = Read-Choice -Prompt 'Pilih (A/B/C/D/E/F/0): ' -Valid @('A','B','C','D','E','F','0','a','b','c','d','e','f')
         $choice = $choice.ToUpperInvariant()
         if ($choice -eq '0') { return }
 
@@ -725,6 +817,28 @@ function Start-ToolkitFFmpegMenu {
                 continue
             }
 
+            if ($choice -eq 'E') {
+                Write-Host ''
+                Write-Host 'Drag & drop 1 file WebM lalu ENTER:' -ForegroundColor White
+                $filePath = Read-ExistingPath -Prompt 'File: ' -Kind File
+                $targetDir = Select-TargetDir -InputPath $filePath -InputKind File
+
+                $file = Get-Item -LiteralPath $filePath
+                $base = [System.IO.Path]::GetFileNameWithoutExtension($file.Name)
+                $out = Join-Path $targetDir ($base + '.mp4')
+
+                if (Test-Path -LiteralPath $out) { throw "Output sudah ada: $out" }
+
+                Write-Host ''
+                Write-Host ("[Single Convert] Memproses: {0}" -f $file.Name) -ForegroundColor Cyan
+                Invoke-FFmpegConvertWebmToMp4 -InputFile $file.FullName -OutputFile $out
+
+                Write-Host ''
+                Write-Host "Selesai. Output: $out" -ForegroundColor Green
+                Wait-Toolkit
+                continue
+            }
+
             # Folder-based
             Write-Host ''
             Write-Host 'Drag & drop folder video lalu ENTER:' -ForegroundColor White
@@ -738,15 +852,108 @@ function Start-ToolkitFFmpegMenu {
                 Write-Host ''
                 Write-Host '[Batch Mirror] Memulai...' -ForegroundColor Cyan
 
-                foreach ($f in $files) {
-                    $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
-                    $out = New-OutputFilePath -TargetDir $targetDir -BaseName ("$base (mirror)") -Extension $f.Extension
-                    if (Test-Path -LiteralPath $out) {
-                        Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
-                        continue
+                if ($PSVersionTable.PSVersion.Major -ge 7) {
+                    Write-Host "Menjalankan mirror paralel (PowerShell 7+)..." -ForegroundColor Cyan
+                    $parallelBlock = [scriptblock]::Create(@'
+                        $f = $_.FullName
+                        $name = $_.Name
+                        $ext = $_.Extension
+                        $destFolder = $using:targetDir
+                        $base = [System.IO.Path]::GetFileNameWithoutExtension($name)
+                        $out = Join-Path $destFolder ($base + ' (mirror)' + $ext)
+
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host "Skip (sudah ada): $out" -ForegroundColor Yellow
+                            return
+                        }
+
+                        Write-Host "Mirror (Paralel): $name" -ForegroundColor DarkCyan
+                        try {
+                            & ffmpeg -hide_banner -loglevel error -hwaccel auto -y -i $f -map 0:v:0 -map 0:a:0? -vf hflip -c:v libx264 -pix_fmt yuv420p -crf 18 -preset fast -threads 0 -c:a copy $out
+                        } catch {
+                            Write-Host "ERROR mirror '$name': $($_.Exception.Message)" -ForegroundColor Red
+                        }
+'@)
+                    $files | ForEach-Object -ThrottleLimit 4 -Parallel $parallelBlock
+                } else {
+                    $total = $files.Count
+                    $i = 0
+                    foreach ($f in $files) {
+                        $i++
+                        Write-Progress -Activity "Melakukan Mirror Video" -Status "Memproses $i dari $($total): $($f.Name)" -PercentComplete (($i / $total) * 100)
+
+                        $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+                        $out = New-OutputFilePath -TargetDir $targetDir -BaseName ("$base (mirror)") -Extension $f.Extension
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
+                            continue
+                        }
+                        Write-Host ("Mirror: {0}" -f $f.Name) -ForegroundColor DarkCyan
+                        try {
+                            Invoke-FFmpegMirror -InputFile $f.FullName -OutputFile $out
+                        } catch {
+                            Write-Host ("ERROR mirror '{0}': {1}" -f $f.Name, $_.Exception.Message) -ForegroundColor Red
+                        }
                     }
-                    Write-Host ("Mirror: {0}" -f $f.Name) -ForegroundColor DarkCyan
-                    Invoke-FFmpegMirror -InputFile $f.FullName -OutputFile $out
+                    Write-Progress -Activity "Melakukan Mirror Video" -Completed
+                }
+
+                Write-Host ''
+                Write-Host "Selesai. Output folder: $targetDir" -ForegroundColor Green
+                Wait-Toolkit
+                continue
+            }
+
+            if ($choice -eq 'F') {
+                Write-Host ''
+                Write-Host '[Batch Convert WebM -> MP4] Memulai...' -ForegroundColor Cyan
+
+                $webmFiles = $files | Where-Object { $_.Extension -match '\.webm$' }
+                if ($webmFiles.Count -eq 0) { throw 'Tidak ada file .webm di folder ini.' }
+
+                if ($PSVersionTable.PSVersion.Major -ge 7) {
+                    Write-Host "Menjalankan konversi paralel (PowerShell 7+)..." -ForegroundColor Cyan
+                    $parallelBlock = [scriptblock]::Create(@'
+                        $f = $_.FullName
+                        $name = $_.Name
+                        $destFolder = $using:targetDir
+                        $base = [System.IO.Path]::GetFileNameWithoutExtension($name)
+                        $out = Join-Path $destFolder ($base + '.mp4')
+
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host "Skip (sudah ada): $out" -ForegroundColor Yellow
+                            return
+                        }
+
+                        Write-Host "Convert (Paralel): $name" -ForegroundColor DarkCyan
+                        try {
+                            & ffmpeg -hide_banner -loglevel error -hwaccel auto -y -i $f -c:v libx264 -pix_fmt yuv420p -preset fast -crf 18 -c:a aac -b:a 192k $out
+                        } catch {
+                            Write-Host "ERROR convert '$name': $($_.Exception.Message)" -ForegroundColor Red
+                        }
+'@)
+                    $webmFiles | ForEach-Object -ThrottleLimit 4 -Parallel $parallelBlock
+                } else {
+                    $total = $webmFiles.Count
+                    $i = 0
+                    foreach ($f in $webmFiles) {
+                        $i++
+                        Write-Progress -Activity "Melakukan Konversi WebM -> MP4" -Status "Memproses $i dari $($total): $($f.Name)" -PercentComplete (($i / $total) * 100)
+
+                        $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+                        $out = Join-Path $targetDir ($base + '.mp4')
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
+                            continue
+                        }
+                        Write-Host ("Convert: {0}" -f $f.Name) -ForegroundColor DarkCyan
+                        try {
+                            Invoke-FFmpegConvertWebmToMp4 -InputFile $f.FullName -OutputFile $out
+                        } catch {
+                            Write-Host ("ERROR convert '{0}': {1}" -f $f.Name, $_.Exception.Message) -ForegroundColor Red
+                        }
+                    }
+                    Write-Progress -Activity "Melakukan Konversi WebM -> MP4" -Completed
                 }
 
                 Write-Host ''
@@ -822,14 +1029,46 @@ function Start-ToolkitFFmpegMenu {
                 Write-Host ''
                 Write-Host '[Mirror + Rename] Memulai...' -ForegroundColor Cyan
 
-                foreach ($m in $mapping) {
-                    $out = Join-Path $targetDir ($m.NewBase + ' (mirror)' + $m.Input.Extension)
-                    if (Test-Path -LiteralPath $out) {
-                        Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
-                        continue
+                if ($PSVersionTable.PSVersion.Major -ge 7) {
+                    Write-Host "Menjalankan mirror + rename paralel (PowerShell 7+)..." -ForegroundColor Cyan
+                    $parallelBlock = [scriptblock]::Create(@'
+                        $m = $_
+                        $destFolder = $using:targetDir
+                        $out = Join-Path $destFolder ($m.NewBase + ' (mirror)' + $m.Input.Extension)
+
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host "Skip (sudah ada): $out" -ForegroundColor Yellow
+                            return
+                        }
+
+                        Write-Host "Mirror: $($m.Input.Name) -> $($m.NewBase) (mirror)$($m.Input.Extension)" -ForegroundColor DarkCyan
+                        try {
+                            & ffmpeg -hide_banner -loglevel error -hwaccel auto -y -i $m.Input.FullName -map 0:v:0 -map 0:a:0? -vf hflip -c:v libx264 -pix_fmt yuv420p -crf 18 -preset fast -threads 0 -c:a copy $out
+                        } catch {
+                            Write-Host "ERROR mirror '$($m.Input.Name)': $($_.Exception.Message)" -ForegroundColor Red
+                        }
+'@)
+                    $mapping | ForEach-Object -ThrottleLimit 4 -Parallel $parallelBlock
+                } else {
+                    $total = $mapping.Count
+                    $i = 0
+                    foreach ($m in $mapping) {
+                        $i++
+                        Write-Progress -Activity "Melakukan Mirror + Rename" -Status "Memproses $i dari $($total): $($m.Input.Name)" -PercentComplete (($i / $total) * 100)
+
+                        $out = Join-Path $targetDir ($m.NewBase + ' (mirror)' + $m.Input.Extension)
+                        if (Test-Path -LiteralPath $out) {
+                            Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
+                            continue
+                        }
+                        Write-Host ("Mirror: {0} -> {1}" -f $m.Input.Name, ([System.IO.Path]::GetFileName($out))) -ForegroundColor DarkCyan
+                        try {
+                            Invoke-FFmpegMirror -InputFile $m.Input.FullName -OutputFile $out
+                        } catch {
+                            Write-Host ("ERROR mirror '{0}': {1}" -f $m.Input.Name, $_.Exception.Message) -ForegroundColor Red
+                        }
                     }
-                    Write-Host ("Mirror: {0} -> {1}" -f $m.Input.Name, ([System.IO.Path]::GetFileName($out))) -ForegroundColor DarkCyan
-                    Invoke-FFmpegMirror -InputFile $m.Input.FullName -OutputFile $out
+                    Write-Progress -Activity "Melakukan Mirror + Rename" -Completed
                 }
 
                 Write-Host ''
@@ -855,33 +1094,36 @@ function Start-ToolkitFFmpegMenu {
 function Get-MediaFilesForMp3 {
     # Daftar ekstensi media yang dianggap valid.
     # Catatan: scanning saat ini hanya file di folder tersebut (non-recursive).
+    # Dioptimalkan menggunakan Regex agar disk hanya dibaca sekali (disk I/O efisien).
     param([Parameter(Mandatory)][string]$Folder)
 
-    $ext = @('*.mp4','*.mkv','*.avi','*.mov','*.webm','*.wav','*.m4a','*.aac','*.flac','*.ogg','*.wma')
-    $files = foreach ($pattern in $ext) {
-        Get-ChildItem -LiteralPath $Folder -Filter $pattern -File -ErrorAction SilentlyContinue
-    }
+    $extRegex = '\.(mp4|mkv|avi|mov|webm|wav|m4a|aac|flac|ogg|wma)$'
+    $files = Get-ChildItem -LiteralPath $Folder -File -ErrorAction SilentlyContinue |
+             Where-Object { $_.Extension -match $extRegex }
 
     return $files | Sort-Object Name
 }
 
 function Split-InputPaths {
     # Membaca input yang berisi banyak path.
-    # Saat drag & drop multiple folder ke terminal, biasanya formatnya: "C:\A" "D:\B".
+    # Saat drag & drop multiple folder ke terminal, biasanya formatnya: "C:\A" "D:\B" atau 'C:\A' 'D:\B'.
     param([Parameter(Mandatory)][string]$Text)
 
-    # Mendukung drag & drop multiple folder (biasanya jadi "C:\A" "D:\B")
+    # Mendukung drag & drop multiple folder (biasanya jadi "C:\A" "D:\B" atau 'C:\A' 'D:\B')
     # dan juga input manual dipisah spasi.
     $t = $Text.Trim()
+    if ($t.StartsWith('& ')) { $t = $t.Substring(2).Trim() }
     if ($t -eq '') { return @() }
 
-    $pathMatches = [regex]::Matches($t, '\"([^\"]+)\"|([^\s]+)')
+    $pathMatches = [regex]::Matches($t, '"([^"]+)"|''([^'']+)''|([^\s]+)')
     $result = @()
     foreach ($m in $pathMatches) {
         if ($m.Groups[1].Success) {
             $result += $m.Groups[1].Value
         } elseif ($m.Groups[2].Success) {
             $result += $m.Groups[2].Value
+        } elseif ($m.Groups[3].Success) {
+            $result += $m.Groups[3].Value
         }
     }
     return $result
@@ -903,23 +1145,52 @@ function Convert-FolderToMp3 {
         return
     }
 
-    foreach ($f in $items) {
-        $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
-        $out = Join-Path $DestinationFolder ($base + '.mp3')
+    if ($PSVersionTable.PSVersion.Major -ge 7) {
+        Write-Host "Menjalankan konversi paralel (PowerShell 7+)..." -ForegroundColor Cyan
+        $parallelBlock = [scriptblock]::Create(@'
+            $f = $_
+            $destFolder = $using:DestinationFolder
+            $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+            $out = Join-Path $destFolder ($base + '.mp3')
 
-        if (Test-Path -LiteralPath $out) {
-            Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
-            continue
+            if (Test-Path -LiteralPath $out) {
+                Write-Host "Skip (sudah ada): $out" -ForegroundColor Yellow
+                return
+            }
+
+            Write-Host "Convert (Paralel): $($f.Name)" -ForegroundColor DarkCyan
+            try {
+                & ffmpeg -hide_banner -loglevel error -y -i $f.FullName -map 0:a:0? -vn -codec:a libmp3lame -b:a 320k $out
+            } catch {
+                Write-Host "ERROR convert '$($f.Name)': $($_.Exception.Message)" -ForegroundColor Red
+            }
+'@)
+        $items | ForEach-Object -ThrottleLimit 4 -Parallel $parallelBlock
+    } else {
+        $total = $items.Count
+        $i = 0
+        foreach ($f in $items) {
+            $i++
+            Write-Progress -Activity "Mengonversi Media ke MP3" -Status "Memproses $i dari $($total): $($f.Name)" -PercentComplete (($i / $total) * 100)
+
+            $base = [System.IO.Path]::GetFileNameWithoutExtension($f.Name)
+            $out = Join-Path $DestinationFolder ($base + '.mp3')
+
+            if (Test-Path -LiteralPath $out) {
+                Write-Host ("Skip (sudah ada): {0}" -f $out) -ForegroundColor Yellow
+                continue
+            }
+
+            Write-Host ("Convert: {0}" -f $f.Name) -ForegroundColor DarkCyan
+
+            try {
+                Invoke-External -Exe 'ffmpeg' -Params @('-hide_banner', '-y', '-i', $f.FullName, '-map', '0:a:0?', '-vn', '-codec:a', 'libmp3lame', '-b:a', '320k', $out)
+            } catch {
+                # Untuk batch, lebih baik lanjut file berikutnya.
+                Write-Host ("ERROR convert '{0}': {1}" -f $f.Name, $_.Exception.Message) -ForegroundColor Red
+            }
         }
-
-        Write-Host ("Convert: {0}" -f $f.Name) -ForegroundColor DarkCyan
-
-        try {
-            Invoke-External -Exe 'ffmpeg' -Params @('-hide_banner','-i', $f.FullName, '-vn', '-codec:a', 'libmp3lame', '-b:a', '320k', $out)
-        } catch {
-            # Untuk batch, lebih baik lanjut file berikutnya.
-            Write-Host ("ERROR convert '{0}': {1}" -f $f.Name, $_.Exception.Message) -ForegroundColor Red
-        }
+        Write-Progress -Activity "Mengonversi Media ke MP3" -Completed
     }
 }
 
