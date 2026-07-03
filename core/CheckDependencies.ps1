@@ -59,15 +59,10 @@ function Install-ToolkitDependency {
         return
     }
 
-    Write-Host "[MISSING] $DisplayName belum terpasang. Mencoba install otomatis..." -ForegroundColor Yellow
+    Write-Host "[MISSING] $DisplayName belum terpasang. Menginstall otomatis..." -ForegroundColor Yellow
 
     if (-not (Test-CommandExists 'winget')) {
         throw "Tidak menemukan winget. Install $DisplayName manual atau pasang winget terlebih dahulu."
-    }
-
-    $approved = Confirm-ToolkitInstall -AppName $DisplayName
-    if (-not $approved) {
-        throw "Instalasi dibatalkan oleh user: $DisplayName"
     }
 
     try {
@@ -96,14 +91,9 @@ function Install-ToolkitDependencies {
     Write-Host 'Semua Dependency siap!' -ForegroundColor Green
     Write-Host ''
     
-    # Prompt for yt-dlp update
-    Write-Host 'Apakah Anda ingin memeriksa pembaruan (update) yt-dlp via yt-dlp -U? (Y/N/kosongkan untuk N)' -ForegroundColor Cyan
-    $ans = (Read-Host 'Jawab')
-    if ($ans -match '^(y|yes)$') {
-        Write-Host 'Memperbarui yt-dlp...' -ForegroundColor White
-        & yt-dlp -U
-        Write-Host 'Selesai.' -ForegroundColor Green
-    }
+    Write-Host 'Memperbarui yt-dlp (Otomatis)...' -ForegroundColor White
+    & yt-dlp -U
+    Write-Host 'Selesai.' -ForegroundColor Green
     
     Start-Sleep -Seconds 1
 }

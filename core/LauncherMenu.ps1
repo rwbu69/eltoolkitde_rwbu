@@ -16,31 +16,7 @@ try {
 $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
 
 
-# 2. Menu Pemilihan GUI / TUI
-Clear-Host
-Write-Host '======================================================' -ForegroundColor Cyan
-Write-Host '  ElToolkitDeRWBU - Mode Selector' -ForegroundColor Cyan
-Write-Host '======================================================' -ForegroundColor Cyan
-Write-Host ''
-Write-Host '[1] Mode GUI (Web Browser - Direkomendasikan)'
-Write-Host '[2] Mode TUI (Terminal Lama)'
-Write-Host '[0] Keluar'
-Write-Host ''
-
-$mode = ''
-while ($mode -notmatch '^[120]$') {
-    $mode = (Read-Host 'Pilih (1/2/0)').Trim()
-}
-
-if ($mode -eq '0') { exit 0 }
-
-if ($mode -eq '2') {
-    Write-Host 'Memulai Mode TUI...' -ForegroundColor Cyan
-    & (Join-Path $ScriptRoot 'ElToolkitDeRWBU_Legacy.ps1')
-    exit 0
-}
-
-# Mode GUI
+# Mode GUI Langsung
 $ServerDir = Join-Path $ScriptRoot 'server'
 
 if (-not (Test-Path -LiteralPath (Join-Path $ServerDir 'node_modules'))) {
