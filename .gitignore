@@ -20,3 +20,8 @@ Desktop.ini
 .vscode/
 node_modules/  
 server/node_modules/ 
+
+# Pengujian
+server/tests/
+server/jest.config.js
+jest.config.js
