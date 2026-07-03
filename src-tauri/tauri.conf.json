@@ -30,8 +30,8 @@
       "icons/icon.ico"
     ],
     "externalBin": [
-      "bin/yt-dlp",
-      "bin/ffmpeg"
+      "yt-dlp",
+      "ffmpeg"
     ]
   }
 }

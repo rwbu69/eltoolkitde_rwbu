@@ -139,7 +139,7 @@ window.generateQueue = async function() {
             } else if (cookieMode === 'file' && cookieFile) {
                 fetchArgs.splice(2, 0, '--cookies', cookieFile);
             }
-            const command = Command.sidecar('bin/yt-dlp', fetchArgs);
+            const command = Command.sidecar('yt-dlp', fetchArgs);
             const output = await command.execute();
             if (output.code !== 0) throw new Error("Gagal mengambil info");
             
@@ -265,14 +265,14 @@ async function runStream(module, dataPayload) {
         }
         args = dlArgs;
     } else if (module === 'ffmpeg-mirror') {
-        cmd = 'bin/ffmpeg';
+        cmd = 'ffmpeg';
         const base = basename(dataPayload.inputFile);
         const ext = extname(dataPayload.inputFile);
         const name = base.replace(new RegExp(`\\${ext}$`), '');
         const out = await joinPath(dataPayload.outputDir, `${name} (mirror)${ext}`);
         args = ['-hide_banner', '-hwaccel', 'auto', '-y', '-i', dataPayload.inputFile, '-map', '0:v:0', '-map', '0:a:0?', '-vf', 'hflip', '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18', '-preset', 'fast', '-threads', '0', '-c:a', 'copy', out];
     } else if (module === 'ffmpeg-trim') {
-        cmd = 'bin/ffmpeg';
+        cmd = 'ffmpeg';
         const base = basename(dataPayload.inputFile);
         const ext = extname(dataPayload.inputFile);
         const name = base.replace(new RegExp(`\\${ext}$`), '');
