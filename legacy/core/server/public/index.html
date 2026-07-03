@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ElToolkitDeRWBU Web</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ElToolkitDeRWBU</h1>
+            <p>PowerShell Toolkit Web UI</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab-btn active" data-target="module-1">YT-DLP</button>
+            <button class="tab-btn" data-target="module-2">FFmpeg Tools</button>
+            <button class="tab-btn" data-target="module-3">MP3 Converter</button>
+            <button class="tab-btn" data-target="module-4">Metadata Editor</button>
+        </nav>
+
+        <main>
+            <!-- Module 1: YT-DLP -->
+            <section id="module-1" class="tab-content active">
+                <h2>YT-DLP Downloader (Queue System)</h2>
+                <form id="form-ytdlp">
+                    <div class="form-group">
+                        <label>URL Video / Playlist (Satu per baris):</label>
+                        <textarea id="yt-url" required placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..." rows="4"></textarea>
+                    </div>
+                    
+                    <div class="queue-actions">
+                        <button type="button" class="btn btn-secondary w-100" onclick="generateQueue()">1. Buat Antrean & Ambil Resolusi</button>
+                    </div>
+
+                    <div id="queue-list" class="queue-list" style="display: none;">
+                        <h3>Daftar Antrean Video</h3>
+                        <div id="queue-items"></div>
+                    </div>
+
+                    <div class="form-group mt-15">
+                        <label>Mode:</label>
+                        <select id="yt-mode">
+                            <option value="videoaudio">Video + Audio (MP4)</option>
+                            <option value="videoonly">Video ONLY</option>
+                            <option value="audioonly">Audio ONLY (MP3)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Format Penamaan:</label>
+                        <select id="yt-namemode">
+                            <option value="autonumber">Auto Number (1. Judul.mp4)</option>
+                            <option value="title">Judul Asli (Judul.mp4)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Browser Cookie:</label>
+                        <select id="yt-browser">
+                            <option value="chrome">Chrome</option>
+                            <option value="edge">Edge</option>
+                            <option value="vivaldi">Vivaldi</option>
+                            <option value="firefox">Firefox</option>
+                            <option value="opera">Opera</option>
+                            <option value="brave">Brave</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Folder Output:</label>
+                        <div class="input-group">
+                            <input type="text" id="yt-output" required readonly placeholder="Pilih folder...">
+                            <button type="button" class="btn btn-secondary" onclick="selectFolder('yt-output')">Pilih</button>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="startQueue()">2. Mulai Download Antrean</button>
+                </form>
+            </section>
+
+            <!-- Module 2: FFmpeg Tools -->
+            <section id="module-2" class="tab-content">
+                <h2>FFmpeg Mirror & Trimming</h2>
+                
+                <div class="tool-card">
+                    <h3>Mirror (H-Flip)</h3>
+                    <form id="form-mirror">
+                        <div class="form-group">
+                            <label>File Video Input:</label>
+                            <div class="input-group">
+                                <input type="text" id="mirror-input" required readonly placeholder="Pilih file...">
+                                <button type="button" class="btn btn-secondary" onclick="selectFile('mirror-input')">Pilih</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Folder Output:</label>
+                            <div class="input-group">
+                                <input type="text" id="mirror-output" required readonly placeholder="Pilih folder...">
+                                <button type="button" class="btn btn-secondary" onclick="selectFolder('mirror-output')">Pilih</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Mulai Mirror</button>
+                    </form>
+                </div>
+
+                <div class="tool-card mt-15">
+                    <h3>Trimming (Potong Video)</h3>
+                    <form id="form-trim">
+                        <div class="form-group">
+                            <label>File Video Input:</label>
+                            <div class="input-group">
+                                <input type="text" id="trim-input" required readonly placeholder="Pilih file...">
+                                <button type="button" class="btn btn-secondary" onclick="selectFile('trim-input')">Pilih</button>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <div class="form-group" style="flex:1">
+                                <label>Waktu Mulai (HH:MM:SS):</label>
+                                <input type="text" id="trim-start" required placeholder="00:00:00">
+                            </div>
+                            <div class="form-group" style="flex:1">
+                                <label>Waktu Selesai (HH:MM:SS):</label>
+                                <input type="text" id="trim-end" required placeholder="00:01:30">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Folder Output:</label>
+                            <div class="input-group">
+                                <input type="text" id="trim-output" required readonly placeholder="Pilih folder...">
+                                <button type="button" class="btn btn-secondary" onclick="selectFolder('trim-output')">Pilih</button>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Mulai Potong</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Module 3: MP3 Converter -->
+            <section id="module-3" class="tab-content">
+                <h2>Media to MP3 Converter</h2>
+                <form id="form-mp3">
+                    <div class="form-group">
+                        <label>Folder Sumber (Berisi Video/Audio):</label>
+                        <div class="input-group">
+                            <input type="text" id="mp3-input" required readonly placeholder="Pilih folder...">
+                            <button type="button" class="btn btn-secondary" onclick="selectFolder('mp3-input')">Pilih</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Folder Output Root:</label>
+                        <div class="input-group">
+                            <input type="text" id="mp3-output" required readonly placeholder="Pilih folder...">
+                            <button type="button" class="btn btn-secondary" onclick="selectFolder('mp3-output')">Pilih</button>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Mulai Konversi MP3</button>
+                </form>
+            </section>
+
+            <!-- Module 4: Metadata Editor -->
+            <section id="module-4" class="tab-content">
+                <h2>MP3 Metadata Editor</h2>
+                <form id="form-metadata">
+                    <div class="form-group">
+                        <label>Mode Target:</label>
+                        <select id="meta-mode" onchange="toggleMetaTarget()">
+                            <option value="file">Satu File MP3</option>
+                            <option value="folder">Satu Folder (semua file MP3 di dalamnya)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label id="meta-target-label">File MP3:</label>
+                        <div class="input-group">
+                            <input type="text" id="meta-input" required readonly placeholder="Pilih file mp3...">
+                            <button type="button" class="btn btn-secondary" id="meta-btn" onclick="selectFile('meta-input')">Pilih</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Judul:</label>
+                        <input type="text" id="meta-title" placeholder="Kosongkan jika tidak ingin diubah">
+                    </div>
+                    <div class="form-group">
+                        <label>Artis:</label>
+                        <input type="text" id="meta-artist" placeholder="Kosongkan jika tidak ingin diubah">
+                    </div>
+                    <div class="form-group">
+                        <label>Album:</label>
+                        <input type="text" id="meta-album" placeholder="Kosongkan jika tidak ingin diubah">
+                    </div>
+                    <div class="form-group">
+                        <label>Tahun:</label>
+                        <input type="text" id="meta-year" placeholder="yyyy">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Tulis Metadata</button>
+                </form>
+            </section>
+
+            <!-- Console Output -->
+            <div class="console-wrapper">
+                <div class="console-header">
+                    <span>Console Output</span>
+                    <button type="button" class="btn-clear" onclick="clearConsole()">Clear</button>
+                </div>
+                <div id="console" class="console"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

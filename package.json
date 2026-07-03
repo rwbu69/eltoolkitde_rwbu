@@ -1,0 +1,21 @@
+{
+  "name": "eltoolkit-temp",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "tauri": "tauri",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "jsdom": "^29.1.1",
+    "vitest": "^4.1.9"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/plugin-dialog": "^2.7.1",
+    "@tauri-apps/plugin-fs": "^2.5.1",
+    "@tauri-apps/plugin-shell": "^2.3.5"
+  }
+}
