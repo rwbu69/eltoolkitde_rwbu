@@ -82,6 +82,12 @@ window.selectFile = async function(inputId) {
     }
 }
 
+window.toggleCookieMode = function() {
+    const mode = document.getElementById('yt-cookie-mode').value;
+    document.getElementById('cookie-browser-group').style.display = mode === 'browser' ? 'block' : 'none';
+    document.getElementById('cookie-file-group').style.display = mode === 'file' ? 'block' : 'none';
+}
+
 // Queue System (YT-DLP)
 let currentQueue = [];
 
@@ -100,7 +106,14 @@ window.generateQueue = async function() {
     queueItems.innerHTML = '';
     currentQueue = [];
 
+    const cookieMode = document.getElementById('yt-cookie-mode').value;
     const browser = document.getElementById('yt-browser').value;
+    const cookieFile = document.getElementById('yt-cookie-file').value;
+
+    if (cookieMode === 'file' && !cookieFile) {
+        alert("Pilih file cookies.txt terlebih dahulu!");
+        return;
+    }
 
     for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
@@ -121,8 +134,10 @@ window.generateQueue = async function() {
 
         try {
             let fetchArgs = ['-J', '--no-check-certificate', url];
-            if (browser && browser !== 'none') {
+            if (cookieMode === 'browser' && browser) {
                 fetchArgs.splice(1, 0, '--cookies-from-browser', browser);
+            } else if (cookieMode === 'file' && cookieFile) {
+                fetchArgs.splice(1, 0, '--cookies', cookieFile);
             }
             const command = Command.sidecar('bin/yt-dlp', fetchArgs);
             const output = await command.execute();
@@ -188,7 +203,9 @@ window.startQueue = async function() {
             url: item.url,
             mode: document.getElementById('yt-mode').value,
             nameMode: document.getElementById('yt-namemode').value,
+            cookieMode: document.getElementById('yt-cookie-mode').value,
             browser: document.getElementById('yt-browser').value,
+            cookieFile: document.getElementById('yt-cookie-file').value,
             outputDir,
             resolution: resolution || null
         };
@@ -213,7 +230,7 @@ async function runStream(module, dataPayload) {
     let args = [];
 
     if (module === 'ytdlp') {
-        const { url, mode, nameMode, outputDir, browser, resolution } = dataPayload;
+        const { url, mode, nameMode, outputDir, cookieMode, browser, cookieFile, resolution } = dataPayload;
         cmd = 'bin/yt-dlp';
         let formatArgs = [];
         if (mode === 'videoaudio') {
@@ -233,8 +250,10 @@ async function runStream(module, dataPayload) {
             '--embed-metadata', '--embed-thumbnail',
             '-o', await joinPath(outputDir, outputTemplate), url
         ];
-        if (browser && browser !== 'none') {
+        if (cookieMode === 'browser' && browser) {
             dlArgs.splice(1, 0, '--cookies-from-browser', browser);
+        } else if (cookieMode === 'file' && cookieFile) {
+            dlArgs.splice(1, 0, '--cookies', cookieFile);
         }
         args = dlArgs;
     } else if (module === 'ffmpeg-mirror') {

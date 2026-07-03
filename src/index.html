@@ -55,9 +55,17 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Browser Cookie:</label>
+                        <label>Metode Cookie:</label>
+                        <select id="yt-cookie-mode" onchange="toggleCookieMode()">
+                            <option value="none">Tanpa Cookie (Default - Paling Aman)</option>
+                            <option value="file">Gunakan File cookies.txt (Untuk video private/18+)</option>
+                            <option value="browser">Otomatis dari Browser (Sering error di OS modern)</option>
+                        </select>
+                    </div>
+
+                    <div id="cookie-browser-group" class="form-group" style="display: none;">
+                        <label>Pilih Browser (Pastikan browser tertutup!):</label>
                         <select id="yt-browser">
-                            <option value="none">Tanpa Cookie (Disarankan)</option>
                             <option value="chrome">Chrome</option>
                             <option value="edge">Edge</option>
                             <option value="vivaldi">Vivaldi</option>
@@ -65,6 +73,15 @@
                             <option value="opera">Opera</option>
                             <option value="brave">Brave</option>
                         </select>
+                    </div>
+
+                    <div id="cookie-file-group" class="form-group" style="display: none;">
+                        <label>File cookies.txt:</label>
+                        <div class="input-group">
+                            <input type="text" id="yt-cookie-file" readonly placeholder="Pilih file cookies.txt...">
+                            <button type="button" class="btn btn-secondary" onclick="selectFile('yt-cookie-file')">Pilih</button>
+                        </div>
+                        <small style="color: #888; margin-top: 5px; display: block;">Tips: Gunakan ekstensi "Get cookies.txt LOCALLY" di browser Anda untuk mendapatkan file ini.</small>
                     </div>
                     <div class="form-group">
                         <label>Folder Output:</label>
