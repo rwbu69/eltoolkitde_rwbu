@@ -4,21 +4,22 @@ const https = require('https');
 const ffmpegStatic = require('ffmpeg-static');
 
 const platform = process.platform;
-let ffmpegTarget, ytdlpTarget;
+let ffmpegTargets = [], ytdlpTargets = [];
 let ytdlpUrl;
 
 if (platform === 'win32') {
-    ffmpegTarget = 'ffmpeg-x86_64-pc-windows-msvc.exe';
-    ytdlpTarget = 'yt-dlp-x86_64-pc-windows-msvc.exe';
+    ffmpegTargets = ['ffmpeg-x86_64-pc-windows-msvc.exe'];
+    ytdlpTargets = ['yt-dlp-x86_64-pc-windows-msvc.exe'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
 } else if (platform === 'darwin') {
-    ffmpegTarget = 'ffmpeg-universal-apple-darwin';
-    // Mac M1/M2 butuh universal-apple-darwin
-    ytdlpTarget = 'yt-dlp-universal-apple-darwin';
+    // Universal binary di Mac akan membuild 2 arsitektur secara terpisah sebelum digabung
+    // Tauri mengharapkan kedua file ini ada!
+    ffmpegTargets = ['ffmpeg-aarch64-apple-darwin', 'ffmpeg-x86_64-apple-darwin'];
+    ytdlpTargets = ['yt-dlp-aarch64-apple-darwin', 'yt-dlp-x86_64-apple-darwin'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
 } else {
-    ffmpegTarget = 'ffmpeg-x86_64-unknown-linux-gnu';
-    ytdlpTarget = 'yt-dlp-x86_64-unknown-linux-gnu';
+    ffmpegTargets = ['ffmpeg-x86_64-unknown-linux-gnu'];
+    ytdlpTargets = ['yt-dlp-x86_64-unknown-linux-gnu'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
 }
 
@@ -28,18 +29,18 @@ if (!fs.existsSync(binDir)) {
 }
 
 // 1. Copy FFmpeg dari module ffmpeg-static
-const destFfmpeg = path.join(binDir, ffmpegTarget);
-if (!fs.existsSync(destFfmpeg)) {
-    fs.copyFileSync(ffmpegStatic, destFfmpeg);
-    fs.chmodSync(destFfmpeg, 0o755);
-    console.log(`[OK] Copied ffmpeg to ${destFfmpeg}`);
-} else {
-    console.log(`[SKIP] ffmpeg already exists at ${destFfmpeg}`);
+for (const target of ffmpegTargets) {
+    const destFfmpeg = path.join(binDir, target);
+    if (!fs.existsSync(destFfmpeg)) {
+        fs.copyFileSync(ffmpegStatic, destFfmpeg);
+        fs.chmodSync(destFfmpeg, 0o755);
+        console.log(`[OK] Copied ffmpeg to ${destFfmpeg}`);
+    } else {
+        console.log(`[SKIP] ffmpeg already exists at ${destFfmpeg}`);
+    }
 }
 
 // 2. Download yt-dlp secara dinamis mengikuti redirect
-const destYtdlp = path.join(binDir, ytdlpTarget);
-
 function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
         if (fs.existsSync(dest)) {
@@ -74,7 +75,15 @@ function downloadFile(url, dest) {
     });
 }
 
-downloadFile(ytdlpUrl, destYtdlp).catch(err => {
+// Unduh untuk masing-masing target macos
+async function setupYtdlp() {
+    for (const target of ytdlpTargets) {
+        const destYtdlp = path.join(binDir, target);
+        await downloadFile(ytdlpUrl, destYtdlp);
+    }
+}
+
+setupYtdlp().catch(err => {
     console.error(`[ERROR] Failed to download yt-dlp:`, err);
     process.exit(1);
 });
