@@ -120,7 +120,11 @@ window.generateQueue = async function() {
         queueItems.appendChild(div);
 
         try {
-            const command = Command.sidecar('bin/yt-dlp', ['-J', '--cookies-from-browser', browser || 'chrome', '--no-check-certificate', url]);
+            let fetchArgs = ['-J', '--no-check-certificate', url];
+            if (browser && browser !== 'none') {
+                fetchArgs.splice(1, 0, '--cookies-from-browser', browser);
+            }
+            const command = Command.sidecar('bin/yt-dlp', fetchArgs);
             const output = await command.execute();
             if (output.code !== 0) throw new Error("Gagal mengambil info");
             
@@ -224,12 +228,15 @@ async function runStream(module, dataPayload) {
 
         let outputTemplate = nameMode === 'autonumber' ? '%(autonumber)01d. %(title)s.%(ext)s' : '%(title)s.%(ext)s';
         
-        args = [
-            '-4', '--cookies-from-browser', browser || 'chrome',
-            '--no-check-certificate', ...formatArgs,
+        let dlArgs = [
+            '-4', '--no-check-certificate', ...formatArgs,
             '--embed-metadata', '--embed-thumbnail',
             '-o', await joinPath(outputDir, outputTemplate), url
         ];
+        if (browser && browser !== 'none') {
+            dlArgs.splice(1, 0, '--cookies-from-browser', browser);
+        }
+        args = dlArgs;
     } else if (module === 'ffmpeg-mirror') {
         cmd = 'bin/ffmpeg';
         const base = basename(dataPayload.inputFile);
