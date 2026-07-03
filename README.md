@@ -1,71 +1,68 @@
 # ElToolkitDeRWBU
 
-ElToolkitDeRWBU adalah toolkit *All-in-One* untuk Windows yang menggabungkan berbagai workflow pengunduhan dan manipulasi media (YouTube & FFmpeg). 
+ElToolkitDeRWBU adalah toolkit terintegrasi untuk Windows yang dirancang untuk mengotomatisasi alur kerja pengunduhan dan pemrosesan media, memanfaatkan kapabilitas YouTube dan FFmpeg.
 
-Kini hadir dalam **Dua Mode Utama**:
-1. **Mode Web GUI** (Baru, Modern, Multi-tasking) - Direkomendasikan
-2. **Mode TUI** (Text UI berbasis PowerShell Lama)
-
----
-
-## 🔥 Fitur Web GUI (Versi Terbaru)
-
-Web GUI berjalan secara lokal menggunakan Node.js dan menyediakan antarmuka modern di *browser* Anda:
-
-- **Auto-Dependency Checker & Installer**: Hanya dengan *double-click* launcher di PC baru, script akan mengecek ketersediaan `yt-dlp`, `ffmpeg`, dan `Node.js`, meminta persetujuan untuk menginstall via `winget`, lalu langsung menjalankan server! (Bebas repot).
-- **YT-DLP Queue & Resolusi Dinamis**: Anda bisa memasukkan puluhan URL sekaligus. Sebelum mengunduh, sistem akan mengecek YouTube untuk menampilkan **daftar resolusi (mis. 1080p, 720p)** yang tersedia *untuk masing-masing video*. Antrean (Queue) diproses berurutan secara otomatis.
-- **FFmpeg Trimming**: Memotong video dengan instan tanpa *re-encode* hanya dengan mengisikan *Start Time* dan *End Time* (HH:MM:SS).
-- **FFmpeg Mirror**: Membalikkan video secara horizontal (H-Flip).
-- **MP3 Converter**: Memindai sebuah folder dan secara masal mengubah seluruh file media/video menjadi MP3 berkualitas 320kbps ke direktori output yang rapi.
-- **MP3 Metadata Editor (Batch & Folder)**: Tambahkan tag *Title, Artist, Album, Year* ke dalam satu file MP3 tunggal ATAU ke seluruh file MP3 di dalam sebuah folder sekaligus secara otomatis.
+Aplikasi ini tersedia dalam **Dua Mode Utama**:
+1. **Mode Web GUI** (Direkomendasikan) - Antarmuka berbasis web lokal untuk kemudahan operasional dan multi-tasking.
+2. **Mode TUI** (Legacy) - Antarmuka berbasis teks (Text User Interface) yang dijalankan melalui PowerShell.
 
 ---
 
-## 🚀 Cara Menjalankan
+## Fitur Web GUI (Versi Terbaru)
 
-### Paling Mudah: Double-click launcher
+Web GUI berjalan secara lokal menggunakan Node.js dan menyediakan antarmuka modern di browser Anda:
 
-1. Buka folder repo ini.
-2. Jalankan **[ElToolkitDeRWBU.bat](ElToolkitDeRWBU.bat)**.
-3. Tunggu pengecekan sistem. Tool akan bertanya apakah kamu ingin menjalankan **[1] Mode GUI** atau **[2] Mode TUI**.
-4. Pilih browser yang kamu inginkan (Chrome otomatis dijadikan target default).
-5. Web akan terbuka di `http://localhost:3000`.
-
-> Catatan penting: tool ini akan **meminta persetujuan (Y/N)** sebelum mengunduh/menginstal dependency yang belum ada via `winget`.
-
-Jika instalasi butuh izin admin, jalankan:
-- **[ElToolkitDeRWBU-Admin.bat](ElToolkitDeRWBU-Admin.bat)**
+- **Manajemen Dependensi Otomatis**: Menjalankan launcher di sistem baru akan secara otomatis memverifikasi dan menginstal dependensi yang diperlukan (`yt-dlp`, `ffmpeg`, dan `Node.js`) melalui `winget` setelah mendapatkan persetujuan pengguna. Server kemudian akan langsung dijalankan.
+- **YT-DLP Queue & Resolusi Dinamis**: Mendukung pemrosesan banyak URL sekaligus. Sebelum mengunduh, sistem mengambil dan menampilkan daftar resolusi yang tersedia (misal: 1080p, 720p) untuk masing-masing video. Antrean akan diproses secara sekuensial.
+- **FFmpeg Trimming**: Memungkinkan pemotongan video instan tanpa proses re-encode dengan mendefinisikan Start Time dan End Time (format HH:MM:SS).
+- **FFmpeg Mirror**: Melakukan pembalikan video secara horizontal (H-Flip).
+- **MP3 Converter**: Memindai direktori yang dipilih dan mengonversi seluruh file media menjadi format MP3 320kbps secara massal, kemudian menyimpannya ke dalam struktur direktori output yang rapi.
+- **MP3 Metadata Editor (Batch & Folder)**: Menyematkan ID3 tags (Judul, Artis, Album, Tahun) ke dalam satu file MP3 tunggal atau menerapkannya secara massal ke seluruh file MP3 dalam suatu direktori.
 
 ---
 
-## 💻 Mode TUI (Legacy)
+## Panduan Penggunaan
 
-Jika kamu memilih Mode TUI (Terminal Lama), kamu akan diarahkan ke script PowerShell interaktif. Fitur-fitur lama seperti batch rename, konversi media, dan eksekusi YT-DLP masih tersedia secara utuh. File utama script lama kini bernama `ElToolkitDeRWBU_Legacy.ps1`.
+### Eksekusi Standar (Direkomendasikan)
+
+1. Buka direktori repositori ini.
+2. Jalankan file **[ElToolkitDeRWBU.bat](ElToolkitDeRWBU.bat)**.
+3. Tunggu hingga proses pengecekan sistem selesai. Sistem akan meminta Anda memilih mode: **[1] Mode GUI** atau **[2] Mode TUI**.
+4. Jika memilih Mode GUI, tentukan browser yang ingin digunakan (Chrome diatur sebagai target default).
+5. Aplikasi web akan terbuka secara otomatis di `http://localhost:3000`.
+
+> Catatan: Aplikasi akan meminta persetujuan eksplisit (Y/N) sebelum mengunduh atau menginstal dependensi yang tidak ditemukan via `winget`.
+
+Jika instalasi memerlukan hak akses Administrator:
+- Jalankan file **[ElToolkitDeRWBU-Admin.bat](ElToolkitDeRWBU-Admin.bat)**
+
+---
+
+## Mode TUI (Legacy)
+
+Memilih Mode TUI akan menjalankan skrip PowerShell interaktif. Fitur-fitur lama seperti batch rename, konversi media, dan eksekusi YT-DLP secara langsung tetap beroperasi penuh. File skrip utama versi ini sekarang dinamakan `ElToolkitDeRWBU_Legacy.ps1`.
 
 ### MetadataWriterDeRWBU (Standalone TUI)
 
-Kamu juga masih bisa menjalankan *script standalone* lama:
+Skrip metadata standalone versi lama tetap dapat dijalankan secara langsung:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\MetadataWriterDeRWBU.ps1
 ```
-Tool ini mendukung pengeditan interaktif atau massal lewat file `.txt` (INI-style).
+Tool ini mendukung pengeditan interaktif maupun pemrosesan massal menggunakan file `.txt` berformat INI.
 
 ---
 
-## 🛠️ Kompatibilitas & Dependency
+## Kompatibilitas & Dependensi
 
 - Windows 10/11
 - Windows PowerShell 5.1+ atau PowerShell 7 (`pwsh`)
-- Dependency utama: `yt-dlp`, `ffmpeg`, `node` (Diurus otomatis oleh skrip `CheckDependencies.ps1` via `winget`)
-- UI Web: HTML, CSS, Vanilla JS, Node.js (`express`)
+- Dependensi Utama: `yt-dlp`, `ffmpeg`, `node` (Dikelola secara otomatis oleh skrip `CheckDependencies.ps1` via `winget`)
+- Tumpukan Teknologi Web: HTML, CSS, Vanilla JS, Node.js (`express`)
 
 ---
 
-## ⚠️ Troubleshooting & Keamanan
+## Pemecahan Masalah & Keamanan
 
-- **Terminal GUI Jangan Ditutup**: Selama kamu menggunakan antarmuka web di browser, jendela terminal (hitam) harus tetap terbuka sebagai *backend* lokal.
-- **Dependency Gagal**: Pastikan PC Windows kamu mendukung perintah `winget`.
-- **Keamanan Cookies**: Jika kamu memakai metode otentikasi YT-DLP via file `cookies.txt`, pastikan untuk TIDAK mempublikasikan file tersebut (jangan *commit* ke Git) karena berisi kredensial sensitif.
-
----
-*Didesain untuk kecepatan, tanpa kompromi.*
+- **Manajemen Jendela Terminal**: Selama Anda menggunakan antarmuka web, jendela terminal harus tetap dibiarkan terbuka karena berfungsi sebagai backend lokal.
+- **Kegagalan Dependensi**: Pastikan sistem Windows Anda mendukung perintah manajer paket `winget`.
+- **Keamanan Cookie**: Jika menggunakan metode autentikasi YT-DLP melalui file `cookies.txt`, pastikan file tersebut TIDAK dipublikasikan atau di-commit ke repositori Git, karena file tersebut berisi kredensial sesi yang sangat sensitif.
