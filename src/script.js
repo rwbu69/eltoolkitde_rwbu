@@ -133,11 +133,11 @@ window.generateQueue = async function() {
         queueItems.appendChild(div);
 
         try {
-            let fetchArgs = ['-J', '--no-check-certificate', url];
+            let fetchArgs = ['--encoding', 'utf-8', '-J', '--no-check-certificate', url];
             if (cookieMode === 'browser' && browser) {
-                fetchArgs.splice(1, 0, '--cookies-from-browser', browser);
+                fetchArgs.splice(2, 0, '--cookies-from-browser', browser);
             } else if (cookieMode === 'file' && cookieFile) {
-                fetchArgs.splice(1, 0, '--cookies', cookieFile);
+                fetchArgs.splice(2, 0, '--cookies', cookieFile);
             }
             const command = Command.sidecar('bin/yt-dlp', fetchArgs);
             const output = await command.execute();
@@ -253,14 +253,14 @@ async function runStream(module, dataPayload) {
         let outputTemplate = nameMode === 'autonumber' ? '%(autonumber)01d. %(title)s.%(ext)s' : '%(title)s.%(ext)s';
         
         let dlArgs = [
-            '-4', '--no-check-certificate', ...formatArgs,
+            '--encoding', 'utf-8', '-4', '--no-check-certificate', ...formatArgs,
             '--embed-metadata', '--embed-thumbnail',
             '-o', await joinPath(outputDir, outputTemplate), url
         ];
         if (cookieMode === 'browser' && browser) {
-            dlArgs.splice(1, 0, '--cookies-from-browser', browser);
+            dlArgs.splice(2, 0, '--cookies-from-browser', browser);
         } else if (cookieMode === 'file' && cookieFile) {
-            dlArgs.splice(1, 0, '--cookies', cookieFile);
+            dlArgs.splice(2, 0, '--cookies', cookieFile);
         }
         args = dlArgs;
     } else if (module === 'ffmpeg-mirror') {
