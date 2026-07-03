@@ -43,13 +43,12 @@ for (const target of ffmpegTargets) {
 // 2. Download yt-dlp secara dinamis mengikuti redirect
 function downloadFile(url, dest) {
     return new Promise((resolve, reject) => {
-        if (fs.existsSync(dest)) {
+        if (fs.existsSync(dest) && fs.statSync(dest).size > 0) {
             console.log(`[SKIP] yt-dlp already exists at ${dest}`);
             return resolve();
         }
         
         console.log(`[INFO] Downloading yt-dlp from ${url}...`);
-        const file = fs.createWriteStream(dest);
         
         const request = https.get(url, (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
@@ -58,6 +57,7 @@ function downloadFile(url, dest) {
             } else if (response.statusCode !== 200) {
                 reject(new Error(`Failed to download, status code: ${response.statusCode}`));
             } else {
+                const file = fs.createWriteStream(dest);
                 response.pipe(file);
                 file.on('finish', () => {
                     file.close();
