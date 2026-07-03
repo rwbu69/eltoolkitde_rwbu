@@ -45,7 +45,7 @@ jobs:
         run: npm install
 
       - name: Setup Dynamic Sidecars
-        run: node scripts/setup-sidecars.js
+        run: node scripts/setup-sidecars.cjs
 
       # Tauri memanggil NPM script "tauri build" secara otomatis di dalam action
       - uses: tauri-apps/tauri-action@v0
