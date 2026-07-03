@@ -14,8 +14,8 @@ if (platform === 'win32') {
 } else if (platform === 'darwin') {
     // Universal binary di Mac akan membuild 2 arsitektur secara terpisah sebelum digabung
     // Tauri mengharapkan kedua file ini ada!
-    ffmpegTargets = ['ffmpeg-aarch64-apple-darwin', 'ffmpeg-x86_64-apple-darwin'];
-    ytdlpTargets = ['yt-dlp-aarch64-apple-darwin', 'yt-dlp-x86_64-apple-darwin'];
+    ffmpegTargets = ['ffmpeg-aarch64-apple-darwin', 'ffmpeg-x86_64-apple-darwin', 'ffmpeg-universal-apple-darwin'];
+    ytdlpTargets = ['yt-dlp-aarch64-apple-darwin', 'yt-dlp-x86_64-apple-darwin', 'yt-dlp-universal-apple-darwin'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
 } else {
     ffmpegTargets = ['ffmpeg-x86_64-unknown-linux-gnu'];
