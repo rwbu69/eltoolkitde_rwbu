@@ -17,9 +17,9 @@ jobs:
           - platform: 'macos-latest' # untuk arm64 dan x64 mac
             args: '--target universal-apple-darwin'
           - platform: 'ubuntu-22.04'
-            args: ''
+            args: '--bundles deb,appimage'
           - platform: 'windows-latest'
-            args: ''
+            args: '--bundles nsis'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -34,6 +34,11 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'

@@ -3,219 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ElToolkitDeRWBU Web</title>
+    <title>ElToolkitDeRWBU</title>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>ElToolkitDeRWBU</h1>
-            <p>PowerShell Toolkit Web UI</p>
-        </header>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>ElToolkit</h1>
+                <span class="version-badge">v0.1.0</span>
+            </div>
+            
+            <nav class="tabs">
+                <button class="tab-btn active" data-target="module-1">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    <span>YT-DLP</span>
+                </button>
+                <button class="tab-btn" data-target="module-2">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>
+                    <span>FFmpeg Tools</span>
+                </button>
+                <button class="tab-btn" data-target="module-3">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                    <span>MP3 Converter</span>
+                </button>
+                <button class="tab-btn" data-target="module-4">
+                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    <span>Metadata</span>
+                </button>
+            </nav>
+        </aside>
 
-        <nav class="tabs">
-            <button class="tab-btn active" data-target="module-1">YT-DLP</button>
-            <button class="tab-btn" data-target="module-2">FFmpeg Tools</button>
-            <button class="tab-btn" data-target="module-3">MP3 Converter</button>
-            <button class="tab-btn" data-target="module-4">Metadata Editor</button>
-        </nav>
-
-        <main>
-            <!-- Module 1: YT-DLP -->
-            <section id="module-1" class="tab-content active">
-                <h2>YT-DLP Downloader (Queue System)</h2>
-                <form id="form-ytdlp">
-                    <div class="form-group">
-                        <label>URL Video / Playlist (Satu per baris):</label>
-                        <textarea id="yt-url" required placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..." rows="4"></textarea>
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <div class="content-scrollable">
+                <!-- Module 1: YT-DLP -->
+                <section id="module-1" class="tab-content active">
+                    <div class="section-header">
+                        <h2>YT-DLP Downloader</h2>
+                        <p class="subtitle">Sistem Antrean Download Video & Audio</p>
                     </div>
                     
-                    <div class="queue-actions">
-                        <button type="button" id="btn-generate-queue" class="btn btn-secondary w-100">1. Buat Antrean & Ambil Resolusi</button>
-                    </div>
-
-                    <div id="queue-list" class="queue-list" style="display: none;">
-                        <h3>Daftar Antrean Video</h3>
-                        <div id="queue-items"></div>
-                    </div>
-
-                    <div class="form-group mt-15">
-                        <label>Mode:</label>
-                        <select id="yt-mode">
-                            <option value="videoaudio">Video + Audio (MP4)</option>
-                            <option value="videoonly">Video ONLY</option>
-                            <option value="audioonly">Audio ONLY (MP3)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Format Penamaan:</label>
-                        <select id="yt-namemode">
-                            <option value="autonumber">Auto Number (1. Judul.mp4)</option>
-                            <option value="title">Judul Asli (Judul.mp4)</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Metode Cookie:</label>
-                        <select id="yt-cookie-mode">
-                            <option value="none">Tanpa Cookie (Default - Paling Aman)</option>
-                            <option value="file">Gunakan File cookies.txt (Untuk video private/18+)</option>
-                            <option value="browser">Otomatis dari Browser (Sering error di OS modern)</option>
-                        </select>
-                    </div>
-
-                    <div id="cookie-browser-group" class="form-group" style="display: none;">
-                        <label>Pilih Browser (Pastikan browser tertutup!):</label>
-                        <select id="yt-browser">
-                            <option value="chrome">Chrome</option>
-                            <option value="edge">Edge</option>
-                            <option value="vivaldi">Vivaldi</option>
-                            <option value="firefox">Firefox</option>
-                            <option value="opera">Opera</option>
-                            <option value="brave">Brave</option>
-                        </select>
-                    </div>
-
-                    <div id="cookie-file-group" class="form-group" style="display: none;">
-                        <label>File cookies.txt:</label>
-                        <div class="input-group">
-                            <input type="text" id="yt-cookie-file" readonly placeholder="Pilih file cookies.txt...">
-                            <button type="button" id="btn-yt-cookie-file" class="btn btn-secondary">Pilih</button>
-                        </div>
-                        <small style="color: #888; margin-top: 5px; display: block;">Tips: Gunakan ekstensi "Get cookies.txt LOCALLY" di browser Anda untuk mendapatkan file ini.</small>
-                    </div>
-                    <div class="form-group">
-                        <label>Folder Output:</label>
-                        <div class="input-group">
-                            <input type="text" id="yt-output" required readonly placeholder="Pilih folder...">
-                            <button type="button" id="btn-yt-output" class="btn btn-secondary">Pilih</button>
-                        </div>
-                    </div>
-                    <button type="button" id="btn-start-queue" class="btn btn-primary w-100">2. Mulai Download Antrean</button>
-                </form>
-            </section>
-
-            <!-- Module 2: FFmpeg Tools -->
-            <section id="module-2" class="tab-content">
-                <h2>FFmpeg Mirror & Trimming</h2>
-                
-                <div class="tool-card">
-                    <h3>Mirror (H-Flip)</h3>
-                    <form id="form-mirror">
-                        <div class="form-group">
-                            <label>File Video Input:</label>
-                            <div class="input-group">
-                                <input type="text" id="mirror-input" required readonly placeholder="Pilih file...">
-                                <button type="button" id="btn-mirror-input" class="btn btn-secondary">Pilih</button>
+                    <div class="card">
+                        <form id="form-ytdlp">
+                            <div class="form-group">
+                                <label>URL Video / Playlist (Satu per baris):</label>
+                                <textarea id="yt-url" required placeholder="https://www.youtube.com/watch?v=...&#10;https://www.youtube.com/watch?v=..." rows="4"></textarea>
                             </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Folder Output:</label>
-                            <div class="input-group">
-                                <input type="text" id="mirror-output" required readonly placeholder="Pilih folder...">
-                                <button type="button" id="btn-mirror-output" class="btn btn-secondary">Pilih</button>
+                            
+                            <div class="queue-actions">
+                                <button type="button" id="btn-generate-queue" class="btn btn-secondary w-100">
+                                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: text-bottom;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                                    1. Buat Antrean & Ambil Resolusi
+                                </button>
                             </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Mulai Mirror</button>
-                    </form>
-                </div>
 
-                <div class="tool-card mt-15">
-                    <h3>Trimming (Potong Video)</h3>
-                    <form id="form-trim">
-                        <div class="form-group">
-                            <label>File Video Input:</label>
-                            <div class="input-group">
-                                <input type="text" id="trim-input" required readonly placeholder="Pilih file...">
-                                <button type="button" id="btn-trim-input" class="btn btn-secondary">Pilih</button>
+                            <div id="queue-list" class="queue-list" style="display: none;">
+                                <h3>Daftar Antrean Video</h3>
+                                <div id="queue-items"></div>
                             </div>
-                        </div>
-                        <div class="input-group">
-                            <div class="form-group" style="flex:1">
-                                <label>Waktu Mulai (HH:MM:SS):</label>
-                                <input type="text" id="trim-start" required placeholder="00:00:00">
-                            </div>
-                            <div class="form-group" style="flex:1">
-                                <label>Waktu Selesai (HH:MM:SS):</label>
-                                <input type="text" id="trim-end" required placeholder="00:01:30">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Folder Output:</label>
-                            <div class="input-group">
-                                <input type="text" id="trim-output" required readonly placeholder="Pilih folder...">
-                                <button type="button" id="btn-trim-output" class="btn btn-secondary">Pilih</button>
-                            </div>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">Mulai Potong</button>
-                    </form>
-                </div>
-            </section>
 
-            <!-- Module 3: MP3 Converter -->
-            <section id="module-3" class="tab-content">
-                <h2>Media to MP3 Converter</h2>
-                <form id="form-mp3">
-                    <div class="form-group">
-                        <label>Folder Sumber (Berisi Video/Audio):</label>
-                        <div class="input-group">
-                            <input type="text" id="mp3-input" required readonly placeholder="Pilih folder...">
-                            <button type="button" id="btn-mp3-input" class="btn btn-secondary">Pilih</button>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Folder Output Root:</label>
-                        <div class="input-group">
-                            <input type="text" id="mp3-output" required readonly placeholder="Pilih folder...">
-                            <button type="button" id="btn-mp3-output" class="btn btn-secondary">Pilih</button>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Mulai Konversi MP3</button>
-                </form>
-            </section>
+                            <div class="settings-grid mt-15">
+                                <div class="form-group">
+                                    <label>Mode Unduh:</label>
+                                    <select id="yt-mode">
+                                        <option value="videoaudio">Video + Audio (MP4)</option>
+                                        <option value="videoonly">Video ONLY</option>
+                                        <option value="audioonly">Audio ONLY (MP3)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Format Penamaan:</label>
+                                    <select id="yt-namemode">
+                                        <option value="autonumber">Auto Number (1. Judul.mp4)</option>
+                                        <option value="title">Judul Asli (Judul.mp4)</option>
+                                    </select>
+                                </div>
+                            </div>
 
-            <!-- Module 4: Metadata Editor -->
-            <section id="module-4" class="tab-content">
-                <h2>MP3 Metadata Editor</h2>
-                <form id="form-metadata">
-                    <div class="form-group">
-                        <label>Mode Target:</label>
-                        <select id="meta-mode">
-                            <option value="file">Satu File MP3</option>
-                            <option value="folder">Satu Folder (semua file MP3 di dalamnya)</option>
-                        </select>
+                            <div class="form-group">
+                                <label>Metode Cookie (Opsional):</label>
+                                <select id="yt-cookie-mode">
+                                    <option value="none">Tanpa Cookie (Default - Paling Aman)</option>
+                                    <option value="file">Gunakan File cookies.txt (Untuk video private/18+)</option>
+                                    <option value="browser">Otomatis dari Browser (Berpotensi error)</option>
+                                </select>
+                            </div>
+
+                            <div id="cookie-browser-group" class="form-group" style="display: none;">
+                                <label>Pilih Browser (Pastikan browser tertutup!):</label>
+                                <select id="yt-browser">
+                                    <option value="chrome">Chrome</option>
+                                    <option value="edge">Edge</option>
+                                    <option value="vivaldi">Vivaldi</option>
+                                    <option value="firefox">Firefox</option>
+                                    <option value="opera">Opera</option>
+                                    <option value="brave">Brave</option>
+                                </select>
+                            </div>
+
+                            <div id="cookie-file-group" class="form-group" style="display: none;">
+                                <label>File cookies.txt:</label>
+                                <div class="input-group">
+                                    <input type="text" id="yt-cookie-file" readonly placeholder="Pilih file cookies.txt...">
+                                    <button type="button" id="btn-yt-cookie-file" class="btn btn-outline">Pilih File</button>
+                                </div>
+                                <small class="help-text">Tips: Gunakan ekstensi "Get cookies.txt LOCALLY" di browser Anda.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Folder Output:</label>
+                                <div class="input-group">
+                                    <input type="text" id="yt-output" required readonly placeholder="Pilih folder tujuan...">
+                                    <button type="button" id="btn-yt-output" class="btn btn-outline">Cari Direktori</button>
+                                </div>
+                            </div>
+                            
+                            <button type="button" id="btn-start-queue" class="btn btn-primary w-100 mt-15">
+                                <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: text-bottom;"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                                2. Mulai Download Antrean
+                            </button>
+                        </form>
                     </div>
-                    <div class="form-group">
-                        <label id="meta-target-label">File MP3:</label>
-                        <div class="input-group">
-                            <input type="text" id="meta-input" required readonly placeholder="Pilih file mp3...">
-                            <button type="button" class="btn btn-secondary" id="meta-btn">Pilih</button>
+                </section>
+
+                <!-- Module 2: FFmpeg Tools -->
+                <section id="module-2" class="tab-content">
+                    <div class="section-header">
+                        <h2>FFmpeg Tools</h2>
+                        <p class="subtitle">Pemrosesan Video Cepat (Mirror & Trim)</p>
+                    </div>
+                    
+                    <div class="grid-2-col">
+                        <div class="card">
+                            <h3>
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;"><path d="M3 3v18h18"></path><path d="M12 8l4 4-4 4"></path></svg>
+                                Mirror (H-Flip)
+                            </h3>
+                            <form id="form-mirror">
+                                <div class="form-group">
+                                    <label>File Video Input:</label>
+                                    <div class="input-group">
+                                        <input type="text" id="mirror-input" required readonly placeholder="Pilih file...">
+                                        <button type="button" id="btn-mirror-input" class="btn btn-outline">Pilih</button>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>Folder Output:</label>
+                                    <div class="input-group">
+                                        <input type="text" id="mirror-output" required readonly placeholder="Pilih folder...">
+                                        <button type="button" id="btn-mirror-output" class="btn btn-outline">Pilih</button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 mt-15">Eksekusi Mirror</button>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <h3>
+                                <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 8px; vertical-align: middle;"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>
+                                Trimming (Potong)
+                            </h3>
+                            <form id="form-trim">
+                                <div class="form-group">
+                                    <label>File Video Input:</label>
+                                    <div class="input-group">
+                                        <input type="text" id="trim-input" required readonly placeholder="Pilih file...">
+                                        <button type="button" id="btn-trim-input" class="btn btn-outline">Pilih</button>
+                                    </div>
+                                </div>
+                                <div class="input-group">
+                                    <div class="form-group" style="flex:1">
+                                        <label>Mulai (HH:MM:SS):</label>
+                                        <input type="text" id="trim-start" required placeholder="00:00:00">
+                                    </div>
+                                    <div class="form-group" style="flex:1">
+                                        <label>Selesai (HH:MM:SS):</label>
+                                        <input type="text" id="trim-end" required placeholder="00:01:30">
+                                    </div>
+                                </div>
+                                <div class="form-group mt-15">
+                                    <label>Folder Output:</label>
+                                    <div class="input-group">
+                                        <input type="text" id="trim-output" required readonly placeholder="Pilih folder...">
+                                        <button type="button" id="btn-trim-output" class="btn btn-outline">Pilih</button>
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100 mt-15">Eksekusi Potong</button>
+                            </form>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label>Judul:</label>
-                        <input type="text" id="meta-title" placeholder="Kosongkan jika tidak ingin diubah">
-                    </div>
-                    <div class="form-group">
-                        <label>Artis:</label>
-                        <input type="text" id="meta-artist" placeholder="Kosongkan jika tidak ingin diubah">
-                    </div>
-                    <div class="form-group">
-                        <label>Album:</label>
-                        <input type="text" id="meta-album" placeholder="Kosongkan jika tidak ingin diubah">
-                    </div>
-                    <div class="form-group">
-                        <label>Tahun:</label>
-                        <input type="text" id="meta-year" placeholder="yyyy">
-                    </div>
-                    <button type="submit" class="btn btn-primary w-100">Tulis Metadata</button>
-                </form>
-            </section>
+                </section>
 
-            <!-- Console Output -->
+                <!-- Module 3: MP3 Converter -->
+                <section id="module-3" class="tab-content">
+                    <div class="section-header">
+                        <h2>MP3 Converter</h2>
+                        <p class="subtitle">Konversi Massal Video/Audio ke MP3</p>
+                    </div>
+                    
+                    <div class="card">
+                        <form id="form-mp3">
+                            <div class="form-group">
+                                <label>Folder Sumber (Berisi Video/Audio):</label>
+                                <div class="input-group">
+                                    <input type="text" id="mp3-input" required readonly placeholder="Pilih folder sumber...">
+                                    <button type="button" id="btn-mp3-input" class="btn btn-outline">Pilih</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Folder Output Tujuan:</label>
+                                <div class="input-group">
+                                    <input type="text" id="mp3-output" required readonly placeholder="Pilih folder hasil...">
+                                    <button type="button" id="btn-mp3-output" class="btn btn-outline">Pilih</button>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100 mt-15">Mulai Konversi Massal</button>
+                        </form>
+                    </div>
+                </section>
+
+                <!-- Module 4: Metadata Editor -->
+                <section id="module-4" class="tab-content">
+                    <div class="section-header">
+                        <h2>Metadata Editor</h2>
+                        <p class="subtitle">Ubah Tag ID3 (Judul, Artis, Album) File MP3</p>
+                    </div>
+                    
+                    <div class="card">
+                        <form id="form-metadata">
+                            <div class="form-group">
+                                <label>Mode Target:</label>
+                                <select id="meta-mode">
+                                    <option value="file">Satu File MP3</option>
+                                    <option value="folder">Satu Folder (semua file MP3 di dalamnya)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label id="meta-target-label">Target Direktori/File:</label>
+                                <div class="input-group">
+                                    <input type="text" id="meta-input" required readonly placeholder="Pilih target mp3...">
+                                    <button type="button" class="btn btn-outline" id="meta-btn">Pilih</button>
+                                </div>
+                            </div>
+                            
+                            <div class="settings-grid mt-15">
+                                <div class="form-group">
+                                    <label>Judul:</label>
+                                    <input type="text" id="meta-title" placeholder="Kosongkan jika diabaikan">
+                                </div>
+                                <div class="form-group">
+                                    <label>Artis:</label>
+                                    <input type="text" id="meta-artist" placeholder="Kosongkan jika diabaikan">
+                                </div>
+                                <div class="form-group">
+                                    <label>Album:</label>
+                                    <input type="text" id="meta-album" placeholder="Kosongkan jika diabaikan">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tahun:</label>
+                                    <input type="text" id="meta-year" placeholder="YYYY (Misal: 2024)">
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100 mt-15">Simpan Perubahan Metadata</button>
+                        </form>
+                    </div>
+                </section>
+            </div>
+            
+            <!-- Terminal Console (Fixed at Bottom) -->
             <div class="console-wrapper">
                 <div class="console-header">
-                    <span>Console Output</span>
-                    <button type="button" class="btn-clear">Clear</button>
+                    <div class="window-controls">
+                        <span class="dot dot-red"></span>
+                        <span class="dot dot-yellow"></span>
+                        <span class="dot dot-green"></span>
+                    </div>
+                    <span class="console-title">Terminal Output</span>
+                    <button type="button" class="btn-clear">
+                        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Clear
+                    </button>
                 </div>
                 <div id="console" class="console"></div>
             </div>

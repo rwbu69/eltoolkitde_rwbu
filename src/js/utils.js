@@ -44,6 +44,11 @@ export function appendLog(text) {
             const div = document.createElement('div');
             div.textContent = clean;
             consoleEl.appendChild(div);
+            
+            // Fix Memory Leak: Batasi jumlah log maksimal di DOM
+            while (consoleEl.children.length > 500) {
+                consoleEl.removeChild(consoleEl.firstChild);
+            }
         }
     });
 
