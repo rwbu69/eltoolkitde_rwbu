@@ -254,6 +254,7 @@ async function runStream(module, dataPayload) {
         
         let dlArgs = [
             '--encoding', 'utf-8', '-4', '--no-check-certificate', ...formatArgs,
+            '--newline', '--progress-delta', '1',
             '--embed-metadata', '--embed-thumbnail',
             '-o', await joinPath(outputDir, outputTemplate), url
         ];
