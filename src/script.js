@@ -176,8 +176,11 @@ window.generateQueue = async function() {
             urlEl.textContent = title;
             urlEl.title = title;
         } catch(e) {
-            document.getElementById(`status-${id}`).textContent = 'Error';
+            const errMsg = e.message || String(e);
+            console.error("YTDLP Error:", e);
+            document.getElementById(`status-${id}`).textContent = 'Error: ' + errMsg.substring(0, 40);
             document.getElementById(`status-${id}`).className = 'status status-error';
+            document.getElementById(`status-${id}`).title = errMsg;
             currentQueue[i].status = 'error';
         }
     }
