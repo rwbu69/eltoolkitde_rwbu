@@ -220,8 +220,12 @@ window.startQueue = async function() {
             document.getElementById(`status-${item.id}`).textContent = 'Done';
             document.getElementById(`status-${item.id}`).className = 'status status-done';
         } catch (e) {
-            document.getElementById(`status-${item.id}`).textContent = 'Error';
+            const errMsg = e.message || String(e);
+            console.error("YTDLP Download Error:", e);
+            appendLog(`[ERROR] Gagal memproses ${item.url}: ${errMsg}`);
+            document.getElementById(`status-${item.id}`).textContent = 'Error: ' + errMsg.substring(0, 30);
             document.getElementById(`status-${item.id}`).className = 'status status-error';
+            document.getElementById(`status-${item.id}`).title = errMsg;
         }
     }
     

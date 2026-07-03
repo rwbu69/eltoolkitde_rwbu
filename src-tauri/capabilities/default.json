@@ -18,6 +18,13 @@
         { "name": "bin/ffmpeg", "sidecar": true, "args": true }
       ]
     },
+    {
+      "identifier": "shell:allow-spawn",
+      "allow": [
+        { "name": "bin/yt-dlp", "sidecar": true, "args": true },
+        { "name": "bin/ffmpeg", "sidecar": true, "args": true }
+      ]
+    },
     { "identifier": "fs:allow-read-dir", "allow": [{ "path": "**" }] },
     { "identifier": "fs:allow-read-file", "allow": [{ "path": "**" }] },
     { "identifier": "fs:allow-write-file", "allow": [{ "path": "**" }] },
