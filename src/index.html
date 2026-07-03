@@ -31,7 +31,7 @@
                     </div>
                     
                     <div class="queue-actions">
-                        <button type="button" class="btn btn-secondary w-100" onclick="generateQueue()">1. Buat Antrean & Ambil Resolusi</button>
+                        <button type="button" id="btn-generate-queue" class="btn btn-secondary w-100">1. Buat Antrean & Ambil Resolusi</button>
                     </div>
 
                     <div id="queue-list" class="queue-list" style="display: none;">
@@ -56,7 +56,7 @@
                     </div>
                     <div class="form-group">
                         <label>Metode Cookie:</label>
-                        <select id="yt-cookie-mode" onchange="toggleCookieMode()">
+                        <select id="yt-cookie-mode">
                             <option value="none">Tanpa Cookie (Default - Paling Aman)</option>
                             <option value="file">Gunakan File cookies.txt (Untuk video private/18+)</option>
                             <option value="browser">Otomatis dari Browser (Sering error di OS modern)</option>
@@ -79,7 +79,7 @@
                         <label>File cookies.txt:</label>
                         <div class="input-group">
                             <input type="text" id="yt-cookie-file" readonly placeholder="Pilih file cookies.txt...">
-                            <button type="button" class="btn btn-secondary" onclick="selectFile('yt-cookie-file')">Pilih</button>
+                            <button type="button" id="btn-yt-cookie-file" class="btn btn-secondary">Pilih</button>
                         </div>
                         <small style="color: #888; margin-top: 5px; display: block;">Tips: Gunakan ekstensi "Get cookies.txt LOCALLY" di browser Anda untuk mendapatkan file ini.</small>
                     </div>
@@ -87,10 +87,10 @@
                         <label>Folder Output:</label>
                         <div class="input-group">
                             <input type="text" id="yt-output" required readonly placeholder="Pilih folder...">
-                            <button type="button" class="btn btn-secondary" onclick="selectFolder('yt-output')">Pilih</button>
+                            <button type="button" id="btn-yt-output" class="btn btn-secondary">Pilih</button>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-primary w-100" onclick="startQueue()">2. Mulai Download Antrean</button>
+                    <button type="button" id="btn-start-queue" class="btn btn-primary w-100">2. Mulai Download Antrean</button>
                 </form>
             </section>
 
@@ -105,14 +105,14 @@
                             <label>File Video Input:</label>
                             <div class="input-group">
                                 <input type="text" id="mirror-input" required readonly placeholder="Pilih file...">
-                                <button type="button" class="btn btn-secondary" onclick="selectFile('mirror-input')">Pilih</button>
+                                <button type="button" id="btn-mirror-input" class="btn btn-secondary">Pilih</button>
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Folder Output:</label>
                             <div class="input-group">
                                 <input type="text" id="mirror-output" required readonly placeholder="Pilih folder...">
-                                <button type="button" class="btn btn-secondary" onclick="selectFolder('mirror-output')">Pilih</button>
+                                <button type="button" id="btn-mirror-output" class="btn btn-secondary">Pilih</button>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Mulai Mirror</button>
@@ -126,7 +126,7 @@
                             <label>File Video Input:</label>
                             <div class="input-group">
                                 <input type="text" id="trim-input" required readonly placeholder="Pilih file...">
-                                <button type="button" class="btn btn-secondary" onclick="selectFile('trim-input')">Pilih</button>
+                                <button type="button" id="btn-trim-input" class="btn btn-secondary">Pilih</button>
                             </div>
                         </div>
                         <div class="input-group">
@@ -143,7 +143,7 @@
                             <label>Folder Output:</label>
                             <div class="input-group">
                                 <input type="text" id="trim-output" required readonly placeholder="Pilih folder...">
-                                <button type="button" class="btn btn-secondary" onclick="selectFolder('trim-output')">Pilih</button>
+                                <button type="button" id="btn-trim-output" class="btn btn-secondary">Pilih</button>
                             </div>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Mulai Potong</button>
@@ -159,14 +159,14 @@
                         <label>Folder Sumber (Berisi Video/Audio):</label>
                         <div class="input-group">
                             <input type="text" id="mp3-input" required readonly placeholder="Pilih folder...">
-                            <button type="button" class="btn btn-secondary" onclick="selectFolder('mp3-input')">Pilih</button>
+                            <button type="button" id="btn-mp3-input" class="btn btn-secondary">Pilih</button>
                         </div>
                     </div>
                     <div class="form-group">
                         <label>Folder Output Root:</label>
                         <div class="input-group">
                             <input type="text" id="mp3-output" required readonly placeholder="Pilih folder...">
-                            <button type="button" class="btn btn-secondary" onclick="selectFolder('mp3-output')">Pilih</button>
+                            <button type="button" id="btn-mp3-output" class="btn btn-secondary">Pilih</button>
                         </div>
                     </div>
                     <button type="submit" class="btn btn-primary w-100">Mulai Konversi MP3</button>
@@ -179,7 +179,7 @@
                 <form id="form-metadata">
                     <div class="form-group">
                         <label>Mode Target:</label>
-                        <select id="meta-mode" onchange="toggleMetaTarget()">
+                        <select id="meta-mode">
                             <option value="file">Satu File MP3</option>
                             <option value="folder">Satu Folder (semua file MP3 di dalamnya)</option>
                         </select>
@@ -188,7 +188,7 @@
                         <label id="meta-target-label">File MP3:</label>
                         <div class="input-group">
                             <input type="text" id="meta-input" required readonly placeholder="Pilih file mp3...">
-                            <button type="button" class="btn btn-secondary" id="meta-btn" onclick="selectFile('meta-input')">Pilih</button>
+                            <button type="button" class="btn btn-secondary" id="meta-btn">Pilih</button>
                         </div>
                     </div>
                     <div class="form-group">
@@ -215,13 +215,13 @@
             <div class="console-wrapper">
                 <div class="console-header">
                     <span>Console Output</span>
-                    <button type="button" class="btn-clear" onclick="clearConsole()">Clear</button>
+                    <button type="button" class="btn-clear">Clear</button>
                 </div>
                 <div id="console" class="console"></div>
             </div>
         </main>
     </div>
 
-    <script src="script.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>

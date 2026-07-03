@@ -4,6 +4,8 @@
   "version": "0.1.0",
   "identifier": "com.rwbu.eltoolkitderwbu",
   "build": {
+    "beforeDevCommand": "node scripts/setup-sidecars.cjs",
+    "beforeBuildCommand": "node scripts/setup-sidecars.cjs",
     "frontendDist": "../src"
   },
   "app": {

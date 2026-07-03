@@ -23,7 +23,7 @@ if (platform === 'win32') {
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
 }
 
-const binDir = path.join(__dirname, '..', 'src-tauri', 'bin');
+const binDir = path.join(__dirname, '..', 'src-tauri');
 if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir, { recursive: true });
 }
