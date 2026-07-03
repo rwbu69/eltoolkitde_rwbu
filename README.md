@@ -1,5 +1,6 @@
 # ElToolkitDeRWBU
 
+![Tampilan Utama](images/tampilan_utama.png)
 ElToolkitDeRWBU adalah toolkit terintegrasi untuk Windows yang dirancang untuk mengotomatisasi alur kerja pengunduhan dan pemrosesan media, memanfaatkan kapabilitas YouTube dan FFmpeg.
 
 Aplikasi ini tersedia dalam **Dua Mode Utama**:
@@ -14,6 +15,10 @@ Web GUI berjalan secara lokal menggunakan Node.js dan menyediakan antarmuka mode
 
 - **Manajemen Dependensi Otomatis**: Menjalankan launcher di sistem baru akan secara otomatis memverifikasi dan menginstal dependensi yang diperlukan (`yt-dlp`, `ffmpeg`, dan `Node.js`) melalui `winget` setelah mendapatkan persetujuan pengguna. Server kemudian akan langsung dijalankan.
 - **YT-DLP Queue & Resolusi Dinamis**: Mendukung pemrosesan banyak URL sekaligus. Sebelum mengunduh, sistem mengambil dan menampilkan daftar resolusi yang tersedia (misal: 1080p, 720p) untuk masing-masing video. Antrean akan diproses secara sekuensial.
+  <br>![Ambil Resolusi](images/contoh_ambil_resolusi.png)
+  <br>![Contoh Antrean](images/contoh_antrean.png)
+  <br>![Contoh Downloading](images/contoh_downloading.png)
+  <br>![Hasil Download](images/hasil_download.png)
 - **FFmpeg Trimming**: Memungkinkan pemotongan video instan tanpa proses re-encode dengan mendefinisikan Start Time dan End Time (format HH:MM:SS).
 - **FFmpeg Mirror**: Melakukan pembalikan video secara horizontal (H-Flip).
 - **MP3 Converter**: Memindai direktori yang dipilih dan mengonversi seluruh file media menjadi format MP3 320kbps secara massal, kemudian menyimpannya ke dalam struktur direktori output yang rapi.

@@ -1,10 +1,10 @@
 :root {
-    --bg-main: #121212;
-    --bg-card: #1e1e1e;
-    --primary: #bb86fc;
-    --secondary: #03dac6;
-    --text-main: #e0e0e0;
-    --border: #333;
+    --bg-main: #ffffff;
+    --bg-card: #fdfdfd;
+    --primary: #ff69b4;
+    --secondary: #ff1493;
+    --text-main: #333333;
+    --border: #e0e0e0;
 }
 
 body {
@@ -29,7 +29,7 @@ header h1 {
     margin: 0;
 }
 header p {
-    color: #888;
+    color: #666;
     margin-top: 5px;
 }
 
@@ -62,7 +62,7 @@ header p {
     background: var(--bg-card);
     padding: 20px;
     border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
 }
 .tab-content.active {
     display: block;
@@ -82,12 +82,12 @@ header p {
     display: block;
     margin-bottom: 5px;
     font-weight: bold;
-    color: #aaa;
+    color: #555;
 }
 input[type="text"], select, textarea {
     width: 100%;
     padding: 10px;
-    background: var(--bg-main);
+    background: #fff;
     border: 1px solid var(--border);
     color: var(--text-main);
     border-radius: 4px;
@@ -120,17 +120,17 @@ input[type="text"]:focus, select:focus, textarea:focus {
 }
 .btn-primary {
     background: var(--primary);
-    color: #000;
+    color: #fff;
 }
 .btn-primary:hover {
-    background: #9d65df;
+    background: var(--secondary);
 }
 .btn-secondary {
-    background: #333;
+    background: #eee;
     color: var(--text-main);
 }
 .btn-secondary:hover {
-    background: #444;
+    background: #ddd;
 }
 .w-100 {
     width: 100%;
@@ -139,28 +139,28 @@ input[type="text"]:focus, select:focus, textarea:focus {
 .mt-15 { margin-top: 15px; }
 
 .tool-card {
-    background: #252525;
+    background: #f9f9f9;
     padding: 15px;
     border-radius: 6px;
-    border: 1px solid #333;
+    border: 1px solid var(--border);
 }
 .tool-card h3 { margin-top: 0; font-size: 1rem; color: var(--primary); }
 
 .queue-list {
-    background: #111;
-    border: 1px solid #333;
+    background: #f9f9f9;
+    border: 1px solid var(--border);
     padding: 15px;
     border-radius: 6px;
     margin-top: 15px;
 }
-.queue-list h3 { margin-top: 0; font-size: 0.9rem; color: #888; border-bottom: 1px solid #333; padding-bottom: 5px; }
+.queue-list h3 { margin-top: 0; font-size: 0.9rem; color: #666; border-bottom: 1px solid var(--border); padding-bottom: 5px; }
 
 .queue-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 8px 0;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid #eaeaea;
 }
 .queue-item:last-child { border-bottom: none; }
 .queue-item .url { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; margin-right: 10px;}
@@ -188,19 +188,20 @@ input[type="text"]:focus, select:focus, textarea:focus {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    color: #fff;
 }
 .btn-clear {
     background: transparent;
-    color: var(--secondary);
-    border: 1px solid var(--secondary);
+    color: var(--primary);
+    border: 1px solid var(--primary);
     padding: 3px 10px;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.8rem;
 }
 .btn-clear:hover {
-    background: var(--secondary);
-    color: #000;
+    background: var(--primary);
+    color: #fff;
 }
 .console {
     height: 300px;
@@ -208,7 +209,7 @@ input[type="text"]:focus, select:focus, textarea:focus {
     padding: 15px;
     font-family: 'Consolas', monospace;
     font-size: 0.9rem;
-    color: #0f0;
+    color: var(--primary);
     line-height: 1.4;
     white-space: pre-wrap;
 }
