@@ -26,6 +26,3 @@ dist-ssr
 # Testing
 *.test.js
 vitest.config.js
-
-# Patch Notes
-patchnotes.md

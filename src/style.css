@@ -327,6 +327,37 @@ input[type="text"]:focus, select:focus, textarea:focus {
     border-top: 1px solid var(--border);
     display: flex;
     flex-direction: column;
+    transition: height 0.3s ease;
+}
+.console-wrapper.collapsed {
+    height: 38px;
+}
+.console-wrapper.collapsed .console {
+    display: none;
+}
+
+/* Progress Bar */
+.progress-container {
+    width: 100%;
+    background-color: #2a2a2a;
+    border-radius: 4px;
+    height: 6px;
+    margin-top: 8px;
+    overflow: hidden;
+    display: none;
+}
+.progress-bar {
+    height: 100%;
+    background-color: var(--primary);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+.progress-text {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: flex;
+    justify-content: space-between;
 }
 .console-header {
     background: #151515;

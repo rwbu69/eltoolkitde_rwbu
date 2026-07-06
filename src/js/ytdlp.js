@@ -44,8 +44,18 @@ export async function generateQueue() {
         div.className = 'queue-item';
         div.id = id;
         div.innerHTML = `
-            <div class="url" title="${url}">${url}</div>
-            <select id="res-${id}" disabled>
+            <div style="flex:1; margin-right: 15px; overflow: hidden;">
+                <div class="url" title="${url}" style="text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem;">${url}</div>
+                <div class="progress-container" id="prog-cont-${id}">
+                    <div class="progress-bar" id="prog-bar-${id}"></div>
+                    <div class="progress-text" id="prog-text-${id}">
+                        <span id="prog-pct-${id}">0%</span>
+                        <span id="prog-speed-${id}">--</span>
+                        <span id="prog-eta-${id}">ETA: --</span>
+                    </div>
+                </div>
+            </div>
+            <select id="res-${id}" disabled style="${document.getElementById('yt-mode').value === 'audioonly' ? 'display:none;' : ''}">
                 <option value="">Fetching...</option>
             </select>
             <div class="status status-fetching" id="status-${id}">Fetching...</div>
@@ -80,30 +90,41 @@ export async function generateQueue() {
             statusEl.textContent = 'Ready';
             statusEl.className = 'status status-ready';
             
-            selectEl.innerHTML = `<option value="">Default (Best)</option>`;
+            selectEl.innerHTML = `
+                <option value="best">Preset: Best (Highest)</option>
+                <option value="higher">Preset: Higher (480p - 720p)</option>
+                <option value="low">Preset: Low (144p - 360p)</option>
+                <optgroup label="Resolusi Spesifik">
+            `;
             
             const formats = data.formats || [];
             const availableRes = new Map();
+            let audioAbr = '';
             formats.forEach(f => {
                 if (f.vcodec !== 'none' && f.height) {
                     if (!availableRes.has(f.height)) availableRes.set(f.height, true);
                 }
+                if (f.vcodec === 'none' && f.acodec !== 'none' && f.abr) {
+                    if (!audioAbr || f.abr > audioAbr) audioAbr = f.abr;
+                }
             });
             const sortedHeights = Array.from(availableRes.keys()).sort((a, b) => b - a);
 
+            const optGroup = selectEl.querySelector('optgroup');
             sortedHeights.forEach(res => {
                 const opt = document.createElement('option');
                 opt.value = res;
                 opt.textContent = `${res}p`;
-                selectEl.appendChild(opt);
+                optGroup.appendChild(opt);
             });
             selectEl.disabled = false;
             currentQueue[i].status = 'ready';
             
             const urlEl = document.querySelector(`#${id} .url`);
             const title = data.title || url;
-            urlEl.textContent = title;
-            urlEl.title = title;
+            const abrText = audioAbr ? ` (Audio: ~${Math.round(audioAbr)}kbps)` : '';
+            urlEl.textContent = title + abrText;
+            urlEl.title = title + abrText;
         } catch(e) {
             const errMsg = e.message || String(e);
             console.error("YTDLP Error:", e);
@@ -132,6 +153,7 @@ export async function startQueue() {
         
         const resolution = document.getElementById(`res-${item.id}`).value;
         const dataPayload = {
+            id: item.id,
             url: item.url,
             mode: document.getElementById('yt-mode').value,
             nameMode: document.getElementById('yt-namemode').value,
@@ -162,7 +184,7 @@ export async function startQueue() {
 }
 
 async function runYtdlpStream(dataPayload) {
-    const { url, mode, nameMode, outputDir, cookieMode, browser, cookieFile, resolution } = dataPayload;
+    const { id, url, mode, nameMode, outputDir, cookieMode, browser, cookieFile, resolution } = dataPayload;
     
     const { invoke } = window.__TAURI__.core;
     let ffmpegLocation = null;
@@ -174,11 +196,15 @@ async function runYtdlpStream(dataPayload) {
 
     let formatArgs = [];
     if (mode === 'videoaudio') {
-        if (resolution) formatArgs = ['-f', `bestvideo[height<=${resolution}]+bestaudio/best[height<=${resolution}]/best`, '--merge-output-format', 'mp4'];
-        else formatArgs = ['-f', 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best', '--merge-output-format', 'mp4'];
+        if (resolution === 'low') formatArgs = ['-f', 'bestvideo[height<=360]+bestaudio/best', '--merge-output-format', 'mp4'];
+        else if (resolution === 'higher') formatArgs = ['-f', 'bestvideo[height<=720]+bestaudio/best', '--merge-output-format', 'mp4'];
+        else if (resolution === 'best' || !resolution) formatArgs = ['-f', 'bestvideo+bestaudio/best', '--merge-output-format', 'mp4'];
+        else formatArgs = ['-f', `bestvideo[height<=${resolution}]+bestaudio/best[height<=${resolution}]/best`, '--merge-output-format', 'mp4'];
     } else if (mode === 'videoonly') {
-        if (resolution) formatArgs = ['-f', `bestvideo[height<=${resolution}]`, '--merge-output-format', 'mp4'];
-        else formatArgs = ['-f', 'bestvideo', '--merge-output-format', 'mp4'];
+        if (resolution === 'low') formatArgs = ['-f', 'bestvideo[height<=360]', '--merge-output-format', 'mp4'];
+        else if (resolution === 'higher') formatArgs = ['-f', 'bestvideo[height<=720]', '--merge-output-format', 'mp4'];
+        else if (resolution === 'best' || !resolution) formatArgs = ['-f', 'bestvideo', '--merge-output-format', 'mp4'];
+        else formatArgs = ['-f', `bestvideo[height<=${resolution}]`, '--merge-output-format', 'mp4'];
     } else if (mode === 'audioonly') {
         formatArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', '0'];
     }
@@ -208,8 +234,41 @@ async function runYtdlpStream(dataPayload) {
     return new Promise((resolve, reject) => {
         appendLog(`\n[START] Menjalankan yt-dlp...`);
         const command = Command.sidecar('yt-dlp', dlArgs);
-        command.stdout.on('data', line => { if(line.trim()) appendLog(line); });
-        command.stderr.on('data', line => { if(line.trim()) appendLog(line); });
+        
+        const progCont = document.getElementById(`prog-cont-${id}`);
+        const progBar = document.getElementById(`prog-bar-${id}`);
+        const progPct = document.getElementById(`prog-pct-${id}`);
+        const progSpeed = document.getElementById(`prog-speed-${id}`);
+        const progEta = document.getElementById(`prog-eta-${id}`);
+        
+        if (progCont) progCont.style.display = 'block';
+
+        let lastUpdate = 0;
+
+        command.stdout.on('data', line => { 
+            if(!line.trim()) return;
+            
+            const dlMatch = line.match(/\[download\]\s+(\d+\.?\d*)%\s+of[ ~]+([^ ]+)\s+at\s+([^ ]+)\s+ETA\s+([^ ]+)/);
+            if (dlMatch) {
+                const now = Date.now();
+                if (now - lastUpdate > 3000 || parseFloat(dlMatch[1]) >= 100) {
+                    if (progBar) {
+                        progBar.style.width = `${dlMatch[1]}%`;
+                        progPct.textContent = `${dlMatch[1]}%`;
+                        progSpeed.textContent = dlMatch[3];
+                        progEta.textContent = `ETA: ${dlMatch[4]}`;
+                    }
+                    lastUpdate = now;
+                }
+            } else if (line.includes('[download] Destination:') || line.includes('[Merger]') || line.includes('[ExtractAudio]')) {
+                appendLog(`[INFO] ${line.trim()}`);
+            } else if (line.toLowerCase().includes('error') || line.toLowerCase().includes('warning')) {
+                appendLog(`[YT-DLP] ${line.trim()}`);
+            }
+        });
+        command.stderr.on('data', line => { 
+            if(line.trim()) appendLog(`[YT-DLP ERROR/WARN] ${line.trim()}`); 
+        });
         command.on('close', data => {
             appendLog(`\n[DONE] Selesai dengan kode ${data.code}`);
             if (data.code === 0) resolve(); else reject();

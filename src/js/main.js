@@ -18,7 +18,13 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 // We will bind them directly instead of using inline onclicks for a cleaner structure
 
 // Setup global buttons
-document.querySelector('.console-header .btn-clear').addEventListener('click', clearConsole);
+document.getElementById('btn-clear-console').addEventListener('click', clearConsole);
+const consoleWrapper = document.querySelector('.console-wrapper');
+document.getElementById('btn-toggle-console').addEventListener('click', () => {
+    consoleWrapper.classList.toggle('collapsed');
+});
+// Collapse console by default
+consoleWrapper.classList.add('collapsed');
 
 // Module 1: YT-DLP
 document.getElementById('btn-generate-queue').addEventListener('click', generateQueue);
@@ -28,6 +34,15 @@ document.getElementById('yt-cookie-mode').addEventListener('change', () => {
     document.getElementById('cookie-browser-group').style.display = mode === 'browser' ? 'block' : 'none';
     document.getElementById('cookie-file-group').style.display = mode === 'file' ? 'block' : 'none';
 });
+
+document.getElementById('yt-mode').addEventListener('change', () => {
+    const mode = document.getElementById('yt-mode').value;
+    const selects = document.querySelectorAll('.queue-item select');
+    selects.forEach(sel => {
+        sel.style.display = mode === 'audioonly' ? 'none' : 'block';
+    });
+});
+
 document.getElementById('btn-yt-cookie-file').addEventListener('click', () => selectFile('yt-cookie-file'));
 document.getElementById('btn-yt-output').addEventListener('click', () => selectFolder('yt-output'));
 

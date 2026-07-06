@@ -48,6 +48,15 @@ jobs:
       - name: Setup Dynamic Sidecars
         run: node scripts/setup-sidecars.cjs
 
+      - name: Load Release Notes
+        shell: bash
+        run: |
+          {
+            echo 'RELEASE_BODY<<EOF'
+            cat patchnotes.md
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
       # Tauri memanggil NPM script "tauri build" secara otomatis di dalam action
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -55,7 +64,7 @@ jobs:
         with:
           tagName: app-v__VERSION__ # aksi ini otomatis menarik versi dari tauri.conf.json
           releaseName: 'ElToolkitDeRWBU v__VERSION__'
-          releaseBody: 'Automated Build for Mac, Linux, and Windows'
+          releaseBody: ${{ env.RELEASE_BODY }}
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
