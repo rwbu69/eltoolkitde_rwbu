@@ -2,23 +2,28 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const ffmpegStatic = require('ffmpeg-static');
+const ffprobeStatic = require('ffprobe-static');
 
 const platform = process.platform;
-let ffmpegTargets = [], ytdlpTargets = [];
+let ffmpegTargets = [], ffprobeTargets = [], nodeTargets = [], ytdlpTargets = [];
 let ytdlpUrl;
 
 if (platform === 'win32') {
     ffmpegTargets = ['ffmpeg-x86_64-pc-windows-msvc.exe'];
+    ffprobeTargets = ['ffprobe-x86_64-pc-windows-msvc.exe'];
+    nodeTargets = ['node-x86_64-pc-windows-msvc.exe'];
     ytdlpTargets = ['yt-dlp-x86_64-pc-windows-msvc.exe'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
 } else if (platform === 'darwin') {
-    // Universal binary di Mac akan membuild 2 arsitektur secara terpisah sebelum digabung
-    // Tauri mengharapkan kedua file ini ada!
     ffmpegTargets = ['ffmpeg-aarch64-apple-darwin', 'ffmpeg-x86_64-apple-darwin', 'ffmpeg-universal-apple-darwin'];
+    ffprobeTargets = ['ffprobe-aarch64-apple-darwin', 'ffprobe-x86_64-apple-darwin', 'ffprobe-universal-apple-darwin'];
+    nodeTargets = ['node-aarch64-apple-darwin', 'node-x86_64-apple-darwin', 'node-universal-apple-darwin'];
     ytdlpTargets = ['yt-dlp-aarch64-apple-darwin', 'yt-dlp-x86_64-apple-darwin', 'yt-dlp-universal-apple-darwin'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos';
 } else {
     ffmpegTargets = ['ffmpeg-x86_64-unknown-linux-gnu'];
+    ffprobeTargets = ['ffprobe-x86_64-unknown-linux-gnu'];
+    nodeTargets = ['node-x86_64-unknown-linux-gnu'];
     ytdlpTargets = ['yt-dlp-x86_64-unknown-linux-gnu'];
     ytdlpUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp';
 }
@@ -37,6 +42,35 @@ for (const target of ffmpegTargets) {
         console.log(`[OK] Copied ffmpeg to ${destFfmpeg}`);
     } else {
         console.log(`[SKIP] ffmpeg already exists at ${destFfmpeg}`);
+    }
+}
+
+// 1.5 Copy FFprobe dari module ffprobe-static
+for (const target of ffprobeTargets) {
+    const destFfprobe = path.join(binDir, target);
+    if (!fs.existsSync(destFfprobe)) {
+        fs.copyFileSync(ffprobeStatic.path, destFfprobe);
+        fs.chmodSync(destFfprobe, 0o755);
+        console.log(`[OK] Copied ffprobe to ${destFfprobe}`);
+    } else {
+        console.log(`[SKIP] ffprobe already exists at ${destFfprobe}`);
+    }
+}
+
+// 1.7 Copy Node.js dari module node
+const nodeSrc = path.join(__dirname, '..', 'node_modules', 'node', 'bin', platform === 'win32' ? 'node.exe' : 'node');
+for (const target of nodeTargets) {
+    const destNode = path.join(binDir, target);
+    if (!fs.existsSync(destNode)) {
+        if (fs.existsSync(nodeSrc)) {
+            fs.copyFileSync(nodeSrc, destNode);
+            fs.chmodSync(destNode, 0o755);
+            console.log(`[OK] Copied node to ${destNode}`);
+        } else {
+            console.warn(`[WARN] Source node binary not found at ${nodeSrc}`);
+        }
+    } else {
+        console.log(`[SKIP] node already exists at ${destNode}`);
     }
 }
 

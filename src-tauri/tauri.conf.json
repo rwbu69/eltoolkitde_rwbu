@@ -34,7 +34,9 @@
     ],
     "externalBin": [
       "yt-dlp",
-      "ffmpeg"
+      "ffmpeg",
+      "ffprobe",
+      "node"
     ]
   }
 }

@@ -15,14 +15,18 @@
       "identifier": "shell:allow-execute",
       "allow": [
         { "name": "yt-dlp", "sidecar": true, "args": true },
-        { "name": "ffmpeg", "sidecar": true, "args": true }
+        { "name": "ffmpeg", "sidecar": true, "args": true },
+        { "name": "ffprobe", "sidecar": true, "args": true },
+        { "name": "node", "sidecar": true, "args": true }
       ]
     },
     {
       "identifier": "shell:allow-spawn",
       "allow": [
         { "name": "yt-dlp", "sidecar": true, "args": true },
-        { "name": "ffmpeg", "sidecar": true, "args": true }
+        { "name": "ffmpeg", "sidecar": true, "args": true },
+        { "name": "ffprobe", "sidecar": true, "args": true },
+        { "name": "node", "sidecar": true, "args": true }
       ]
     },
     { "identifier": "fs:allow-read-dir", "allow": [{ "path": "**" }] },

@@ -27,6 +27,14 @@ export async function generateQueue() {
         return;
     }
 
+    const { invoke } = window.__TAURI__.core;
+    let ffmpegLocation = null;
+    try {
+        ffmpegLocation = await invoke('setup_ffmpeg_location');
+    } catch (e) {
+        console.warn("Gagal setup ffmpeg location:", e);
+    }
+
     for (let i = 0; i < urls.length; i++) {
         const url = urls[i];
         const id = 'queue-item-' + i;
@@ -51,6 +59,15 @@ export async function generateQueue() {
             } else if (cookieMode === 'file' && cookieFile) {
                 fetchArgs.splice(2, 0, '--cookies', cookieFile);
             }
+            
+            if (ffmpegLocation) {
+                fetchArgs.push('--ffmpeg-location', ffmpegLocation);
+                const isWin = navigator.userAgent.toLowerCase().includes('windows');
+                const nodeBinary = isWin ? 'node.exe' : 'node';
+                const sep = isWin ? '\\' : '/';
+                fetchArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
+            }
+
             const command = Command.sidecar('yt-dlp', fetchArgs);
             const output = await command.execute();
             if (output.code !== 0) throw new Error("Gagal mengambil info");
@@ -146,6 +163,15 @@ export async function startQueue() {
 
 async function runYtdlpStream(dataPayload) {
     const { url, mode, nameMode, outputDir, cookieMode, browser, cookieFile, resolution } = dataPayload;
+    
+    const { invoke } = window.__TAURI__.core;
+    let ffmpegLocation = null;
+    try {
+        ffmpegLocation = await invoke('setup_ffmpeg_location');
+    } catch (e) {
+        console.warn("Gagal setup ffmpeg location:", e);
+    }
+
     let formatArgs = [];
     if (mode === 'videoaudio') {
         if (resolution) formatArgs = ['-f', `bestvideo[height<=${resolution}]+bestaudio/best[height<=${resolution}]/best`, '--merge-output-format', 'mp4'];
@@ -160,6 +186,16 @@ async function runYtdlpStream(dataPayload) {
     let template = nameMode === 'autonumber' ? '%(autonumber)s. %(title)s.%(ext)s' : '%(title)s.%(ext)s';
 
     let dlArgs = ['--encoding', 'utf-8', '--newline', '--progress-delta', '1', ...formatArgs, '-o', template, '-P', outputDir];
+    
+    if (ffmpegLocation) {
+        dlArgs.push('--ffmpeg-location', ffmpegLocation);
+        
+        // Pass JS runtime
+        const isWin = navigator.userAgent.toLowerCase().includes('windows');
+        const nodeBinary = isWin ? 'node.exe' : 'node';
+        const sep = isWin ? '\\' : '/';
+        dlArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
+    }
 
     if (cookieMode === 'browser' && browser) {
         dlArgs.push('--cookies-from-browser', browser);
