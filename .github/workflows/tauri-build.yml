@@ -51,6 +51,12 @@ jobs:
       - name: Setup Dynamic Sidecars
         run: node scripts/setup-sidecars.cjs
 
+      - name: Clean macOS Quarantine & Perms
+        if: matrix.platform == 'macos-latest'
+        run: |
+          chmod +x src-tauri/* || true
+          xattr -cr src-tauri/* || true
+
       - name: Load Release Notes
         shell: bash
         run: |

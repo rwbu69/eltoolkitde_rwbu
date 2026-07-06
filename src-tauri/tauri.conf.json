@@ -32,11 +32,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": [
+      "ffmpeg*",
+      "ffprobe*",
+      "node*"
+    ],
     "externalBin": [
-      "yt-dlp",
-      "ffmpeg",
-      "ffprobe",
-      "node"
+      "yt-dlp"
     ]
   }
 }

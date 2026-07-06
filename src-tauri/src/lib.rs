@@ -1,4 +1,5 @@
 use std::fs;
+use tauri::Manager;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
@@ -7,15 +8,26 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-fn setup_ffmpeg_location() -> Result<String, String> {
-    let exe_path = std::env::current_exe().map_err(|e| e.to_string())?;
-    let mut search_dirs = vec![exe_path.parent().unwrap().to_path_buf()];
-    
-    // Jika di macOS, tambahkan folder Resources juga sebagai cadangan
-    if cfg!(target_os = "macos") {
-        if let Some(contents_dir) = exe_path.parent().and_then(|p| p.parent()) {
-            search_dirs.push(contents_dir.join("Resources"));
-            search_dirs.push(contents_dir.join("MacOS"));
+fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
+    let mut search_dirs = vec![];
+
+    // 1. Utama: Gunakan Tauri Resource Directory (Sangat akurat di macOS .app dan Linux AppImage)
+    if let Ok(resource_dir) = app.path().resource_dir() {
+        search_dirs.push(resource_dir);
+    }
+
+    // 2. Cadangan: Gunakan path executable
+    if let Ok(exe_path) = std::env::current_exe() {
+        if let Some(parent) = exe_path.parent() {
+            search_dirs.push(parent.to_path_buf());
+            
+            // Khusus macOS fallback
+            if cfg!(target_os = "macos") {
+                if let Some(contents) = parent.parent() {
+                    search_dirs.push(contents.join("Resources"));
+                    search_dirs.push(contents.join("MacOS"));
+                }
+            }
         }
     }
 
