@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "ElToolkitDeRWBU",
+  "version": "0.1.0",
+  "identifier": "com.rwbu.eltoolkitderwbu",
+  "build": {
+    "beforeDevCommand": "node scripts/setup-sidecars.cjs && npm run dev",
+    "beforeBuildCommand": "node scripts/setup-sidecars.cjs && npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "ElToolkitDeRWBU",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline';"
+    }
+  },
+  "bundle": {
+    "publisher": "RWBU",
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "ffmpeg*",
+      "ffprobe*",
+      "node*"
+    ],
+    "externalBin": [
+      "yt-dlp"
+    ]
+  }
+}

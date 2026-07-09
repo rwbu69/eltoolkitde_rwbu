@@ -10,10 +10,31 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
 });
 
 const consoleEl = document.getElementById('console');
+let lastProgressSpan = null;
 function appendLog(text) {
-    const span = document.createElement('span');
-    span.textContent = text + '\n';
-    consoleEl.appendChild(span);
+    const lines = text.split(/[\r\n]+/);
+    
+    lines.forEach(line => {
+        const clean = line.trim();
+        if (!clean) return;
+
+        const isProgress = (clean.startsWith('[download]') && clean.includes('%')) || 
+                           (clean.startsWith('frame=') || clean.startsWith('size='));
+
+        if (isProgress) {
+            if (!lastProgressSpan) {
+                lastProgressSpan = document.createElement('div');
+                consoleEl.appendChild(lastProgressSpan);
+            }
+            lastProgressSpan.textContent = clean;
+        } else {
+            lastProgressSpan = null;
+            const div = document.createElement('div');
+            div.textContent = clean;
+            consoleEl.appendChild(div);
+        }
+    });
+
     consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 function clearConsole() {

@@ -16,7 +16,7 @@ exit /b
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "LauncherMenu.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File "core\LauncherMenu.ps1"
 if %errorlevel% neq 0 (
     echo.
     echo Aplikasi berhenti dengan error code %errorlevel%.

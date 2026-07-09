@@ -1,0 +1,91 @@
+name: 'Tauri Build'
+on:
+  push:
+    branches:
+      - build
+  workflow_dispatch:
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'macos-latest' # untuk arm64 dan x64 mac
+            args: '--target universal-apple-darwin'
+          - platform: 'ubuntu-22.04'
+            args: '--bundles deb,appimage'
+          - platform: 'windows-latest'
+            args: '--bundles nsis'
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Setup Dynamic Sidecars
+        run: node scripts/setup-sidecars.cjs
+
+      - name: Clean macOS Quarantine & Perms
+        if: matrix.platform == 'macos-latest'
+        run: |
+          chmod +x src-tauri/* || true
+          xattr -cr src-tauri/* || true
+
+      - name: Load Release Notes
+        shell: bash
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log -n 10 --pretty=format:"- %s")
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s")
+          fi
+
+          {
+            echo 'RELEASE_BODY<<EOF'
+            cat patchnotes.md 2>/dev/null || echo "No manual patchnotes provided."
+            echo ""
+            echo "### Commit History"
+            echo "$COMMITS"
+            echo 'EOF'
+          } >> "$GITHUB_ENV"
+
+      # Tauri memanggil NPM script "tauri build" secara otomatis di dalam action
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: app-v__VERSION__ # aksi ini otomatis menarik versi dari tauri.conf.json
+          releaseName: 'ElToolkit Update v__VERSION__'
+          releaseBody: ${{ env.RELEASE_BODY }}
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
