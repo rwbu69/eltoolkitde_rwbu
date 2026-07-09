@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "identifier": "com.rwbu.eltoolkitderwbu",
   "build": {
-    "beforeDevCommand": "node scripts/setup-sidecars.cjs",
-    "beforeBuildCommand": "node scripts/setup-sidecars.cjs",
-    "frontendDist": "../src"
+    "beforeDevCommand": "node scripts/setup-sidecars.cjs && npm run dev",
+    "beforeBuildCommand": "node scripts/setup-sidecars.cjs && npm run build",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
   },
   "app": {
     "withGlobalTauri": true,

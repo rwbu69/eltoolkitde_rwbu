@@ -23,6 +23,8 @@ jobs:
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup node
         uses: actions/setup-node@v4
@@ -60,9 +62,19 @@ jobs:
       - name: Load Release Notes
         shell: bash
         run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            COMMITS=$(git log -n 10 --pretty=format:"- %s")
+          else
+            COMMITS=$(git log ${LAST_TAG}..HEAD --pretty=format:"- %s")
+          fi
+
           {
             echo 'RELEASE_BODY<<EOF'
-            cat patchnotes.md
+            cat patchnotes.md 2>/dev/null || echo "No manual patchnotes provided."
+            echo ""
+            echo "### Commit History"
+            echo "$COMMITS"
             echo 'EOF'
           } >> "$GITHUB_ENV"
 
