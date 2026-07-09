@@ -64,7 +64,7 @@ export class FfmpegService {
       
       onProgress({ file, status: 'processing' });
       
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         const command = Command.sidecar('ffmpeg', [
           '-hide_banner', '-y', 
           '-i', inputFile, 
