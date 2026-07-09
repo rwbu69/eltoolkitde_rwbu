@@ -1,5 +1,17 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { readDir, exists, mkdir } from '@tauri-apps/plugin-fs';
+import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
+
+async function notifySuccess(title: string, body: string) {
+  let permissionGranted = await isPermissionGranted();
+  if (!permissionGranted) {
+    const permission = await requestPermission();
+    permissionGranted = permission === 'granted';
+  }
+  if (permissionGranted) {
+    sendNotification({ title, body });
+  }
+}
 
 export interface Mp3ConvertOptions {
   inputDir: string;
@@ -64,7 +76,7 @@ export class FfmpegService {
       
       onProgress({ file, status: 'processing' });
       
-      await new Promise<void>((resolve, reject) => {
+      await new Promise<void>((resolve) => {
         const command = Command.sidecar('ffmpeg', [
           '-hide_banner', '-y', 
           '-i', inputFile, 
@@ -96,6 +108,8 @@ export class FfmpegService {
         });
       });
     }
+    
+    await notifySuccess('Konversi Audio Selesai', `Telah memproses file MP3.`);
   }
 
   static async mirrorMedia(
@@ -129,6 +143,7 @@ export class FfmpegService {
           onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
         } else {
           onProgress({ file: base, status: 'done' });
+          notifySuccess('Proses Mirror Selesai', `File: ${base}`);
         }
         resolve();
       });
@@ -177,6 +192,7 @@ export class FfmpegService {
           onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
         } else {
           onProgress({ file: base, status: 'done' });
+          notifySuccess('Proses Pemotongan Selesai', `File: ${base}`);
         }
         resolve();
       });

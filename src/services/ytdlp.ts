@@ -1,10 +1,18 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
+import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
+
+export interface PlaylistItem {
+  title: string;
+  id: string;
+}
 
 export interface VideoInfo {
   title: string;
   thumbnail?: string;
   formats: any[];
+  isPlaylist?: boolean;
+  entries?: PlaylistItem[];
 }
 
 export interface DownloadProgress {
@@ -12,6 +20,8 @@ export interface DownloadProgress {
   speed: string;
   eta: string;
   status: string; // 'fetching', 'downloading', 'done', 'error'
+  playlistCurrent?: number;
+  playlistTotal?: number;
 }
 
 export interface DownloadOptions {
@@ -59,17 +69,24 @@ export class YtDlpService {
     }
 
     const data = JSON.parse(output.stdout);
+    const isPlaylist = data._type === 'playlist' || data.entries !== undefined;
+    
     return {
       title: data.title || url,
       thumbnail: data.thumbnail,
       formats: data.formats || [],
+      isPlaylist,
+      entries: isPlaylist && data.entries ? data.entries.map((e: any) => ({
+        title: e.title,
+        id: e.id,
+      })) : []
     };
   }
 
   static async downloadMedia(
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
-  ): Promise<void> {
+  ): Promise<{ task: Promise<void>, cancel: () => void }> {
     const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
@@ -119,13 +136,35 @@ export class YtDlpService {
 
     dlArgs.push('--no-check-certificate', url);
 
-    return new Promise((resolve, reject) => {
+    let currentPlaylistIndex = 0;
+    let totalPlaylistItems = 0;
+    let cancelFn: () => void;
+
+    const task = new Promise<void>((resolve, reject) => {
       onProgress({ percent: 0, speed: '--', eta: '--', status: 'starting' });
       
       const command = Command.sidecar('yt-dlp', dlArgs);
       
+      let childProcess: any = null;
+      
+      // We will expose a way to kill this command
+      const killCommand = () => {
+        if (childProcess) {
+          childProcess.kill().catch(() => {});
+        }
+      };
+      
+      // Store the cancel function in an external variable so it can be returned
+      cancelFn = killCommand;
+      
       command.stdout.on('data', (line) => {
         if (!line.trim()) return;
+        
+        const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
+        if (playlistMatch) {
+          currentPlaylistIndex = parseInt(playlistMatch[1]);
+          totalPlaylistItems = parseInt(playlistMatch[2]);
+        }
         
         const dlMatch = line.match(/\[download\]\s+(\d+\.?\d*)%\s+of[ ~]+([^ ]+)\s+at\s+([^ ]+)\s+ETA\s+([^ ]+)/);
         if (dlMatch) {
@@ -134,6 +173,8 @@ export class YtDlpService {
             speed: dlMatch[3],
             eta: dlMatch[4],
             status: 'downloading',
+            playlistCurrent: currentPlaylistIndex,
+            playlistTotal: totalPlaylistItems
           });
         }
       });
@@ -144,10 +185,18 @@ export class YtDlpService {
         }
       });
 
-      command.on('close', (data) => {
+      command.on('close', async (data) => {
         if (data.code === 0) {
           onProgress({ percent: 100, speed: '--', eta: '--', status: 'done' });
           resolve();
+          let permissionGranted = await isPermissionGranted();
+          if (!permissionGranted) {
+            const permission = await requestPermission();
+            permissionGranted = permission === 'granted';
+          }
+          if (permissionGranted) {
+            sendNotification({ title: 'Unduhan Selesai', body: `Tugas Selesai: ${options.url}` });
+          }
         } else {
           onProgress({ percent: 0, speed: '--', eta: '--', status: 'error' });
           reject(new Error(`Process exited with code ${data.code}`));
@@ -159,8 +208,12 @@ export class YtDlpService {
         reject(error);
       });
 
-      command.spawn().catch(reject);
+      command.spawn().then((child) => {
+        childProcess = child;
+      }).catch(reject);
     });
+
+    return { task, cancel: cancelFn! };
   }
 
   static async updateYtDlp(
