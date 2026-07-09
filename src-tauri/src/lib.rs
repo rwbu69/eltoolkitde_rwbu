@@ -1,10 +1,26 @@
 use std::fs;
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager, WindowEvent,
+};
+use tauri_plugin_notification::NotificationExt;
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+async fn close_splashscreen(window: tauri::Window) {
+    if let Some(splashscreen) = window.app_handle().get_webview_window("splashscreen") {
+        let _ = splashscreen.close();
+    }
+    if let Some(main_window) = window.app_handle().get_webview_window("main") {
+        let _ = main_window.show();
+        let _ = main_window.set_focus();
+    }
 }
 
 #[tauri::command]
@@ -118,11 +134,68 @@ fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location])
+        .setup(|app| {
+            let quit_i = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Tampilkan", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
+
+            let _tray = TrayIconBuilder::new()
+                .icon(app.default_window_icon().unwrap().clone())
+                .menu(&menu)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "quit" => {
+                        std::process::exit(0);
+                    }
+                    "show" => {
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        if let Some(window) = tray.app_handle().get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .build(app)?;
+
+            Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if window.label() == "main" {
+                    window.hide().unwrap();
+                    api.prevent_close();
+                    
+                    let _ = window.app_handle().notification().builder()
+                        .title("ElToolkit Disembunyikan")
+                        .body("Aplikasi berjalan di latar belakang. Klik ikon tray untuk membuka kembali.")
+                        .show();
+                }
+            }
+        })
+        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

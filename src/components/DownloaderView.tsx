@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, FolderOpen } from 'lucide-react';
+import { Download, FolderOpen, ChevronDown, ChevronUp, CheckCircle2, Circle, Clock, X } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { YtDlpService, DownloadProgress, VideoInfo } from '../services/ytdlp';
 import { useSettings } from '../hooks/useSettings';
@@ -25,6 +25,8 @@ export default function DownloaderView() {
   const [isFetching, setIsFetching] = useState(false);
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
+  const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
+  const [isPlaylistExpanded, setIsPlaylistExpanded] = useState(false);
 
   const handleSelectFolder = async () => {
     try {
@@ -62,7 +64,7 @@ export default function DownloaderView() {
     
     setErrorMsg('');
     try {
-      await YtDlpService.downloadMedia(
+      const { task, cancel } = await YtDlpService.downloadMedia(
         { 
           url, 
           format, 
@@ -73,9 +75,29 @@ export default function DownloaderView() {
         },
         (prog) => setProgress(prog)
       );
+      setCancelFn(() => cancel);
+      await task;
+      setCancelFn(null);
     } catch (e: any) {
-      setErrorMsg(e.message || String(e));
-      setProgress(p => p ? { ...p, status: 'error' } : null);
+      const errMsg = e.message || String(e);
+      // Determine if it was killed
+      if (errMsg.includes('killed') || errMsg.includes('exit') || errMsg.includes('1')) {
+        setErrorMsg('Download canceled.');
+        setProgress(null);
+      } else {
+        setErrorMsg(errMsg);
+        setProgress(p => p ? { ...p, status: 'error' } : null);
+      }
+      setCancelFn(null);
+    }
+  };
+
+  const handleCancel = () => {
+    if (cancelFn) {
+      cancelFn();
+      setCancelFn(null);
+      setProgress(null);
+      setErrorMsg('Download canceled by user.');
     }
   };
 
@@ -184,11 +206,57 @@ export default function DownloaderView() {
           )}
 
           {info && (
-            <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 flex items-center gap-3">
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-medium text-zinc-200 truncate" title={info.title}>{info.title}</h4>
-                <p className="text-xs text-zinc-500 mt-0.5">Ready to download</p>
+            <div className="p-3 rounded-lg bg-zinc-900/50 border border-zinc-800 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-medium text-zinc-200 truncate" title={info.title}>{info.title}</h4>
+                  <p className="text-xs text-zinc-500 mt-0.5">
+                    {info.isPlaylist ? `Playlist (${info.entries?.length || 0} items)` : 'Ready to download'}
+                  </p>
+                </div>
+                {info.isPlaylist && (
+                  <button 
+                    onClick={() => setIsPlaylistExpanded(!isPlaylistExpanded)}
+                    className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded transition-colors"
+                  >
+                    {isPlaylistExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                )}
               </div>
+              
+              {info.isPlaylist && isPlaylistExpanded && info.entries && (
+                <div className="mt-2 flex flex-col gap-1.5 max-h-60 overflow-y-auto pr-2 custom-scrollbar border-t border-zinc-800/50 pt-3">
+                  {info.entries.map((item, idx) => {
+                    // Logic to figure out item status based on progress
+                    let statusIcon = <Circle className="w-4 h-4 text-zinc-600" />;
+                    let statusText = 'Pending';
+                    let itemColor = 'text-zinc-500';
+                    
+                    if (progress?.playlistCurrent) {
+                      const currentIdx = progress.playlistCurrent; // usually 1-indexed
+                      if (idx + 1 < currentIdx || progress.status === 'done') {
+                        statusIcon = <CheckCircle2 className="w-4 h-4 text-emerald-500" />;
+                        statusText = 'Done';
+                        itemColor = 'text-emerald-400';
+                      } else if (idx + 1 === currentIdx && progress.status !== 'error') {
+                        statusIcon = <Clock className="w-4 h-4 text-rose-500 animate-pulse" />;
+                        statusText = 'Downloading';
+                        itemColor = 'text-zinc-200';
+                      }
+                    }
+
+                    return (
+                      <div key={item.id || idx} className="flex items-center gap-3 text-sm p-2 rounded-md hover:bg-zinc-800/30">
+                        {statusIcon}
+                        <span className={`flex-1 truncate ${itemColor}`} title={item.title}>
+                          {idx + 1}. {item.title}
+                        </span>
+                        <span className="text-xs text-zinc-600">{statusText}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 
@@ -212,13 +280,23 @@ export default function DownloaderView() {
           )}
             
           <div className="flex justify-end gap-3 pt-4 border-t border-zinc-800/50 mt-2">
-            <button 
-              onClick={handleFetch}
-              disabled={isFetching || !url}
-              className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium rounded-lg border border-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isFetching ? 'Fetching Info...' : 'Fetch Info'}
-            </button>
+            {progress?.status === 'downloading' || progress?.status === 'starting' ? (
+              <button 
+                onClick={handleCancel}
+                className="px-5 py-2.5 bg-red-900/30 hover:bg-red-900/50 text-red-400 font-medium rounded-lg border border-red-900/50 transition-colors flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancel
+              </button>
+            ) : (
+              <button 
+                onClick={handleFetch}
+                disabled={isFetching || !url}
+                className="px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium rounded-lg border border-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isFetching ? 'Fetching Info...' : 'Fetch Info'}
+              </button>
+            )}
             <button 
               onClick={handleDownload}
               disabled={!url || !outputDir || progress?.status === 'downloading' || progress?.status === 'starting'}
