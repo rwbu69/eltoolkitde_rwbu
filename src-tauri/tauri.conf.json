@@ -46,13 +46,12 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "ffmpeg*",
-      "ffprobe*",
-      "node*"
-    ],
+    "resources": [],
     "externalBin": [
-      "yt-dlp"
+      "yt-dlp",
+      "ffmpeg",
+      "ffprobe",
+      "node"
     ]
   }
 }
