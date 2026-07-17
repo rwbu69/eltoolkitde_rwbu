@@ -20,7 +20,7 @@ export interface Mp3ConvertOptions {
 }
 
 export interface MirrorOptions {
-  inputFile: string;
+  inputFiles: string[];
   outputDir: string;
 }
 
@@ -116,48 +116,51 @@ export class FfmpegService {
     options: MirrorOptions,
     onProgress: (progress: FfmpegProgress) => void
   ): Promise<void> {
-    const { inputFile, outputDir } = options;
+    const { inputFiles, outputDir } = options;
     const basename = (p: string) => p.split(/[\\/]/).pop() || p;
     const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
     
-    const base = basename(inputFile);
-    const extMatch = base.match(/\.[^.]+$/);
-    const ext = extMatch ? extMatch[0] : '';
-    const name = base.replace(new RegExp(`\\${ext}$`), '');
-    
-    const outputFile = joinPath(outputDir, `${name} (mirrored)${ext}`);
-    
-    onProgress({ file: base, status: 'processing', log: 'Starting mirror...' });
-    
-    return new Promise((resolve) => {
-      const command = Command.sidecar('ffmpeg', [
-        '-hide_banner', '-y', 
-        '-i', inputFile, 
-        '-vf', 'hflip', 
-        '-c:a', 'copy', 
-        outputFile
-      ]);
+    for (const inputFile of inputFiles) {
+      const base = basename(inputFile);
+      const extMatch = base.match(/\.[^.]+$/);
+      const ext = extMatch ? extMatch[0] : '';
+      const name = base.replace(new RegExp(`\\${ext}$`), '');
       
-      command.on('close', (data) => {
-        if (data.code !== 0) {
-          onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
-        } else {
-          onProgress({ file: base, status: 'done' });
-          notifySuccess('Proses Mirror Selesai', `File: ${base}`);
-        }
-        resolve();
-      });
+      const outputFile = joinPath(outputDir, `${name}-MIRROR${ext}`);
       
-      command.on('error', (err) => {
-        onProgress({ file: base, status: 'error', log: String(err) });
-        resolve();
-      });
+      onProgress({ file: base, status: 'processing', log: 'Starting mirror...' });
       
-      command.spawn().catch(() => {
-        onProgress({ file: base, status: 'error', log: 'Failed to spawn ffmpeg' });
-        resolve();
+      await new Promise<void>((resolve) => {
+        const command = Command.sidecar('ffmpeg', [
+          '-hide_banner', '-y', 
+          '-i', inputFile, 
+          '-vf', 'hflip', 
+          '-c:a', 'copy', 
+          outputFile
+        ]);
+        
+        command.on('close', (data) => {
+          if (data.code !== 0) {
+            onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
+          } else {
+            onProgress({ file: base, status: 'done' });
+          }
+          resolve();
+        });
+        
+        command.on('error', (err) => {
+          onProgress({ file: base, status: 'error', log: String(err) });
+          resolve();
+        });
+        
+        command.spawn().catch(() => {
+          onProgress({ file: base, status: 'error', log: 'Failed to spawn ffmpeg' });
+          resolve();
+        });
       });
-    });
+    }
+    
+    await notifySuccess('Proses Mirror Selesai', `Telah memproses ${inputFiles.length} file.`);
   }
 
   static async trimMedia(
