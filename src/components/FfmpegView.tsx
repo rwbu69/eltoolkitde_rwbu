@@ -8,7 +8,7 @@ export default function FfmpegView() {
   const { settings } = useSettings();
   const [activeTab, setActiveTab] = useState<'mp3' | 'trim' | 'mirror'>('mp3');
 
-  const [inputPath, setInputPath] = useState('');
+  const [inputPath, setInputPath] = useState<string | string[]>('');
   const [outputPath, setOutputPath] = useState(settings.defaultOutputDir || '');
   
   // If settings change, sync them up if outputPath is empty
@@ -25,10 +25,10 @@ export default function FfmpegView() {
   const [progresses, setProgresses] = useState<FfmpegProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const handleSelectInput = async (directory: boolean = false) => {
+  const handleSelectInput = async (directory: boolean = false, multiple: boolean = false) => {
     try {
-      const selected = await open({ directory, multiple: false });
-      if (selected && typeof selected === 'string') setInputPath(selected);
+      const selected = await open({ directory, multiple });
+      if (selected) setInputPath(selected);
     } catch (e) { console.error(e); }
   };
 
@@ -46,8 +46,9 @@ export default function FfmpegView() {
     
     try {
       if (activeTab === 'mp3') {
+        const inputDir = Array.isArray(inputPath) ? inputPath[0] : inputPath;
         await FfmpegService.convertToMp3(
-          { inputDir: inputPath, outputRoot: outputPath, bitrate: settings.defaultAudioBitrate },
+          { inputDir, outputRoot: outputPath, bitrate: settings.defaultAudioBitrate },
           (p) => setProgresses(prev => {
             const idx = prev.findIndex(x => x.file === p.file);
             if (idx >= 0) { const next = [...prev]; next[idx] = p; return next; }
@@ -55,13 +56,19 @@ export default function FfmpegView() {
           })
         );
       } else if (activeTab === 'mirror') {
+        const inputFiles = Array.isArray(inputPath) ? inputPath : [inputPath];
         await FfmpegService.mirrorMedia(
-          { inputFile: inputPath, outputDir: outputPath },
-          (p) => setProgresses([p])
+          { inputFiles, outputDir: outputPath },
+          (p) => setProgresses(prev => {
+            const idx = prev.findIndex(x => x.file === p.file);
+            if (idx >= 0) { const next = [...prev]; next[idx] = p; return next; }
+            return [...prev, p];
+          })
         );
       } else if (activeTab === 'trim') {
+        const inputFile = Array.isArray(inputPath) ? inputPath[0] : inputPath;
         await FfmpegService.trimMedia(
-          { inputFile: inputPath, startTime, endTime, outputDir: outputPath },
+          { inputFile, startTime, endTime, outputDir: outputPath },
           (p) => setProgresses([p])
         );
       }
@@ -107,8 +114,8 @@ export default function FfmpegView() {
               {activeTab === 'mp3' ? 'Input Folder' : 'Input File'}
             </label>
             <div className="flex gap-2">
-              <input type="text" value={inputPath} readOnly className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors" placeholder={`Select input ${activeTab === 'mp3' ? 'folder' : 'file'}...`} />
-              <button onClick={() => handleSelectInput(activeTab === 'mp3')} className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors text-zinc-300">
+              <input type="text" value={Array.isArray(inputPath) ? `${inputPath.length} files selected` : inputPath} readOnly className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors" placeholder={`Select input ${activeTab === 'mp3' ? 'folder' : 'file'}...`} />
+              <button onClick={() => handleSelectInput(activeTab === 'mp3', activeTab === 'mirror')} className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors text-zinc-300">
                 <FolderOpen className="w-5 h-5" />
               </button>
             </div>
