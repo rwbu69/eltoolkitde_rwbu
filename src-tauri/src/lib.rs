@@ -155,7 +155,7 @@ pub fn run() {
                 .menu(&menu)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "quit" => {
-                        std::process::exit(0);
+                        app.exit(0);
                     }
                     "show" => {
                         if let Some(window) = app.get_webview_window("main") {
