@@ -152,8 +152,8 @@ export class FfmpegService {
           '-i', inputFile, 
           '-vf', 'hflip', 
           '-vcodec', 'libx264',
-          '-crf', '28',
-          '-preset', 'medium',
+          '-crf', '32',
+          '-preset', 'veryfast',
           '-c:a', 'aac',
           '-b:a', '128k',
           outputFile
