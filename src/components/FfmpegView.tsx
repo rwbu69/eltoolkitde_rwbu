@@ -156,18 +156,28 @@ export default function FfmpegView() {
           </div>
 
           {progresses.length > 0 && (
-            <div className="mt-4 max-h-48 overflow-y-auto space-y-2 p-4 bg-zinc-950/50 border border-zinc-800 rounded-lg">
+            <div className="mt-4 max-h-48 overflow-y-auto space-y-3 p-4 bg-zinc-950/50 border border-zinc-800 rounded-lg">
               {progresses.map((p, i) => (
-                <div key={i} className="flex justify-between items-center text-sm">
-                  <span className="text-zinc-300 truncate pr-4">{p.file}</span>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    p.status === 'done' ? 'bg-emerald-500/10 text-emerald-400' :
-                    p.status === 'error' ? 'bg-red-500/10 text-red-400' :
-                    p.status === 'skipped' ? 'bg-zinc-800 text-zinc-300' :
-                    'bg-rose-500/10 text-rose-400'
-                  }`}>
-                    {p.status} {p.log ? `(${p.log})` : ''}
-                  </span>
+                <div key={i} className="flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-zinc-300 truncate pr-4 flex-1">{p.file}</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap ${
+                      p.status === 'done' ? 'bg-emerald-500/10 text-emerald-400' :
+                      p.status === 'error' ? 'bg-red-500/10 text-red-400' :
+                      p.status === 'skipped' ? 'bg-zinc-800 text-zinc-300' :
+                      'bg-rose-500/10 text-rose-400'
+                    }`}>
+                      {p.status} {p.log ? `(${p.log})` : ''}
+                    </span>
+                  </div>
+                  {p.percent !== undefined && p.status !== 'error' && p.status !== 'skipped' && (
+                    <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-1 overflow-hidden">
+                      <div 
+                        className={`h-1.5 rounded-full transition-all duration-300 ${p.status === 'done' ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                        style={{ width: `${p.percent}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

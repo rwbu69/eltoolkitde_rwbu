@@ -35,6 +35,7 @@ export interface FfmpegProgress {
   file: string;
   status: 'pending' | 'processing' | 'done' | 'error' | 'skipped';
   log?: string;
+  percent?: number;
 }
 
 export class FfmpegService {
@@ -128,22 +129,53 @@ export class FfmpegService {
       
       const outputFile = joinPath(outputDir, `${name}-MIRROR${ext}`);
       
-      onProgress({ file: base, status: 'processing', log: 'Starting mirror...' });
+      onProgress({ file: base, status: 'processing', log: 'Starting mirror...', percent: 0 });
+      
+      // Get duration first
+      let durationInSeconds = 0;
+      try {
+        const ffprobe = Command.sidecar('ffprobe', [
+          '-v', 'error',
+          '-show_entries', 'format=duration',
+          '-of', 'default=noprint_wrappers=1:nokey=1',
+          inputFile
+        ]);
+        const probeResult = await ffprobe.execute();
+        durationInSeconds = parseFloat(probeResult.stdout);
+      } catch (err) {
+        console.error('Failed to get duration:', err);
+      }
       
       await new Promise<void>((resolve) => {
         const command = Command.sidecar('ffmpeg', [
           '-hide_banner', '-y', 
           '-i', inputFile, 
           '-vf', 'hflip', 
-          '-c:a', 'copy', 
+          '-vcodec', 'libx264',
+          '-crf', '28',
+          '-preset', 'medium',
+          '-c:a', 'aac',
+          '-b:a', '128k',
           outputFile
         ]);
+        
+        command.stderr.on('data', (line: string) => {
+          const timeMatch = line.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
+          if (timeMatch && durationInSeconds > 0) {
+            const h = parseInt(timeMatch[1], 10);
+            const m = parseInt(timeMatch[2], 10);
+            const s = parseFloat(timeMatch[3]);
+            const currentTime = h * 3600 + m * 60 + s;
+            const percent = Math.min(100, Math.round((currentTime / durationInSeconds) * 100));
+            onProgress({ file: base, status: 'processing', log: `Mirroring... ${percent}%`, percent });
+          }
+        });
         
         command.on('close', (data) => {
           if (data.code !== 0) {
             onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
           } else {
-            onProgress({ file: base, status: 'done' });
+            onProgress({ file: base, status: 'done', percent: 100 });
           }
           resolve();
         });
