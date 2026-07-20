@@ -13,7 +13,7 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
-pub fn safe_rename(old_path: String, new_path: String) -> Result<(), String> {
+fn safe_rename(old_path: String, new_path: String) -> Result<(), String> {
     std::fs::rename(&old_path, &new_path).map_err(|e| e.to_string())
 }
 
