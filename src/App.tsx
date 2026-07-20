@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Download, Settings, RefreshCcw, FileAudio, Menu, X } from 'lucide-react';
+import { Download, Settings, RefreshCcw, FileAudio, Menu, X, Edit3 } from 'lucide-react';
 import DownloaderView from './components/DownloaderView';
 import FfmpegView from './components/FfmpegView';
 import MetadataView from './components/MetadataView';
+import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
 
-type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'settings';
+type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'rename' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('downloader');
@@ -74,6 +75,15 @@ function App() {
             <RefreshCcw className="w-4 h-4" />
             <span className="text-sm font-medium">Metadata</span>
           </button>
+          <button 
+            onClick={() => { setActiveTab('rename'); setIsSidebarOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
+              activeTab === 'rename' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            <span className="text-sm font-medium">Batch Rename</span>
+          </button>
         </nav>
 
         <button 
@@ -110,6 +120,9 @@ function App() {
             </div>
             <div className={activeTab === 'metadata' ? 'block' : 'hidden'}>
               <MetadataView />
+            </div>
+            <div className={activeTab === 'rename' ? 'block' : 'hidden'}>
+              <RenameView />
             </div>
             <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
               <SettingsView />

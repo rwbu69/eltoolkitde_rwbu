@@ -13,6 +13,11 @@ fn greet(name: &str) -> String {
 }
 
 #[tauri::command]
+pub fn safe_rename(old_path: String, new_path: String) -> Result<(), String> {
+    std::fs::rename(&old_path, &new_path).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn close_splashscreen(window: tauri::Window) {
     if let Some(splashscreen) = window.app_handle().get_webview_window("splashscreen") {
         let _ = splashscreen.close();
@@ -195,7 +200,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen])
+        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen, safe_rename])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
