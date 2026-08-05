@@ -5,6 +5,7 @@ export interface AppSettings {
   defaultVideoQuality: 'best' | 'mid' | 'low';
   defaultAudioBitrate: '320k' | '256k' | '192k';
   cookiesFilePath: string;
+  browserForCookies: string;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -12,6 +13,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultVideoQuality: 'best',
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
+  browserForCookies: '',
 };
 
 export function useSettings() {
