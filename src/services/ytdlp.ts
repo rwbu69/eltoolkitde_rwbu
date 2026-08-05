@@ -31,6 +31,7 @@ export interface DownloadOptions {
   videoQuality?: 'best' | 'mid' | 'low';
   audioBitrate?: '320k' | '256k' | '192k';
   cookiesFilePath?: string;
+  browserForCookies?: string;
 }
 
 export class YtDlpService {
@@ -43,11 +44,13 @@ export class YtDlpService {
     }
   }
 
-  static async fetchVideoInfo(url: string, cookiesFilePath?: string): Promise<VideoInfo> {
+  static async fetchVideoInfo(url: string, cookiesFilePath?: string, browserForCookies?: string): Promise<VideoInfo> {
     const ffmpegLocation = await this.getFfmpegLocation();
     const fetchArgs = ['--encoding', 'utf-8', '-J', '--no-check-certificate'];
 
-    if (cookiesFilePath) {
+    if (browserForCookies) {
+      fetchArgs.push('--cookies-from-browser', browserForCookies);
+    } else if (cookiesFilePath) {
       fetchArgs.push('--cookies', cookiesFilePath);
     }
 
@@ -87,7 +90,7 @@ export class YtDlpService {
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath } = options;
+    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
     let formatArgs: string[] = [];
@@ -122,7 +125,9 @@ export class YtDlpService {
       '-P', outputDir
     ];
 
-    if (cookiesFilePath) {
+    if (browserForCookies) {
+      dlArgs.push('--cookies-from-browser', browserForCookies);
+    } else if (cookiesFilePath) {
       dlArgs.push('--cookies', cookiesFilePath);
     }
 

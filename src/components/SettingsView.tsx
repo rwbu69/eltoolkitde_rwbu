@@ -11,6 +11,7 @@ export default function SettingsView() {
   const [videoQuality, setVideoQuality] = useState(settings.defaultVideoQuality);
   const [audioBitrate, setAudioBitrate] = useState(settings.defaultAudioBitrate);
   const [cookiesFilePath, setCookiesFilePath] = useState(settings.cookiesFilePath || '');
+  const [browserForCookies, setBrowserForCookies] = useState(settings.browserForCookies || '');
 
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateLog, setUpdateLog] = useState<string>('');
@@ -48,7 +49,8 @@ export default function SettingsView() {
       defaultOutputDir: outputDir,
       defaultVideoQuality: videoQuality,
       defaultAudioBitrate: audioBitrate,
-      cookiesFilePath: cookiesFilePath
+      cookiesFilePath: cookiesFilePath,
+      browserForCookies: browserForCookies
     });
     alert('Settings saved successfully!');
   };
@@ -134,26 +136,49 @@ export default function SettingsView() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-              Cookies File (cookies.txt)
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={cookiesFilePath}
-                readOnly
-                placeholder="Select cookies.txt to bypass age-restrictions..."
-                className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors"
-              />
-              <button 
-                onClick={handleSelectCookies}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors flex items-center justify-center text-zinc-300"
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                Extract Cookies from Browser
+              </label>
+              <select 
+                value={browserForCookies}
+                onChange={(e) => setBrowserForCookies(e.target.value)}
+                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none focus:border-rose-500 appearance-none transition-colors"
               >
-                <FileText className="w-5 h-5" />
-              </button>
+                <option value="">None</option>
+                <option value="chrome">Google Chrome</option>
+                <option value="edge">Microsoft Edge</option>
+                <option value="firefox">Mozilla Firefox</option>
+                <option value="brave">Brave</option>
+                <option value="opera">Opera</option>
+                <option value="vivaldi">Vivaldi</option>
+                <option value="safari">Safari</option>
+              </select>
+              <p className="text-xs text-zinc-500 mt-1">Automatically use cookies from your browser (recommended for age restriction).</p>
             </div>
-            <p className="text-xs text-zinc-500 mt-1">Optional. Required for age-restricted or members-only videos.</p>
+
+            <div>
+              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+                Or Use Cookies File (cookies.txt)
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={cookiesFilePath}
+                  readOnly
+                  placeholder="Select cookies.txt..."
+                  className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors"
+                />
+                <button 
+                  onClick={handleSelectCookies}
+                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors flex items-center justify-center text-zinc-300"
+                >
+                  <FileText className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">Used if browser extraction is set to None.</p>
+            </div>
           </div>
 
           <div className="flex justify-end pt-4">

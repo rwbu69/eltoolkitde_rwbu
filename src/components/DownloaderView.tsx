@@ -47,7 +47,7 @@ export default function DownloaderView() {
     setIsFetching(true);
     setErrorMsg('');
     try {
-      const data = await YtDlpService.fetchVideoInfo(url, settings.cookiesFilePath);
+      const data = await YtDlpService.fetchVideoInfo(url, settings.cookiesFilePath, settings.browserForCookies);
       setInfo(data);
     } catch (e: any) {
       setErrorMsg(e.message || String(e));
@@ -71,7 +71,8 @@ export default function DownloaderView() {
           outputDir,
           videoQuality,
           audioBitrate: settings.defaultAudioBitrate,
-          cookiesFilePath: settings.cookiesFilePath
+          cookiesFilePath: settings.cookiesFilePath,
+          browserForCookies: settings.browserForCookies
         },
         (prog) => setProgress(prog)
       );
