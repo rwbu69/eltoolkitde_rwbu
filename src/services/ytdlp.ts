@@ -2,6 +2,10 @@ import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 
+const dispatchLog = (msg: string) => {
+  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
+};
+
 export interface PlaylistItem {
   title: string;
   id: string;
@@ -164,6 +168,7 @@ export class YtDlpService {
       
       command.stdout.on('data', (line) => {
         if (!line.trim()) return;
+        dispatchLog(`[yt-dlp] ${line.trim()}`);
         
         const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
         if (playlistMatch) {
@@ -187,6 +192,7 @@ export class YtDlpService {
       command.stderr.on('data', (line) => {
         if (line.trim()) {
           console.warn('[YT-DLP WARN]', line.trim());
+          dispatchLog(`[yt-dlp WARN] ${line.trim()}`);
         }
       });
 
@@ -228,11 +234,17 @@ export class YtDlpService {
       const command = Command.sidecar('yt-dlp', ['-U']);
       
       command.stdout.on('data', (line) => {
-        if (line.trim()) onProgress(line.trim());
+        if (line.trim()) {
+          onProgress(line.trim());
+          dispatchLog(`[yt-dlp update] ${line.trim()}`);
+        }
       });
 
       command.stderr.on('data', (line) => {
-        if (line.trim()) onProgress(`ERROR: ${line.trim()}`);
+        if (line.trim()) {
+          onProgress(`ERROR: ${line.trim()}`);
+          dispatchLog(`[yt-dlp update ERROR] ${line.trim()}`);
+        }
       });
 
       command.on('close', (data) => {

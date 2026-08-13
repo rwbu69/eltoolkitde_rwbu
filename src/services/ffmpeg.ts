@@ -2,6 +2,10 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { readDir, exists, mkdir } from '@tauri-apps/plugin-fs';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 
+const dispatchLog = (msg: string) => {
+  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
+};
+
 async function notifySuccess(title: string, body: string) {
   let permissionGranted = await isPermissionGranted();
   if (!permissionGranted) {
@@ -87,6 +91,9 @@ export class FfmpegService {
           outputFile
         ]);
         
+        command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg] ${line.trim()}`));
+        command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg] ${line.trim()}`));
+        
         command.on('close', (data) => {
           if (data.code !== 0) {
             onProgress({ file, status: 'error', log: `Exit code ${data.code}` });
@@ -159,7 +166,10 @@ export class FfmpegService {
           outputFile
         ]);
         
+        command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg mirror] ${line.trim()}`));
+        
         command.stderr.on('data', (line: string) => {
+          if (line.trim()) dispatchLog(`[ffmpeg mirror] ${line.trim()}`);
           const timeMatch = line.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
           if (timeMatch && durationInSeconds > 0) {
             const h = parseInt(timeMatch[1], 10);
@@ -221,6 +231,9 @@ export class FfmpegService {
         '-c', 'copy', 
         outputFile
       ]);
+      
+      command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg trim] ${line.trim()}`));
+      command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg trim] ${line.trim()}`));
       
       command.on('close', (data) => {
         if (data.code !== 0) {

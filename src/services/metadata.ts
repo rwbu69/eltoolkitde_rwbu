@@ -1,6 +1,10 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { readDir, exists, rename, remove } from '@tauri-apps/plugin-fs';
 
+const dispatchLog = (msg: string) => {
+  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
+};
+
 export interface MetadataOptions {
   mode: 'file' | 'folder';
   inputPath: string;
@@ -68,6 +72,9 @@ export class MetadataService {
           '-id3v2_version', '3', '-write_id3v1', '1', 
           ...metaArgs, tempFile
         ]);
+        
+        command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
+        command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
         
         command.on('close', async (data) => {
           if (data.code !== 0) {
