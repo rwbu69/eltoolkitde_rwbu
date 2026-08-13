@@ -30,11 +30,30 @@ export function useSettings() {
   });
 
   useEffect(() => {
-    localStorage.setItem('eltoolkit_settings', JSON.stringify(settings));
-  }, [settings]);
+    const handleSettingsUpdated = () => {
+      const saved = localStorage.getItem('eltoolkit_settings');
+      if (saved) {
+        try {
+          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+        } catch (e) {
+          console.error('Failed to parse settings', e);
+        }
+      }
+    };
+
+    window.addEventListener('eltoolkit_settings_updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('eltoolkit_settings_updated', handleSettingsUpdated);
+    };
+  }, []);
 
   const updateSettings = (updates: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...updates }));
+    setSettings(prev => {
+      const nextSettings = { ...prev, ...updates };
+      localStorage.setItem('eltoolkit_settings', JSON.stringify(nextSettings));
+      window.dispatchEvent(new Event('eltoolkit_settings_updated'));
+      return nextSettings;
+    });
   };
 
   return { settings, updateSettings };
