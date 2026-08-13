@@ -6,6 +6,7 @@ import FfmpegView from './components/FfmpegView';
 import MetadataView from './components/MetadataView';
 import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
+import TerminalLogView from './components/TerminalLogView';
 
 type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'rename' | 'settings';
 
@@ -130,6 +131,7 @@ function App() {
           </div>
         </main>
       </div>
+      <TerminalLogView />
     </div>
   );
 }
