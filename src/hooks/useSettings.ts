@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface AppSettings {
   defaultOutputDir: string;
@@ -6,6 +7,7 @@ export interface AppSettings {
   defaultAudioBitrate: '320k' | '256k' | '192k';
   cookiesFilePath: string;
   browserForCookies: string;
+  closeToTray: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',
+  closeToTray: true,
 };
 
 export function useSettings() {
@@ -30,11 +33,35 @@ export function useSettings() {
   });
 
   useEffect(() => {
-    localStorage.setItem('eltoolkit_settings', JSON.stringify(settings));
-  }, [settings]);
+    const handleSettingsUpdated = () => {
+      const saved = localStorage.getItem('eltoolkit_settings');
+      if (saved) {
+        try {
+          setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(saved) });
+        } catch (e) {
+          console.error('Failed to parse settings', e);
+        }
+      }
+    };
+
+    window.addEventListener('eltoolkit_settings_updated', handleSettingsUpdated);
+    return () => {
+      window.removeEventListener('eltoolkit_settings_updated', handleSettingsUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Sync with rust backend
+    invoke('set_close_behavior', { closeToTray: settings.closeToTray }).catch(console.error);
+  }, [settings.closeToTray]);
 
   const updateSettings = (updates: Partial<AppSettings>) => {
-    setSettings(prev => ({ ...prev, ...updates }));
+    setSettings(prev => {
+      const nextSettings = { ...prev, ...updates };
+      localStorage.setItem('eltoolkit_settings', JSON.stringify(nextSettings));
+      window.dispatchEvent(new Event('eltoolkit_settings_updated'));
+      return nextSettings;
+    });
   };
 
   return { settings, updateSettings };

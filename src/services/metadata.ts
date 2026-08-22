@@ -24,7 +24,7 @@ export class MetadataService {
   static async processMetadata(
     options: MetadataOptions,
     onProgress: (progress: MetadataProgress) => void
-  ): Promise<void> {
+  ): Promise<{ task: Promise<void>, cancel: () => void }> {
     const { mode, inputPath, title, artist, album, year } = options;
     
     // Polyfills
@@ -57,46 +57,67 @@ export class MetadataService {
     if (album) metaArgs.push('-metadata', `album=${album}`);
     if (year) metaArgs.push('-metadata', `date=${year}`);
     
-    for (const inputFile of filesToProcess) {
-      const baseName = basename(inputFile).replace(/\.[^.]+$/, '');
-      const dir = dirname(inputFile);
-      const tempFile = joinPath(dir, `${baseName}_temp.mp3`);
-      
-      onProgress({ file: basename(inputFile), status: 'processing' });
-      
-      await new Promise<void>((resolve) => {
-        const command = Command.sidecar('ffmpeg', [
-          '-hide_banner', '-y', 
-          '-i', inputFile, 
-          '-map', '0:a', '-c', 'copy', 
-          '-id3v2_version', '3', '-write_id3v1', '1', 
-          ...metaArgs, tempFile
-        ]);
+    let childProcess: any = null;
+    let cancelled = false;
+
+    const cancelFn = () => {
+      cancelled = true;
+      if (childProcess) {
+        childProcess.kill().catch(() => {});
+      }
+    };
+
+    const task = (async () => {
+      for (const inputFile of filesToProcess) {
+        if (cancelled) break;
         
-        command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
-        command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
+        const baseName = basename(inputFile).replace(/\.[^.]+$/, '');
+        const dir = dirname(inputFile);
+        const tempFile = joinPath(dir, `${baseName}_temp.mp3`);
         
-        command.on('close', async (data) => {
-          if (data.code !== 0) {
-            onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to write metadata' });
-            if (await exists(tempFile)) await remove(tempFile);
-          } else {
-            await rename(tempFile, inputFile);
-            onProgress({ file: basename(inputFile), status: 'done' });
-          }
-          resolve();
+        onProgress({ file: basename(inputFile), status: 'processing' });
+        
+        await new Promise<void>((resolve) => {
+          const command = Command.sidecar('ffmpeg', [
+            '-hide_banner', '-y', 
+            '-i', inputFile, 
+            '-map', '0:a', '-c', 'copy', 
+            '-id3v2_version', '3', '-write_id3v1', '1', 
+            ...metaArgs, tempFile
+          ]);
+          
+          command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
+          command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
+          
+          command.on('close', async (data) => {
+            if (cancelled) {
+              onProgress({ file: basename(inputFile), status: 'error', log: 'Cancelled' });
+              if (await exists(tempFile)) await remove(tempFile);
+            } else if (data.code !== 0) {
+              onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to write metadata' });
+              if (await exists(tempFile)) await remove(tempFile);
+            } else {
+              await rename(tempFile, inputFile);
+              onProgress({ file: basename(inputFile), status: 'done' });
+            }
+            resolve();
+          });
+          
+          command.on('error', (err) => {
+            if (!cancelled) onProgress({ file: basename(inputFile), status: 'error', log: String(err) });
+            resolve();
+          });
+          
+          command.spawn().then((child) => {
+            childProcess = child;
+          }).catch(() => {
+            if (!cancelled) onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to spawn ffmpeg' });
+            resolve();
+          });
         });
-        
-        command.on('error', (err) => {
-          onProgress({ file: basename(inputFile), status: 'error', log: String(err) });
-          resolve();
-        });
-        
-        command.spawn().catch(() => {
-          onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to spawn ffmpeg' });
-          resolve();
-        });
-      });
-    }
+      }
+    })();
+
+    return { task, cancel: cancelFn };
   }
 }

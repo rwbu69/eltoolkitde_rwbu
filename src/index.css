@@ -1,9 +1,111 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;800;900&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html, body, #root {
+    @apply w-full h-full overflow-hidden m-0 p-0;
+  }
   body {
     @apply antialiased;
+    background-color: #FFFBF5;
+    color: #4A3E54;
+    font-family: 'Inter', sans-serif;
   }
+}
+
+@layer components {
+  /* THE ARCADE BUTTON PHYSICS */
+  .game-btn-primary {
+    @apply bg-oshipink text-white rounded-3xl border-4 border-ink shadow-game-thick transition-all duration-100 uppercase tracking-wide font-zen;
+  }
+  .game-btn-primary:active {
+    @apply translate-y-[8px] shadow-none;
+  }
+  
+  .game-btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed active:translate-y-0 active:shadow-game-thick;
+  }
+
+  .game-btn-secondary {
+    @apply bg-panel text-ink rounded-2xl border-4 border-ink shadow-game-thin transition-all duration-100 font-zen font-bold;
+  }
+  .game-btn-secondary:active {
+    @apply translate-y-[6px] shadow-none;
+  }
+  .game-btn-secondary:disabled {
+    @apply opacity-50 cursor-not-allowed active:translate-y-0 active:shadow-game-thin;
+  }
+
+  /* Game Input Field */
+  .game-input {
+    @apply w-full bg-panel border-4 border-ink rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors placeholder:text-muted;
+  }
+  
+  /* Select Input */
+  .game-select {
+    @apply w-full bg-panel border-4 border-ink rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors appearance-none cursor-pointer;
+  }
+
+  /* Skewed containers */
+  .skew-box {
+    @apply -skew-x-[10deg];
+  }
+  .skew-content {
+    @apply skew-x-[10deg];
+  }
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float 4s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 8s linear infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0; transform: translateY(4px); }
+}
+.animate-vn-next {
+  animation: blink 1.5s infinite ease-in-out;
+}
+
+@keyframes typing {
+  from { max-width: 0 }
+  to { max-width: 100% }
+}
+.typing-text {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  animation: typing 2s steps(40, end);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #A597B0;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #4A3E54;
 }

@@ -1,20 +1,10 @@
-import { useState } from 'react';
-import { useSettings } from '../hooks/useSettings';
+import { FolderOpen, Shield, Code, FileBox } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { YtDlpService } from '../services/ytdlp';
-import { FolderOpen, Save, RefreshCw, FileText } from 'lucide-react';
+import { useSettings } from '../hooks/useSettings';
+import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout';
 
 export default function SettingsView() {
   const { settings, updateSettings } = useSettings();
-  
-  const [outputDir, setOutputDir] = useState(settings.defaultOutputDir);
-  const [videoQuality, setVideoQuality] = useState(settings.defaultVideoQuality);
-  const [audioBitrate, setAudioBitrate] = useState(settings.defaultAudioBitrate);
-  const [cookiesFilePath, setCookiesFilePath] = useState(settings.cookiesFilePath || '');
-  const [browserForCookies, setBrowserForCookies] = useState(settings.browserForCookies || '');
-
-  const [isUpdating, setIsUpdating] = useState(false);
-  const [updateLog, setUpdateLog] = useState<string>('');
 
   const handleSelectFolder = async () => {
     try {
@@ -23,7 +13,7 @@ export default function SettingsView() {
         multiple: false,
       });
       if (selected && typeof selected === 'string') {
-        setOutputDir(selected);
+        updateSettings({ defaultOutputDir: selected });
       }
     } catch (e) {
       console.error(e);
@@ -34,189 +24,166 @@ export default function SettingsView() {
     try {
       const selected = await open({
         multiple: false,
-        filters: [{ name: 'Text', extensions: ['txt'] }]
+        filters: [{ name: 'Text Files', extensions: ['txt'] }]
       });
       if (selected && typeof selected === 'string') {
-        setCookiesFilePath(selected);
+        updateSettings({ cookiesFilePath: selected });
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const handleSave = () => {
-    updateSettings({
-      defaultOutputDir: outputDir,
-      defaultVideoQuality: videoQuality,
-      defaultAudioBitrate: audioBitrate,
-      cookiesFilePath: cookiesFilePath,
-      browserForCookies: browserForCookies
-    });
-    alert('Settings saved successfully!');
-  };
-
-  const handleUpdateYtdlp = async () => {
-    setIsUpdating(true);
-    setUpdateLog('Starting yt-dlp update...\n');
-    try {
-      await YtDlpService.updateYtDlp((log) => {
-        setUpdateLog(prev => prev + log + '\n');
-      });
-    } catch (e: any) {
-      setUpdateLog(prev => prev + `\nError: ${e.message || String(e)}`);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
   return (
-    <div>
-      <header className="mb-8">
-        <h2 className="text-2xl font-semibold text-zinc-100">Settings</h2>
-        <p className="text-zinc-400 mt-1">Configure your preferences and maintenance tools.</p>
-      </header>
-      
-      <div className="space-y-6">
-        <div className="p-6 bg-zinc-900/40 border border-zinc-800/80 rounded-lg space-y-6">
-          <h3 className="text-lg font-medium text-zinc-200 border-b border-zinc-800/80 pb-2">Global Preferences</h3>
+    <PageLayout>
+      {/* FULL WIDTH COLUMN for Settings */}
+      <Column>
+        <SectionHeader title="PREFERENCES" />
+
+        <Panel className="space-y-6 flex-1 overflow-y-auto custom-scrollbar">
           
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-              Default Output Directory
-            </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={outputDir}
-                readOnly
-                placeholder="No default folder selected..."
-                className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2.5 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors"
-              />
-              <button 
-                onClick={handleSelectFolder}
-                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors flex items-center justify-center text-zinc-300"
-              >
-                <FolderOpen className="w-5 h-5" />
-              </button>
-            </div>
-            <p className="text-xs text-zinc-500 mt-1">If set, this folder will be automatically used in Downloader and FFmpeg tools.</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Default Video Quality
-              </label>
-              <select 
-                value={videoQuality}
-                onChange={(e) => setVideoQuality(e.target.value as any)}
-                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none focus:border-rose-500 appearance-none transition-colors"
-              >
-                <option value="best">Best (Highest Available)</option>
-                <option value="mid">Mid (Max 720p)</option>
-                <option value="low">Low (Max 480p/360p)</option>
-              </select>
-              <p className="text-xs text-zinc-500 mt-1">Default resolution when downloading MP4/Video.</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Default Audio Bitrate
-              </label>
-              <select 
-                value={audioBitrate}
-                onChange={(e) => setAudioBitrate(e.target.value as any)}
-                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none focus:border-rose-500 appearance-none transition-colors"
-              >
-                <option value="320k">320 kbps (High Quality)</option>
-                <option value="256k">256 kbps (Standard Quality)</option>
-                <option value="192k">192 kbps (Smaller File Size)</option>
-              </select>
-              <p className="text-xs text-zinc-500 mt-1">Default bitrate when downloading or converting to MP3.</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Extract Cookies from Browser
-              </label>
-              <select 
-                value={browserForCookies}
-                onChange={(e) => setBrowserForCookies(e.target.value)}
-                className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none focus:border-rose-500 appearance-none transition-colors"
-              >
-                <option value="">None</option>
-                <option value="chrome">Google Chrome</option>
-                <option value="edge">Microsoft Edge</option>
-                <option value="firefox">Mozilla Firefox</option>
-                <option value="brave">Brave</option>
-                <option value="opera">Opera</option>
-                <option value="vivaldi">Vivaldi</option>
-                <option value="safari">Safari</option>
-              </select>
-              <p className="text-xs text-zinc-500 mt-1">Automatically use cookies from your browser (recommended for age restriction).</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-                Or Use Cookies File (cookies.txt)
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={cookiesFilePath}
-                  readOnly
-                  placeholder="Select cookies.txt..."
-                  className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none placeholder:text-zinc-600 transition-colors"
-                />
-                <button 
-                  onClick={handleSelectCookies}
-                  className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors flex items-center justify-center text-zinc-300"
-                >
-                  <FileText className="w-5 h-5" />
-                </button>
+          {/* GENERAL SECTION */}
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+              <FolderOpen className="w-5 h-5 text-toska" /> GENERAL DEFAULTS
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <FormLabel text="DEFAULT OUTPUT FOLDER" icon={FolderOpen} />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={settings.defaultOutputDir}
+                    readOnly
+                    placeholder="Not set..."
+                    className="game-input"
+                  />
+                  <button 
+                    onClick={handleSelectFolder}
+                    className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0"
+                  >
+                    <FolderOpen className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-zinc-500 mt-1">Used if browser extraction is set to None.</p>
             </div>
           </div>
 
-          <div className="flex justify-end pt-4">
-            <button 
-              onClick={handleSave}
-              className="px-6 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-medium rounded-lg transition-colors shadow-sm flex items-center gap-2"
-            >
-              <Save className="w-4 h-4" />
-              Save Settings
-            </button>
-          </div>
-        </div>
-
-        <div className="p-6 bg-zinc-900/40 border border-zinc-800/80 rounded-lg space-y-4">
-          <h3 className="text-lg font-medium text-zinc-200 border-b border-zinc-800/80 pb-2">Maintenance</h3>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <h4 className="font-medium text-zinc-300">Update yt-dlp</h4>
-              <p className="text-sm text-zinc-500">YouTube frequently breaks third-party downloaders. Run this if downloads start failing.</p>
+          {/* MEDIA CONFIG SECTION */}
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+              <FileBox className="w-5 h-5 text-toska" /> MEDIA PRESETS
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <FormLabel text="DEFAULT VIDEO QUALITY" />
+                <select 
+                  value={settings.defaultVideoQuality}
+                  onChange={(e) => updateSettings({ defaultVideoQuality: e.target.value as any })}
+                  className="game-select font-bold"
+                >
+                  <option value="best">BEST</option>
+                  <option value="mid">MID</option>
+                  <option value="low">LOW</option>
+                </select>
+              </div>
+              
+              <div>
+                <FormLabel text="DEFAULT AUDIO BITRATE (MP3)" />
+                <select 
+                  value={settings.defaultAudioBitrate}
+                  onChange={(e) => updateSettings({ defaultAudioBitrate: e.target.value as any })}
+                  className="game-select font-bold"
+                >
+                  <option value="320k">320 kbps (High)</option>
+                  <option value="256k">256 kbps (Standard)</option>
+                  <option value="192k">192 kbps (Good)</option>
+                  <option value="128k">128 kbps (Basic)</option>
+                </select>
+              </div>
             </div>
-            <button 
-              onClick={handleUpdateYtdlp}
-              disabled={isUpdating}
-              className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-medium rounded-lg transition-colors border border-zinc-800 flex items-center gap-2 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isUpdating ? 'animate-spin' : ''}`} />
-              {isUpdating ? 'Updating...' : 'Update Now'}
-            </button>
           </div>
 
-          {updateLog && (
-            <div className="mt-4 p-4 bg-zinc-950/50 border border-zinc-800 rounded-lg max-h-48 overflow-y-auto font-mono text-xs text-zinc-400 whitespace-pre-wrap">
-              {updateLog}
+          {/* SYSTEM BEHAVIOR SECTION */}
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+              <Shield className="w-5 h-5 text-toska" /> SYSTEM BEHAVIOR
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <FormLabel text="CLOSE BUTTON ACTION" />
+                <label className="flex items-center gap-3 cursor-pointer group mt-2 select-none">
+                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-ink rounded-md transition-colors ${settings.closeToTray ? 'bg-white' : 'bg-appbg'}`}>
+                    <input 
+                      type="checkbox" 
+                      className="absolute opacity-0 cursor-pointer w-full h-full"
+                      checked={settings.closeToTray}
+                      onChange={(e) => updateSettings({ closeToTray: e.target.checked })}
+                    />
+                    {settings.closeToTray && <div className="w-2.5 h-2.5 bg-toska rounded-sm" />}
+                  </div>
+                  <span className="font-bold font-mono text-sm text-ink group-hover:text-toska transition-colors">
+                    Minimize to System Tray
+                  </span>
+                </label>
+                <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">What happens when you click the X button. Uncheck to quit completely.</p>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+          </div>
+
+          {/* AUTHENTICATION SECTION */}
+          <div className="space-y-4 bg-appbg border-4 border-ink p-5 rounded-2xl">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+              <Shield className="w-5 h-5 text-oshipink" /> AUTHENTICATION (FOR PREMIUM SITES)
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <FormLabel text="USE BROWSER COOKIES" />
+                <select 
+                  value={settings.browserForCookies}
+                  onChange={(e) => updateSettings({ browserForCookies: e.target.value, cookiesFilePath: '' })}
+                  className="game-select font-bold bg-white"
+                >
+                  <option value="">None</option>
+                  <option value="chrome">Chrome</option>
+                  <option value="firefox">Firefox</option>
+                  <option value="edge">Edge</option>
+                  <option value="brave">Brave</option>
+                  <option value="safari">Safari</option>
+                  <option value="opera">Opera</option>
+                </select>
+                <p className="mt-2 text-xs font-mono font-bold text-muted">Use cookies from installed browser</p>
+              </div>
+              
+              <div>
+                <FormLabel text="OR USE COOKIES.TXT FILE" />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={settings.cookiesFilePath}
+                    readOnly
+                    placeholder="No file selected..."
+                    className="game-input bg-white"
+                  />
+                  <button 
+                    onClick={handleSelectCookies}
+                    disabled={!!settings.browserForCookies}
+                    className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0 disabled:opacity-50"
+                  >
+                    <Code className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="mt-2 text-xs font-mono font-bold text-muted">Exported Netscape cookies.txt format</p>
+              </div>
+            </div>
+          </div>
+
+        </Panel>
+      </Column>
+    </PageLayout>
   );
 }
