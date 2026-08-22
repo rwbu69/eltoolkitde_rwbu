@@ -14,6 +14,13 @@ dist-ssr
 
 referensi1.html
 referensi2.html
+legacy/core/cookies.txt
+
+# Sidecar binaries
+src-tauri/ffmpeg-*
+src-tauri/ffprobe-*
+src-tauri/yt-dlp-*
+src-tauri/node-*
 
 # Editor directories and files
 .vscode/*
