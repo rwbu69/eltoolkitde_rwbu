@@ -1,32 +1,35 @@
-# React + TypeScript + Vite
+# ElToolkitDeRWBU
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A multipurpose desktop utility built with Tauri v2, React, TypeScript, and Vite. ElToolkitDeRWBU wraps powerful command-line tools like FFmpeg and yt-dlp in a clean graphical interface, letting you handle media processing, file organization, and downloads without touching a terminal.
 
-Currently, two official plugins are available:
+![ElToolkitDeRWBU Screen](images/screen_awal.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Overview
 
-## React Compiler
+ElToolkitDeRWBU brings several everyday file and media workflows into one cohesive app — download, convert, tag, and rename, all from a single interface built for batch processing.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## What's New in v0.1.1
 
-## Expanding the Oxlint configuration
+- **Redesigned UI** — A visual novel/game-inspired aesthetic with thick borders, flat colors, and subtle micro-animations for a more polished, game-like feel.
+- **Custom titlebar** — Native OS window decorations replaced with a custom, integrated titlebar (native context menus disabled to keep the design consistent).
+- **Background operation** — An optional setting to minimize to the system tray on close, with tailored notifications so tasks keep running without getting in the way.
+- **Task cancellation** — Long-running operations (batch tagging, encoding, etc.) can now be safely aborted from any processing menu.
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## Core Features
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
+### Media Downloader (yt-dlp)
+Download media from supported URLs, preview media info beforehand, and cancel downloads safely mid-process.
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### FFmpeg Tools
+- **Audio Extraction** — Pull audio tracks out of video files.
+- **Trimming** — Cut video or audio to a specific start and end time.
+- **Mirroring** — Flip media horizontally or vertically.
+
+### Batch Metadata Editor
+Edit ID3 tags (Title, Artist, Album, Year) for single MP3 files or entire folders, with real-time logs and per-file status tracking.
+
+### Batch File Renamer
+- **Find & Replace** — Case-sensitive text replacement in filenames.
+- **Affixes** — Add prefixes or suffixes.
+- **Numbering** — Sequential, zero-padded numbering (e.g., `Track_001`).
+- **Preview & Undo** — Collision detection before applying changes, plus full undo for the last operation.
