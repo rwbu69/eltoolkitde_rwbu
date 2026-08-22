@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Terminal, Trash2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Terminal, Play } from 'lucide-react';
 
 export default function TerminalLogView() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -11,12 +11,15 @@ export default function TerminalLogView() {
       const customEvent = e as CustomEvent<string>;
       setLogs((prev) => {
         const newLogs = [...prev, customEvent.detail];
-        // Keep only last 1000 logs to prevent memory issues
-        if (newLogs.length > 1000) {
-          return newLogs.slice(newLogs.length - 1000);
+        if (newLogs.length > 200) {
+          return newLogs.slice(newLogs.length - 200);
         }
         return newLogs;
       });
+      // Auto-open on error
+      if (customEvent.detail.includes('ERROR') || customEvent.detail.includes('error')) {
+        setIsOpen(true);
+      }
     };
 
     window.addEventListener('toolkit-log', handleLog);
@@ -30,63 +33,58 @@ export default function TerminalLogView() {
   }, [logs, isOpen]);
 
   return (
-    <div className={`fixed bottom-0 left-0 right-0 z-[100] transition-all duration-300 ease-in-out lg:left-64 ${isOpen ? 'h-64' : 'h-10'}`}>
-      <div className="flex h-full flex-col bg-zinc-950 border-t border-zinc-800 shadow-2xl">
-        {/* Header */}
-        <div 
-          className="flex h-10 shrink-0 cursor-pointer items-center justify-between bg-zinc-900 px-4 hover:bg-zinc-800/80 transition-colors"
+    <footer 
+      className="fixed bottom-0 left-1/2 w-full max-w-[1400px] px-6 lg:px-12 z-50 pointer-events-none transition-transform duration-300 ease-in-out"
+      style={{ transform: `translate(-50%, ${isOpen ? '0px' : '250px'})` }}
+    >
+      <div className="w-full relative pointer-events-auto h-[250px]">
+        {/* Toggle Tab (Nameplate) */}
+        <button 
           onClick={() => setIsOpen(!isOpen)}
+          className="absolute left-8 lg:left-12 top-[-48px] h-[48px] bg-oshipink border-4 border-b-0 border-ink px-8 rounded-t-2xl z-20 flex items-center gap-2 hover:bg-pink-500 transition-colors"
         >
-          <div className="flex items-center gap-2 text-zinc-400">
-            <Terminal className="h-4 w-4" />
-            <span className="text-xs font-medium tracking-wider uppercase">Terminal Log</span>
-            {logs.length > 0 && !isOpen && (
-              <span className="ml-2 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] text-rose-400">
-                {logs.length}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {isOpen && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); setLogs([]); }}
-                className="text-zinc-500 hover:text-zinc-300 transition-colors"
-                title="Clear Logs"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-            )}
-            <button className="text-zinc-500 hover:text-zinc-300 transition-colors">
-              {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
-            </button>
-          </div>
-        </div>
+          <Terminal className="w-5 h-5 text-white" />
+          <h2 className="text-lg font-black tracking-widest text-white font-zen uppercase">System</h2>
+          {/* Notification dot */}
+          {!isOpen && logs.length > 0 && (
+            <div className="absolute -top-2 -right-2 bg-toska text-ink text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-ink animate-bounce">
+              {logs.length > 99 ? '99+' : logs.length}
+            </div>
+          )}
+        </button>
 
-        {/* Content */}
-        {isOpen && (
-          <div 
-            ref={scrollRef}
-            className="flex-1 overflow-y-auto bg-[#0c0c0e] p-4 font-mono text-[11px] text-zinc-300 custom-scrollbar"
-          >
+        {/* The Text Box */}
+        <div className="w-full h-full bg-white/95 backdrop-blur-md border-t-4 border-x-4 border-ink rounded-t-3xl shadow-[0_-8px_20px_rgba(58,46,66,0.15)] flex flex-col p-6 pt-8">
+          
+          {/* Dialogue Text (Logs) */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto text-sm leading-relaxed font-inter text-ink custom-scrollbar pr-4">
             {logs.length === 0 ? (
-              <div className="flex h-full items-center justify-center text-zinc-600">
-                No logs to display
-              </div>
+              <p className="text-muted font-bold italic">No system logs available.</p>
             ) : (
-              <div className="flex flex-col gap-1">
-                {logs.map((log, i) => (
-                  <div key={i} className="break-all whitespace-pre-wrap">
-                    <span className="text-zinc-600 mr-2">[{new Date().toLocaleTimeString()}]</span>
-                    <span className={log.includes('ERROR') || log.includes('error') ? 'text-red-400' : log.includes('WARN') ? 'text-amber-400' : 'text-zinc-300'}>
-                      {log}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              logs.map((log, i) => {
+                const isError = log.includes('ERROR') || log.includes('error');
+                const isWarn = log.includes('WARN');
+                return (
+                  <p key={i} className={`mb-1 ${isError ? 'text-oshipink font-bold' : isWarn ? 'text-muted font-bold' : 'text-ink font-medium'}`}>
+                    <span className="opacity-50 text-[10px] font-mono mr-2">[{new Date().toLocaleTimeString()}]</span>
+                    {log}
+                  </p>
+                );
+              })
             )}
           </div>
-        )}
+
+          {/* Blinking Next Indicator (VN Trope) */}
+          <div 
+            className="absolute bottom-6 right-8 text-oshipink animate-vn-next cursor-pointer"
+            onClick={() => setIsOpen(false)}
+            title="Close logs"
+          >
+            <Play className="w-6 h-6 rotate-90 fill-current" />
+          </div>
+
+        </div>
       </div>
-    </div>
+    </footer>
   );
 }

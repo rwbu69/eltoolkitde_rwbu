@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 
 export interface AppSettings {
   defaultOutputDir: string;
@@ -6,6 +7,7 @@ export interface AppSettings {
   defaultAudioBitrate: '320k' | '256k' | '192k';
   cookiesFilePath: string;
   browserForCookies: string;
+  closeToTray: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -14,6 +16,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',
+  closeToTray: true,
 };
 
 export function useSettings() {
@@ -46,6 +49,11 @@ export function useSettings() {
       window.removeEventListener('eltoolkit_settings_updated', handleSettingsUpdated);
     };
   }, []);
+
+  useEffect(() => {
+    // Sync with rust backend
+    invoke('set_close_behavior', { closeToTray: settings.closeToTray }).catch(console.error);
+  }, [settings.closeToTray]);
 
   const updateSettings = (updates: Partial<AppSettings>) => {
     setSettings(prev => {

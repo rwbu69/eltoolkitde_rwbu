@@ -58,8 +58,6 @@ export class YtDlpService {
       fetchArgs.push('--cookies', cookiesFilePath);
     }
 
-    fetchArgs.push(url);
-
     if (ffmpegLocation) {
       fetchArgs.push('--ffmpeg-location', ffmpegLocation);
       const isWin = navigator.userAgent.toLowerCase().includes('windows');
@@ -67,6 +65,9 @@ export class YtDlpService {
       const sep = isWin ? '\\' : '/';
       fetchArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
     }
+
+    fetchArgs.push('--');
+    fetchArgs.push(url);
 
     const command = Command.sidecar('yt-dlp', fetchArgs);
     const output = await command.execute();
@@ -143,7 +144,7 @@ export class YtDlpService {
       dlArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
     }
 
-    dlArgs.push('--no-check-certificate', url);
+    dlArgs.push('--no-check-certificate', '--', url);
 
     let currentPlaylistIndex = 0;
     let totalPlaylistItems = 0;

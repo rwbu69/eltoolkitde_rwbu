@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { RenameService, RenameOptions, RenamePreview, RenameProgress } from '../services/rename';
-import { FolderOpen, Edit3, Undo2 } from 'lucide-react';
+import { FolderOpen, Edit3, Undo2, CheckSquare, Search, Type, Hash, Settings2, AlertTriangle } from 'lucide-react';
+import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 
-export default function RenameView() {
+export default function RenameView({ isActive = false }: { isActive?: boolean }) {
   const [inputPath, setInputPath] = useState('');
   const [mode, setMode] = useState<'find-replace' | 'prefix-suffix' | 'numbering'>('find-replace');
 
@@ -28,6 +29,21 @@ export default function RenameView() {
   const [history, setHistory] = useState<{oldPath: string, newPath: string}[]>([]);
 
   // Re-generate previews whenever inputs change
+  useEffect(() => {
+    if (!isActive) return;
+    const handleDrop = (e: any) => {
+      const paths = e.detail as string[];
+      if (paths && paths.length > 0) {
+        // Just take the first dropped item as the target folder
+        setInputPath(paths[0]);
+        setHistory([]);
+        setProgresses([]);
+      }
+    };
+    window.addEventListener('toolkit-drop', handleDrop);
+    return () => window.removeEventListener('toolkit-drop', handleDrop);
+  }, [isActive]);
+
   useEffect(() => {
     if (!inputPath) {
       setPreviews([]);
@@ -90,9 +106,7 @@ export default function RenameView() {
         setHistory(res.history);
       }
       
-      // Refresh previews to show current state
       setTimeout(() => {
-        // Trigger re-render of previews
         setMode(mode); 
       }, 500);
       
@@ -132,165 +146,197 @@ export default function RenameView() {
   const hasConflicts = previews.some(p => p.status !== 'ok');
 
   return (
-    <>
-      <header className="mb-8">
-        <h2 className="text-2xl font-semibold text-zinc-100 flex items-center gap-2">
-          Batch Rename
-        </h2>
-        <p className="text-zinc-400 mt-1">Ganti nama file secara in-place dengan aman.</p>
-      </header>
+    <PageLayout>
+      <Column>
+        <SectionHeader title="BATCH RENAME" icon={Edit3} />
 
-      <div className="flex gap-2 mb-6 border-b border-zinc-800/80 pb-2">
-        {(['find-replace', 'prefix-suffix', 'numbering'] as const).map(m => (
+        {/* Tab Buttons */}
+        <div className="flex gap-2 shrink-0 overflow-x-auto pb-2">
           <button 
-            key={m}
-            onClick={() => setMode(m)}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m ? 'bg-rose-600 text-white shadow-sm' : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'}`}
+            onClick={() => setMode('find-replace')}
+            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'find-replace' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
           >
-            {m === 'find-replace' ? 'Find & Replace' : m === 'prefix-suffix' ? 'Prefix / Suffix' : 'Numbering'}
+            <Search className="w-4 h-4 mr-1.5" /> FIND & REPLACE
           </button>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Col: Config */}
-        <div className="space-y-6">
-          <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-lg p-5">
-            <label className="block text-sm font-medium text-zinc-300 mb-1.5">
-              Target Directory
-            </label>
-            <div className="flex gap-2 mb-4">
-              <input type="text" value={inputPath} readOnly className="flex-1 bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none placeholder:text-zinc-600" placeholder="Select target folder..." />
-              <button onClick={handleSelectInput} className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-lg transition-colors text-zinc-300">
-                <FolderOpen className="w-5 h-5" />
-              </button>
-            </div>
-
-            {mode === 'find-replace' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Find</label>
-                  <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" placeholder="Text to find..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Replace</label>
-                  <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" placeholder="Replace with..." />
-                </div>
-                <label className="flex items-center gap-2 text-sm text-zinc-400 cursor-pointer">
-                  <input type="checkbox" checked={caseSensitive} onChange={e => setCaseSensitive(e.target.checked)} className="rounded border-zinc-700 bg-zinc-900 text-rose-500 focus:ring-rose-500" />
-                  Case Sensitive
-                </label>
-              </div>
-            )}
-
-            {mode === 'prefix-suffix' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Prefix</label>
-                  <input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" placeholder="Add to beginning..." />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Suffix</label>
-                  <input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" placeholder="Add to end..." />
-                </div>
-              </div>
-            )}
-
-            {mode === 'numbering' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-400 mb-1">Base Name (Leave blank to keep original)</label>
-                  <input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" placeholder="e.g. Track_" />
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Start Number</label>
-                    <input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-zinc-400 mb-1">Padding (Zeros)</label>
-                    <input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="w-full bg-zinc-950/50 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200" />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-          
-          {history.length > 0 && (
-            <div className="bg-rose-500/10 border border-rose-500/30 rounded-lg p-5">
-              <h4 className="text-sm font-medium text-rose-400 mb-2">Undo Available</h4>
-              <p className="text-xs text-rose-300/80 mb-4">You can revert the last rename operation.</p>
-              <button 
-                onClick={handleUndo}
-                disabled={isProcessing}
-                className="w-full px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white font-medium rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
-              >
-                <Undo2 className="w-4 h-4" />
-                Undo Last Rename
-              </button>
-            </div>
-          )}
+          <button 
+            onClick={() => setMode('prefix-suffix')}
+            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'prefix-suffix' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+          >
+            <Type className="w-4 h-4 mr-1.5" /> AFFIXES
+          </button>
+          <button 
+            onClick={() => setMode('numbering')}
+            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'numbering' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+          >
+            <Hash className="w-4 h-4 mr-1.5" /> NUMBERING
+          </button>
         </div>
 
-        {/* Right Col: Preview & Progress */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-lg p-5 flex flex-col h-[500px]">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-sm font-medium text-zinc-200">Live Preview</h3>
+        <Panel className="flex flex-col">
+          <PanelScrollArea className="flex flex-col gap-4 pr-2">
+            
+            {/* Target Directory */}
+            <div>
+              <FormLabel text="TARGET FOLDER" icon={FolderOpen} />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={inputPath}
+                  readOnly
+                  placeholder="Select target folder..."
+                  className="game-input"
+                />
+                <button 
+                  onClick={handleSelectInput}
+                  className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0"
+                  title="Select Folder"
+                >
+                  <FolderOpen className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Configuration Area */}
+            <div className="bg-appbg border-4 border-ink rounded-2xl p-4 shrink-0 mt-2">
+              <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+                <Settings2 className="w-4 h-4" /> CONFIGURATION
+              </h3>
+
+              {mode === 'find-replace' && (
+                <div className="space-y-4">
+                  <div>
+                    <FormLabel text="FIND TEXT" />
+                    <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="game-input bg-white" placeholder="Text to find..." />
+                  </div>
+                  <div>
+                    <FormLabel text="REPLACE WITH" />
+                    <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="game-input bg-white" placeholder="Replace with..." />
+                  </div>
+                  <label onClick={() => setCaseSensitive(!caseSensitive)} className="flex items-center gap-3 cursor-pointer group">
+                    <div className={`w-12 h-6 rounded-full border-2 border-ink transition-colors relative ${caseSensitive ? 'bg-toska' : 'bg-muted'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white border-2 border-ink rounded-full transition-transform ${caseSensitive ? 'translate-x-6' : ''}`}></div>
+                    </div>
+                    <span className="font-mono text-xs font-bold text-ink group-hover:text-toska transition-colors">CASE SENSITIVE</span>
+                  </label>
+                </div>
+              )}
+
+              {mode === 'prefix-suffix' && (
+                <div className="space-y-4">
+                  <div>
+                    <FormLabel text="PREFIX" />
+                    <input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="game-input bg-white" placeholder="Add to beginning..." />
+                  </div>
+                  <div>
+                    <FormLabel text="SUFFIX" />
+                    <input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="game-input bg-white" placeholder="Add to end..." />
+                  </div>
+                </div>
+              )}
+
+              {mode === 'numbering' && (
+                <div className="space-y-4">
+                  <div>
+                    <FormLabel text="BASE NAME (OPTIONAL)" />
+                    <input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="game-input bg-white" placeholder="e.g. Track_" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <FormLabel text="START NUMBER" />
+                      <input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="game-input bg-white" />
+                    </div>
+                    <div>
+                      <FormLabel text="PADDING" />
+                      <input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="game-input bg-white" />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {history.length > 0 && (
+              <div className="p-4 rounded-xl bg-softpink border-4 border-ink flex items-start justify-between gap-3 shrink-0">
+                <div>
+                  <h4 className="font-bold text-sm text-ink mb-1 flex items-center gap-1"><Undo2 className="w-4 h-4"/> UNDO AVAILABLE</h4>
+                  <p className="text-xs text-ink/80 font-mono">You can revert the last rename operation.</p>
+                </div>
+                <button 
+                  onClick={handleUndo}
+                  disabled={isProcessing}
+                  className="game-btn-primary px-4 py-2 text-xs flex items-center gap-2 shrink-0 bg-red-500"
+                >
+                  <Undo2 className="w-3 h-3" /> UNDO
+                </button>
+              </div>
+            )}
+          </PanelScrollArea>
+
+          {/* Action Button */}
+          <div className="pt-3 mt-3 border-t-4 border-appbg shrink-0">
             <button 
               onClick={handleExecute}
-              disabled={!inputPath || isProcessing || hasConflicts || previews.length === 0}
-              className="px-4 py-1.5 bg-rose-600 hover:bg-rose-500 text-white text-sm font-medium rounded-lg transition-colors shadow-sm flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={previews.length === 0 || hasConflicts || isProcessing || !inputPath}
+              className="game-btn-primary w-full h-[48px] font-zen font-black text-base flex justify-center items-center gap-2"
             >
-              <Edit3 className="w-4 h-4" />
-              {isProcessing ? 'Processing...' : 'Rename Files'}
+              <CheckSquare className="w-5 h-5" /> {isProcessing ? 'PROCESSING...' : `APPLY TO ${previews.length} FILE${previews.length !== 1 ? 'S' : ''}`}
             </button>
           </div>
-          
-          <div className="flex-1 overflow-y-auto border border-zinc-800 rounded-md bg-zinc-950/30 relative">
-            {previews.length === 0 ? (
-              <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-500">
-                Select a folder to see files
-              </div>
-            ) : (
-              <table className="w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-zinc-900/80 sticky top-0 text-zinc-400 border-b border-zinc-800">
-                  <tr>
-                    <th className="px-4 py-2 font-medium w-1/2">Original Name</th>
-                    <th className="px-4 py-2 font-medium w-1/2">New Name</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/50">
-                  {previews.map((p, i) => {
-                    const prog = progresses.find(x => x.file === p.oldName);
-                    const isError = p.status !== 'ok' || prog?.status === 'error';
-                    return (
-                      <tr key={i} className={`${isError ? 'bg-red-500/10' : 'hover:bg-zinc-900/50'}`}>
-                        <td className="px-4 py-2 text-zinc-300 truncate max-w-[200px]" title={p.oldName}>
-                          {p.oldName}
-                        </td>
-                        <td className={`px-4 py-2 truncate max-w-[200px] font-medium ${isError ? 'text-red-400' : 'text-zinc-200'}`} title={p.newName}>
-                          {p.newName}
-                          {p.status === 'collision' && <span className="ml-2 text-xs bg-red-500 text-white px-1.5 py-0.5 rounded">Collision</span>}
-                          {p.status === 'exists' && <span className="ml-2 text-xs bg-red-500 text-white px-1.5 py-0.5 rounded">Exists</span>}
-                          {prog && (
-                            <span className={`ml-2 text-xs px-1.5 py-0.5 rounded ${
-                              prog.status === 'done' ? 'bg-emerald-500/20 text-emerald-400' :
-                              prog.status === 'error' ? 'bg-red-500/20 text-red-400' :
-                              'bg-rose-500/20 text-rose-400'
-                            }`}>
-                              {prog.status} {prog.log ? `(${prog.log})` : ''}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        </Panel>
+      </Column>
+
+      <Column isSidebar>
+        <SectionHeader title="PREVIEW" align="right" variant="secondary" />
+        <Panel className="flex flex-col bg-appbg" noPadding>
+          <div className="p-3 border-b-4 border-ink bg-white rounded-t-2xl shrink-0 flex items-center justify-between">
+            <FormLabel text="FILE CHANGES" />
+            {hasConflicts && (
+              <span className="text-[10px] font-bold text-white bg-oshipink px-2 py-1 rounded-full flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3"/> CONFLICTS
+              </span>
             )}
           </div>
-        </div>
-      </div>
-    </>
+          <PanelScrollArea className="p-3">
+            {previews.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">
+                <p className="text-sm font-bold font-zen">No files selected</p>
+                <p className="text-[10px] font-mono text-center">Select a folder to see previews</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {previews.map((p, i) => {
+                  const prog = progresses.find(x => x.file === p.oldName);
+                  const isError = p.status !== 'ok' || prog?.status === 'error';
+                  return (
+                    <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : 'bg-white border-ink'}`}>
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-muted truncate pr-2">OLD NAME</span>
+                      </div>
+                      <span className="text-xs font-mono font-bold text-ink truncate mb-2" title={p.oldName}>{p.oldName}</span>
+                      
+                      <div className="flex justify-between items-center mb-1">
+                        <span className="text-[10px] font-bold text-toska truncate pr-2">NEW NAME</span>
+                        {p.status === 'collision' && <span className="text-[9px] font-bold text-white bg-oshipink px-1.5 py-0.5 rounded">Collision</span>}
+                        {p.status === 'exists' && <span className="text-[9px] font-bold text-white bg-oshipink px-1.5 py-0.5 rounded">Exists</span>}
+                      </div>
+                      <span className={`text-xs font-mono font-bold truncate ${isError ? 'text-oshipink' : 'text-ink'}`} title={p.newName}>{p.newName}</span>
+                      
+                      {prog && (
+                        <div className={`mt-2 text-[10px] font-bold px-2 py-1 rounded-lg border-2 ${
+                          prog.status === 'done' ? 'bg-softtoska border-toska text-toska' :
+                          prog.status === 'error' ? 'bg-softpink border-oshipink text-oshipink' :
+                          'bg-appbg border-ink/20 text-muted'
+                        }`}>
+                          STATUS: {prog.status.toUpperCase()} {prog.log ? `(${prog.log})` : ''}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </PanelScrollArea>
+        </Panel>
+      </Column>
+    </PageLayout>
   );
 }

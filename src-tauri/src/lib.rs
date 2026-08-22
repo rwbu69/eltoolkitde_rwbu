@@ -5,11 +5,23 @@ use tauri::{
     Manager, WindowEvent,
 };
 use tauri_plugin_notification::NotificationExt;
+use std::sync::Mutex;
+
+struct AppState {
+    close_to_tray: Mutex<bool>,
+}
 
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
+}
+
+#[tauri::command]
+fn set_close_behavior(state: tauri::State<'_, AppState>, close_to_tray: bool) {
+    if let Ok(mut c) = state.close_to_tray.lock() {
+        *c = close_to_tray;
+    }
 }
 
 #[tauri::command]
@@ -151,6 +163,10 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            app.manage(AppState {
+                close_to_tray: Mutex::new(true),
+            });
+
             let quit_i = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Tampilkan", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show_i, &quit_i])?;
@@ -190,17 +206,25 @@ pub fn run() {
         .on_window_event(|window, event| {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 if window.label() == "main" {
-                    window.hide().unwrap();
-                    api.prevent_close();
-                    
-                    let _ = window.app_handle().notification().builder()
-                        .title("ElToolkit Disembunyikan")
-                        .body("Aplikasi berjalan di latar belakang. Klik ikon tray untuk membuka kembali.")
-                        .show();
+                    let close_to_tray = {
+                        let state = window.app_handle().state::<AppState>();
+                        let val = *state.close_to_tray.lock().unwrap();
+                        val
+                    };
+
+                    if close_to_tray {
+                        window.hide().unwrap();
+                        api.prevent_close();
+                        
+                        let _ = window.app_handle().notification().builder()
+                            .title("ElToolkit Disembunyikan")
+                            .body("Aplikasi berjalan di latar belakang. Klik ikon tray untuk membuka kembali.")
+                            .show();
+                    }
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen, safe_rename])
+        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen, safe_rename, set_close_behavior])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

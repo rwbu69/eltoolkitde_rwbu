@@ -1,137 +1,146 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Download, Settings, RefreshCcw, FileAudio, Menu, X, Edit3 } from 'lucide-react';
+import { Download, Settings, RefreshCcw, FileAudio, Edit3 } from 'lucide-react';
 import DownloaderView from './components/DownloaderView';
 import FfmpegView from './components/FfmpegView';
 import MetadataView from './components/MetadataView';
 import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
 import TerminalLogView from './components/TerminalLogView';
+import { Titlebar } from './components/ui/Titlebar';
+import { Tooltip } from './components/ui/Tooltip';
+
+import appIcon from './assets/icon.png';
 
 type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'rename' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('downloader');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       invoke('close_splashscreen').catch(console.error);
-    }, 1000); // Give it a second to render cleanly
+    }, 1000);
     return () => clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    let unlisten: () => void;
+    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+      getCurrentWindow().onDragDropEvent((event) => {
+        if (event.payload.type === 'drop') {
+          window.dispatchEvent(new CustomEvent('toolkit-drop', { detail: event.payload.paths }));
+        }
+      }).then(u => unlisten = u);
+    });
+    return () => {
+      if (unlisten) unlisten();
+    };
+  }, []);
+
   return (
-    <div className="flex h-screen bg-zinc-950 text-zinc-100 font-sans overflow-hidden">
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-zinc-950 border-r border-zinc-800 p-4 flex flex-col gap-4 transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="flex items-center justify-between mb-8 px-2">
-          <div className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-rose-500" />
-            <h1 className="text-xl font-semibold text-zinc-100 tracking-tight">
-              ElToolkit
-            </h1>
-          </div>
-          <button 
-            className="lg:hidden text-zinc-400 hover:text-zinc-200"
-            onClick={() => setIsSidebarOpen(false)}
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <div className="flex flex-col w-screen h-screen overflow-hidden bg-appbg">
+      <Titlebar />
+      
+      {/* TOP HUD BAR */}
+      <header className="flex-none flex items-start justify-between w-full p-4 z-50 pointer-events-none">
         
-        <nav className="flex-1 space-y-1.5">
-          <button 
-            onClick={() => { setActiveTab('downloader'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-              activeTab === 'downloader' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
-            }`}
-          >
-            <Download className="w-4 h-4" />
-            <span className="text-sm font-medium">Downloader</span>
-          </button>
-          <button 
-            onClick={() => { setActiveTab('ffmpeg'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-              activeTab === 'ffmpeg' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
-            }`}
-          >
-            <FileAudio className="w-4 h-4" />
-            <span className="text-sm font-medium">FFmpeg Tools</span>
-          </button>
-          <button 
-            onClick={() => { setActiveTab('metadata'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-              activeTab === 'metadata' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
-            }`}
-          >
-            <RefreshCcw className="w-4 h-4" />
-            <span className="text-sm font-medium">Metadata</span>
-          </button>
-          <button 
-            onClick={() => { setActiveTab('rename'); setIsSidebarOpen(false); }}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors border-l-2 ${
-              activeTab === 'rename' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
-            }`}
-          >
-            <Edit3 className="w-4 h-4" />
-            <span className="text-sm font-medium">Batch Rename</span>
-          </button>
-        </nav>
-
-        <button 
-          onClick={() => { setActiveTab('settings'); setIsSidebarOpen(false); }}
-          className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors mt-auto border-l-2 ${
-            activeTab === 'settings' ? 'border-rose-500 bg-zinc-900/50 text-zinc-100' : 'border-transparent text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/30'
-          }`}
-        >
-          <Settings className="w-4 h-4" />
-          <span className="text-sm font-medium">Settings</span>
-        </button>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0 h-screen bg-zinc-950">
-        {/* Mobile Header */}
-        <header className="lg:hidden flex items-center gap-3 p-4 border-b border-zinc-800 bg-zinc-950">
-          <button 
-            onClick={() => setIsSidebarOpen(true)}
-            className="text-zinc-400 hover:text-zinc-200"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
-          <span className="font-medium text-zinc-200 capitalize">{activeTab}</span>
-        </header>
-
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto">
-          <div className="max-w-4xl mx-auto">
-            <div className={activeTab === 'downloader' ? 'block' : 'hidden'}>
-              <DownloaderView />
-            </div>
-            <div className={activeTab === 'ffmpeg' ? 'block' : 'hidden'}>
-              <FfmpegView />
-            </div>
-            <div className={activeTab === 'metadata' ? 'block' : 'hidden'}>
-              <MetadataView />
-            </div>
-            <div className={activeTab === 'rename' ? 'block' : 'hidden'}>
-              <RenameView />
-            </div>
-            <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
-              <SettingsView />
+        {/* "Player" Profile */}
+        <div className="flex items-center gap-3 pointer-events-auto">
+          {/* Avatar */}
+          <div className="relative z-10 flex items-center justify-center w-12 h-12 bg-white border-4 rounded-full border-ink shadow-game-thin overflow-hidden shrink-0">
+            <img src={appIcon} alt="Avatar" className="w-full h-full object-cover" />
+          </div>
+          
+          {/* Player Name & Info Bar */}
+          <div className="py-1.5 pl-8 pr-5 -ml-6 border-4 bg-white/90 backdrop-blur-sm border-ink rounded-r-xl rounded-l-md shadow-game-thin shrink-0 hidden sm:block">
+            <h1 className="text-lg font-black leading-tight font-zen text-ink">ElToolkit</h1>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="font-mono text-[9px] font-bold text-muted uppercase w-[70px] truncate inline-block">{activeTab}</span>
+              <div className="w-12 h-2 bg-appbg rounded-full border-2 border-ink overflow-hidden shrink-0">
+                <div className="w-full h-full bg-toska"></div>
+              </div>
+              <span className="font-mono text-[9px] font-bold text-toska shrink-0">READY</span>
             </div>
           </div>
-        </main>
+        </div>
+
+        {/* Navigation Tabs */}
+        <nav className="flex flex-wrap justify-end gap-2 pointer-events-auto shrink-0">
+          <Tooltip text="DOWNLOADER">
+            <button 
+              onClick={() => setActiveTab('downloader')} 
+              className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'downloader' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+            >
+              <Download className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline text-xs font-bold">Downloader</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="FFMPEG">
+            <button 
+              onClick={() => setActiveTab('ffmpeg')} 
+              className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'ffmpeg' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+            >
+              <FileAudio className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline text-xs font-bold">FFmpeg</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="METADATA">
+            <button 
+              onClick={() => setActiveTab('metadata')} 
+              className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'metadata' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+            >
+              <RefreshCcw className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline text-xs font-bold">Metadata</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="RENAME">
+            <button 
+              onClick={() => setActiveTab('rename')} 
+              className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'rename' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
+            >
+              <Edit3 className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline text-xs font-bold">Rename</span>
+            </button>
+          </Tooltip>
+          <div className="w-px h-10 bg-ink/20 mx-1 hidden lg:block"></div>
+          <Tooltip text="SETTINGS">
+            <button 
+              onClick={() => setActiveTab('settings')} 
+              className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'settings' ? 'game-btn-primary' : 'game-btn-secondary text-oshipink hover:text-oshipink'}`}
+            >
+              <Settings className="w-4 h-4 shrink-0" />
+              <span className="hidden lg:inline text-xs font-bold text-ink">Prefs</span>
+            </button>
+          </Tooltip>
+        </nav>
+      </header>
+
+      {/* Main Content (Stage Area) */}
+      <main className="flex-1 min-h-0 w-full px-6 lg:px-12 pb-4 pt-2 overflow-hidden z-10 flex flex-col">
+        <div className="max-w-[1400px] mx-auto w-full flex-1 min-h-0 overflow-hidden relative">
+          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'downloader' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <DownloaderView />
+          </div>
+          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'ffmpeg' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <FfmpegView isActive={activeTab === 'ffmpeg'} />
+          </div>
+          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'metadata' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <MetadataView isActive={activeTab === 'metadata'} />
+          </div>
+          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'rename' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <RenameView isActive={activeTab === 'rename'} />
+          </div>
+          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'settings' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <SettingsView />
+          </div>
+        </div>
+      </main>
+
+      {/* VN Terminal Log Footer */}
+      <div className="flex-none z-20">
+        <TerminalLogView />
       </div>
-      <TerminalLogView />
     </div>
   );
 }
