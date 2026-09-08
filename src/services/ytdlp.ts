@@ -109,9 +109,17 @@ export class YtDlpService {
     const vidArg = videoMap[videoQuality] || 'bestvideo';
 
     if (format === 'mp4') {
-      formatArgs = ['-f', `${vidArg}+bestaudio/best`, '--merge-output-format', 'mp4'];
+      formatArgs = [
+        '-f', `${vidArg}+bestaudio/best`, 
+        '-S', 'vcodec:h265:h264,acodec:m4a',
+        '--merge-output-format', 'mp4'
+      ];
     } else if (format === 'video-only') {
-      formatArgs = ['-f', vidArg, '--merge-output-format', 'mp4'];
+      formatArgs = [
+        '-f', vidArg, 
+        '-S', 'vcodec:h265:h264',
+        '--merge-output-format', 'mp4'
+      ];
     } else if (format === 'mp3') {
       formatArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', audioBitrate];
     }
