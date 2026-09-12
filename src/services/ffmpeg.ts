@@ -1,6 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, mkdir } from '@tauri-apps/plugin-fs';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
+import { basename, joinPath } from '../utils/path';
 
 const dispatchLog = (msg: string) => {
   window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
@@ -50,8 +51,6 @@ export class FfmpegService {
     const { inputFiles, outputRoot, bitrate = '320k' } = options;
     
     // Polyfill for path operations
-    const basename = (p: string) => p.split(/[\\/]/).pop() || p;
-    const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
     
     const destFolder = joinPath(outputRoot, 'output_mp3');
     
@@ -142,8 +141,7 @@ export class FfmpegService {
     onProgress: (progress: FfmpegProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
     const { inputFiles, outputDir } = options;
-    const basename = (p: string) => p.split(/[\\/]/).pop() || p;
-    const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
+
     
     let childProcess: any = null;
     let cancelled = false;
@@ -251,8 +249,7 @@ export class FfmpegService {
     onProgress: (progress: FfmpegProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
     const { inputFile, startTime, endTime, outputDir } = options;
-    const basename = (p: string) => p.split(/[\\/]/).pop() || p;
-    const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
+
     
     const base = basename(inputFile);
     const extMatch = base.match(/\.[^.]+$/);
