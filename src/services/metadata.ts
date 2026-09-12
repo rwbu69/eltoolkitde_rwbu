@@ -1,5 +1,6 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { readDir, exists, rename, remove } from '@tauri-apps/plugin-fs';
+import { basename, dirname, joinPath } from '../utils/path';
 
 const dispatchLog = (msg: string) => {
   window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
@@ -28,10 +29,7 @@ export class MetadataService {
     const { mode, inputPath, title, artist, album, year } = options;
     
     // Polyfills
-    const basename = (p: string) => p.split(/[\\/]/).pop() || p;
-    const dirname = (p: string) => p.substring(0, Math.max(p.lastIndexOf('\\'), p.lastIndexOf('/'))) || p;
-    const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
-    
+
     let filesToProcess: string[] = [];
     
     if (mode === 'file') {

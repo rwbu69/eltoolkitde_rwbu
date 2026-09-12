@@ -11,12 +11,6 @@ struct AppState {
     close_to_tray: Mutex<bool>,
 }
 
-// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
-
 #[tauri::command]
 fn set_close_behavior(state: tauri::State<'_, AppState>, close_to_tray: bool) {
     if let Ok(mut c) = state.close_to_tray.lock() {
@@ -224,7 +218,7 @@ pub fn run() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![greet, setup_ffmpeg_location, close_splashscreen, safe_rename, set_close_behavior])
+        .invoke_handler(tauri::generate_handler![setup_ffmpeg_location, close_splashscreen, safe_rename, set_close_behavior])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

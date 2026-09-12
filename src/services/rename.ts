@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { readDir, exists } from '@tauri-apps/plugin-fs';
+import { joinPath } from '../utils/path';
 
 export interface RenameOptions {
   mode: 'find-replace' | 'prefix-suffix' | 'numbering';
@@ -38,8 +39,7 @@ export class RenameService {
   static async generatePreview(options: RenameOptions): Promise<RenamePreview[]> {
     const { inputPath, mode } = options;
     
-    const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
-    
+
     if (!(await exists(inputPath))) {
       throw new Error("Directory does not exist.");
     }
