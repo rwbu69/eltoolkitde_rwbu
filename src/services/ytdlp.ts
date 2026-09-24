@@ -187,24 +187,34 @@ export class YtDlpService {
       
       command.stdout.on('data', (line) => {
         if (!line.trim()) return;
-        dispatchLog(`[yt-dlp] ${line.trim()}`);
         
+        // Check for playlist progress
         const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
         if (playlistMatch) {
           currentPlaylistIndex = parseInt(playlistMatch[1]);
           totalPlaylistItems = parseInt(playlistMatch[2]);
         }
         
-        const dlMatch = line.match(/\[download\]\s+(\d+\.?\d*)%\s+of[ ~]+([^ ]+)\s+at\s+([^ ]+)\s+ETA\s+([^ ]+)/);
-        if (dlMatch) {
-          onProgress({
-            percent: parseFloat(dlMatch[1]),
-            speed: dlMatch[3],
-            eta: dlMatch[4],
-            status: 'downloading',
-            playlistCurrent: currentPlaylistIndex,
-            playlistTotal: totalPlaylistItems
-          });
+        // Robust progress parsing
+        const isProgress = line.includes('[download]') && line.includes('%');
+        if (isProgress) {
+          const percentMatch = line.match(/\[download\]\s+([\d\.]+)%/);
+          const speedMatch = line.match(/at\s+([^\s]+)/);
+          const etaMatch = line.match(/ETA\s+([^\s]+)/);
+
+          if (percentMatch) {
+            onProgress({
+              percent: parseFloat(percentMatch[1]),
+              speed: speedMatch ? speedMatch[1] : '--',
+              eta: etaMatch ? etaMatch[1] : '--',
+              status: 'downloading',
+              playlistCurrent: currentPlaylistIndex,
+              playlistTotal: totalPlaylistItems
+            });
+          }
+        } else {
+          // Only log non-progress lines to prevent terminal spam
+          dispatchLog(`[yt-dlp] ${line.trim()}`);
         }
       });
 
