@@ -9,6 +9,7 @@ import SettingsView from './components/SettingsView';
 import TerminalLogView from './components/TerminalLogView';
 import { Titlebar } from './components/ui/Titlebar';
 import { Tooltip } from './components/ui/Tooltip';
+import { useAppStore } from './store/useAppStore';
 
 import appIcon from './assets/icon.png';
 
@@ -16,6 +17,15 @@ type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'rename' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('downloader');
+  const { settings } = useAppStore();
+
+  useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [settings.theme]);
 
   useEffect(() => {
     const timer = setTimeout(() => {

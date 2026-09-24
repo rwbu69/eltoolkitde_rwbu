@@ -9,6 +9,7 @@ const dispatchLog = (msg: string) => {
 export interface PlaylistItem {
   title: string;
   id: string;
+  url?: string;
 }
 
 export interface VideoInfo {
@@ -36,6 +37,7 @@ export interface DownloadOptions {
   audioBitrate?: '320k' | '256k' | '192k';
   cookiesFilePath?: string;
   browserForCookies?: string;
+  rateLimit?: string;
 }
 
 export class YtDlpService {
@@ -87,6 +89,7 @@ export class YtDlpService {
       entries: isPlaylist && data.entries ? data.entries.map((e: any) => ({
         title: e.title,
         id: e.id,
+        url: e.url || e.webpage_url,
       })) : []
     };
   }
@@ -95,7 +98,7 @@ export class YtDlpService {
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies } = options;
+    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies, rateLimit } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
     let formatArgs: string[] = [];
@@ -137,6 +140,13 @@ export class YtDlpService {
       '-o', template,
       '-P', outputDir
     ];
+
+    if (rateLimit) {
+      dlArgs.push('--limit-rate', rateLimit);
+      dlArgs.push('--sleep-requests', '1');
+      dlArgs.push('--min-sleep-interval', '1');
+      dlArgs.push('--max-sleep-interval', '3');
+    }
 
     if (browserForCookies) {
       dlArgs.push('--cookies-from-browser', browserForCookies);

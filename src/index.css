@@ -5,13 +5,35 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --color-appbg: #FFFBF5;
+    --color-panel: #FFFFFF;
+    --color-ink: #4A3E54;
+    --color-muted: #A597B0;
+    --color-oshipink: #FF6FA0;
+    --color-toska: #2FD9C0;
+    --color-softpink: #FFEBF1;
+    --color-softtoska: #E5FAF7;
+  }
+
+  .dark {
+    --color-appbg: #1A1625;
+    --color-panel: #262135;
+    --color-ink: #E8E3EE;
+    --color-muted: #8E8299;
+    --color-oshipink: #FF6FA0;
+    --color-toska: #2FD9C0;
+    --color-softpink: #3A1F2C;
+    --color-softtoska: #1F3637;
+  }
+
   html, body, #root {
     @apply w-full h-full overflow-hidden m-0 p-0;
   }
   body {
-    @apply antialiased;
-    background-color: #FFFBF5;
-    color: #4A3E54;
+    @apply antialiased transition-colors duration-300;
+    background-color: var(--color-appbg);
+    color: var(--color-ink);
     font-family: 'Inter', sans-serif;
   }
 }
@@ -103,9 +125,9 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #A597B0;
+  background: var(--color-muted);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #4A3E54;
+  background: var(--color-ink);
 }
