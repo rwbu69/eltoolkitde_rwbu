@@ -1,10 +1,10 @@
-import { FolderOpen, Shield, Code, FileBox } from 'lucide-react';
+import { FolderOpen, Shield, Code, FileBox, Download, Zap } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { useSettings } from '../hooks/useSettings';
+import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout';
 
 export default function SettingsView() {
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings } = useAppStore();
 
   const handleSelectFolder = async () => {
     try {
@@ -67,6 +67,19 @@ export default function SettingsView() {
                   </button>
                 </div>
               </div>
+              
+              <div>
+                <FormLabel text="APPEARANCE" />
+                <select 
+                  value={settings.theme}
+                  onChange={(e) => updateSettings({ theme: e.target.value as 'light' | 'dark' })}
+                  className="game-select font-bold"
+                >
+                  <option value="light">LIGHT MODE</option>
+                  <option value="dark">DARK MODE (Midnight)</option>
+                </select>
+                <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">Changes apply immediately.</p>
+              </div>
             </div>
           </div>
 
@@ -102,6 +115,62 @@ export default function SettingsView() {
                   <option value="192k">192 kbps (Good)</option>
                   <option value="128k">128 kbps (Basic)</option>
                 </select>
+              </div>
+            </div>
+          </div>
+
+          {/* DOWNLOAD BEHAVIOR SECTION */}
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+              <Download className="w-5 h-5 text-toska" /> DOWNLOAD BEHAVIOR
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <FormLabel text="CONCURRENT DOWNLOADS" />
+                <label className="flex items-center gap-3 cursor-pointer group mt-2 select-none">
+                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-ink rounded-md transition-colors ${settings.enableConcurrentDownloads ? 'bg-white' : 'bg-appbg'}`}>
+                    <input 
+                      type="checkbox" 
+                      className="absolute opacity-0 cursor-pointer w-full h-full"
+                      checked={settings.enableConcurrentDownloads}
+                      onChange={(e) => updateSettings({ enableConcurrentDownloads: e.target.checked })}
+                    />
+                    {settings.enableConcurrentDownloads && <div className="w-2.5 h-2.5 bg-toska rounded-sm" />}
+                  </div>
+                  <span className="font-bold font-mono text-sm text-ink group-hover:text-toska transition-colors">
+                    Enable Parallel Processing
+                  </span>
+                </label>
+                <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">Download multiple links or playlist items at once.</p>
+              </div>
+
+              <div>
+                <FormLabel text="MAX CONCURRENT ITEMS" />
+                <input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={settings.maxConcurrentDownloads}
+                  onChange={(e) => updateSettings({ maxConcurrentDownloads: parseInt(e.target.value) || 1 })}
+                  disabled={!settings.enableConcurrentDownloads}
+                  className="game-input font-bold disabled:opacity-50"
+                />
+                <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">Keep it low (2-3) to avoid IP bans from YouTube.</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+              <div>
+                <FormLabel text="RATE LIMIT SPEED" icon={Zap} iconColor="text-oshipink" />
+                <input
+                  type="text"
+                  value={settings.rateLimitSpeed}
+                  onChange={(e) => updateSettings({ rateLimitSpeed: e.target.value })}
+                  placeholder="e.g. 5M (Leave empty for none)"
+                  className="game-input"
+                />
+                <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">Throttle download speed (e.g., 5M = 5 MB/s, 500K = 500 KB/s) to prevent bans.</p>
               </div>
             </div>
           </div>

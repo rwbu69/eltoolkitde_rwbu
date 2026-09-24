@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Settings2, Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, CheckCircle2, Circle, Clock, X, FileAudio } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { FfmpegService, FfmpegProgress } from '../services/ffmpeg';
-import { useSettings } from '../hooks/useSettings';
+import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
-  const { settings } = useSettings();
+  const { settings } = useAppStore();
   const [mode, setMode] = useState<'mp3' | 'trim' | 'mirror'>('mp3');
   
   const [inputPaths, setInputPaths] = useState<string[]>([]);

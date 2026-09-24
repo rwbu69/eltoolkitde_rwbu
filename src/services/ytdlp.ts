@@ -9,6 +9,7 @@ const dispatchLog = (msg: string) => {
 export interface PlaylistItem {
   title: string;
   id: string;
+  url?: string;
 }
 
 export interface VideoInfo {
@@ -36,6 +37,7 @@ export interface DownloadOptions {
   audioBitrate?: '320k' | '256k' | '192k';
   cookiesFilePath?: string;
   browserForCookies?: string;
+  rateLimit?: string;
 }
 
 export class YtDlpService {
@@ -87,6 +89,7 @@ export class YtDlpService {
       entries: isPlaylist && data.entries ? data.entries.map((e: any) => ({
         title: e.title,
         id: e.id,
+        url: e.url || e.webpage_url,
       })) : []
     };
   }
@@ -95,7 +98,7 @@ export class YtDlpService {
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies } = options;
+    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies, rateLimit } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
     let formatArgs: string[] = [];
@@ -138,6 +141,13 @@ export class YtDlpService {
       '-P', outputDir
     ];
 
+    if (rateLimit) {
+      dlArgs.push('--limit-rate', rateLimit);
+      dlArgs.push('--sleep-requests', '1');
+      dlArgs.push('--min-sleep-interval', '1');
+      dlArgs.push('--max-sleep-interval', '3');
+    }
+
     if (browserForCookies) {
       dlArgs.push('--cookies-from-browser', browserForCookies);
     } else if (cookiesFilePath) {
@@ -177,24 +187,34 @@ export class YtDlpService {
       
       command.stdout.on('data', (line) => {
         if (!line.trim()) return;
-        dispatchLog(`[yt-dlp] ${line.trim()}`);
         
+        // Check for playlist progress
         const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
         if (playlistMatch) {
           currentPlaylistIndex = parseInt(playlistMatch[1]);
           totalPlaylistItems = parseInt(playlistMatch[2]);
         }
         
-        const dlMatch = line.match(/\[download\]\s+(\d+\.?\d*)%\s+of[ ~]+([^ ]+)\s+at\s+([^ ]+)\s+ETA\s+([^ ]+)/);
-        if (dlMatch) {
-          onProgress({
-            percent: parseFloat(dlMatch[1]),
-            speed: dlMatch[3],
-            eta: dlMatch[4],
-            status: 'downloading',
-            playlistCurrent: currentPlaylistIndex,
-            playlistTotal: totalPlaylistItems
-          });
+        // Robust progress parsing
+        const isProgress = line.includes('[download]') && line.includes('%');
+        if (isProgress) {
+          const percentMatch = line.match(/\[download\]\s+([\d\.]+)%/);
+          const speedMatch = line.match(/at\s+([^\s]+)/);
+          const etaMatch = line.match(/ETA\s+([^\s]+)/);
+
+          if (percentMatch) {
+            onProgress({
+              percent: parseFloat(percentMatch[1]),
+              speed: speedMatch ? speedMatch[1] : '--',
+              eta: etaMatch ? etaMatch[1] : '--',
+              status: 'downloading',
+              playlistCurrent: currentPlaylistIndex,
+              playlistTotal: totalPlaylistItems
+            });
+          }
+        } else {
+          // Only log non-progress lines to prevent terminal spam
+          dispatchLog(`[yt-dlp] ${line.trim()}`);
         }
       });
 
