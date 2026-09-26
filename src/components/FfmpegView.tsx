@@ -174,7 +174,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-1.5 shrink-0">
               <FormLabel text={mode === 'trim' ? 'TARGET FILE (FIRST ONLY)' : 'TARGET FILES'} icon={FolderOpen} />
-              <span className="font-mono text-[10px] font-bold text-muted bg-appbg px-2 py-0.5 rounded-full border border-ink/20">
+              <span className="font-mono text-[10px] font-bold text-muted bg-appbg px-2 py-0.5 rounded-full border border-gameborder/20">
                 {inputPaths.length} selected
               </span>
             </div>
@@ -197,9 +197,9 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
             </div>
 
             {inputPaths.length > 0 && (
-              <PanelScrollArea className="mt-2 flex flex-col gap-1.5 max-h-[120px] bg-appbg p-1.5 rounded-xl border-[3px] border-ink shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)]">
+              <PanelScrollArea className="mt-2 flex flex-col gap-1.5 max-h-[120px] bg-appbg p-1.5 rounded-xl border-[3px] border-gameborder shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)]">
                 {inputPaths.map((p, i) => (
-                  <div key={i} className="flex justify-between items-center bg-white border-2 border-ink rounded-lg px-2.5 py-1.5 shrink-0">
+                  <div key={i} className="flex justify-between items-center bg-panel border-2 border-gameborder rounded-lg px-2.5 py-1.5 shrink-0">
                     <span className="text-[11px] font-mono font-bold text-ink truncate pr-2 leading-tight" title={p}>{p}</span>
                     <button onClick={() => handleRemoveFile(p)} className="text-oshipink hover:text-red-700 bg-softpink rounded p-0.5">
                       <X className="w-3 h-3" />
@@ -211,8 +211,8 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           </div>
 
           {/* Settings Area */}
-          <div className="bg-appbg border-4 border-ink rounded-2xl p-4 shrink-0">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+          <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <Settings2 className="w-4 h-4" /> CONFIGURATION
             </h3>
 
@@ -226,11 +226,11 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <FormLabel text="START (HH:MM:SS)" />
-                  <input type="text" value={trimStart} onChange={e => setTrimStart(e.target.value)} className="game-input bg-white" placeholder="00:00:00" />
+                  <input type="text" value={trimStart} onChange={e => setTrimStart(e.target.value)} className="game-input bg-panel" placeholder="00:00:00" />
                 </div>
                 <div>
                   <FormLabel text="END (HH:MM:SS)" />
-                  <input type="text" value={trimEnd} onChange={e => setTrimEnd(e.target.value)} className="game-input bg-white" placeholder="00:01:00" />
+                  <input type="text" value={trimEnd} onChange={e => setTrimEnd(e.target.value)} className="game-input bg-panel" placeholder="00:01:00" />
                 </div>
               </div>
             )}
@@ -258,7 +258,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
             {isProcessing && cancelFn && (
               <button 
                 onClick={() => cancelFn()}
-                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-white border-2"
+                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-buttontext border-2"
               >
                 <X className="w-5 h-5" /> CANCEL
               </button>
@@ -289,25 +289,25 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
             <PanelScrollArea className="flex flex-col gap-3">
               {progresses.map((p, i) => {
                 let statusIcon = <Circle className="w-5 h-5 text-muted" />;
-                let cardClass = 'bg-white border-muted';
-                let tagClass = 'bg-ink-muted text-white';
+                let cardClass = 'bg-panel border-muted';
+                let tagClass = 'bg-ink-muted text-buttontext';
 
                 if (p.status === 'done') {
                   statusIcon = <CheckCircle2 className="w-5 h-5 text-toska" />;
-                  cardClass = 'bg-softtoska border-ink';
+                  cardClass = 'bg-softtoska border-gameborder';
                   tagClass = 'bg-toska text-ink';
                 } else if (p.status === 'error') {
                   statusIcon = <X className="w-5 h-5 text-oshipink" />;
                   cardClass = 'bg-softpink border-oshipink';
-                  tagClass = 'bg-oshipink text-white';
+                  tagClass = 'bg-oshipink text-buttontext';
                 } else if (p.status === 'processing') {
                   statusIcon = <Clock className="w-5 h-5 text-ink animate-spin-slow" />;
-                  cardClass = 'bg-white border-ink shadow-game-thin';
-                  tagClass = 'bg-ink text-white';
+                  cardClass = 'bg-panel border-gameborder shadow-game-thin';
+                  tagClass = 'bg-ink text-buttontext';
                 } else if (p.status === 'skipped') {
                   statusIcon = <Circle className="w-5 h-5 text-muted" />;
                   cardClass = 'bg-appbg border-muted';
-                  tagClass = 'bg-muted text-white';
+                  tagClass = 'bg-muted text-buttontext';
                 }
 
                 return (
@@ -317,12 +317,12 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                         {statusIcon}
                         <span className="text-ink font-mono font-bold text-xs truncate leading-tight" title={p.file}>{p.file}</span>
                       </div>
-                      <span className={`px-2 py-0.5 border-2 border-ink rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
+                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
                         {p.status}
                       </span>
                     </div>
                     {p.status === 'processing' && p.percent !== undefined && (
-                      <div className="w-full h-2 bg-appbg rounded-full overflow-hidden border border-ink/20 mt-1">
+                      <div className="w-full h-2 bg-appbg rounded-full overflow-hidden border border-gameborder/20 mt-1">
                         <div className="h-full bg-ink transition-all duration-300" style={{ width: `${p.percent}%` }}></div>
                       </div>
                     )}

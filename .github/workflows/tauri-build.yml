@@ -71,7 +71,7 @@ jobs:
 
           {
             echo 'RELEASE_BODY<<EOF'
-            cat patchnotes.md 2>/dev/null || echo "No manual patchnotes provided."
+            cat CHANGELOG.md 2>/dev/null || echo "No manual patchnotes provided."
             echo ""
             echo "### Commit History"
             echo "$COMMITS"

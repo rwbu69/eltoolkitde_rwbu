@@ -197,8 +197,8 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
             </div>
 
             {/* Configuration Area */}
-            <div className="bg-appbg border-4 border-ink rounded-2xl p-4 shrink-0 mt-2">
-              <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+            <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0 mt-2">
+              <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
                 <Settings2 className="w-4 h-4" /> CONFIGURATION
               </h3>
 
@@ -206,15 +206,15 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="FIND TEXT" />
-                    <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="game-input bg-white" placeholder="Text to find..." />
+                    <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="game-input bg-panel" placeholder="Text to find..." />
                   </div>
                   <div>
                     <FormLabel text="REPLACE WITH" />
-                    <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="game-input bg-white" placeholder="Replace with..." />
+                    <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="game-input bg-panel" placeholder="Replace with..." />
                   </div>
                   <label onClick={() => setCaseSensitive(!caseSensitive)} className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-12 h-6 rounded-full border-2 border-ink transition-colors relative ${caseSensitive ? 'bg-toska' : 'bg-muted'}`}>
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white border-2 border-ink rounded-full transition-transform ${caseSensitive ? 'translate-x-6' : ''}`}></div>
+                    <div className={`w-12 h-6 rounded-full border-2 border-gameborder transition-colors relative ${caseSensitive ? 'bg-toska' : 'bg-muted'}`}>
+                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-panel border-2 border-gameborder rounded-full transition-transform ${caseSensitive ? 'translate-x-6' : ''}`}></div>
                     </div>
                     <span className="font-mono text-xs font-bold text-ink group-hover:text-toska transition-colors">CASE SENSITIVE</span>
                   </label>
@@ -225,11 +225,11 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="PREFIX" />
-                    <input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="game-input bg-white" placeholder="Add to beginning..." />
+                    <input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="game-input bg-panel" placeholder="Add to beginning..." />
                   </div>
                   <div>
                     <FormLabel text="SUFFIX" />
-                    <input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="game-input bg-white" placeholder="Add to end..." />
+                    <input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="game-input bg-panel" placeholder="Add to end..." />
                   </div>
                 </div>
               )}
@@ -238,16 +238,16 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="BASE NAME (OPTIONAL)" />
-                    <input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="game-input bg-white" placeholder="e.g. Track_" />
+                    <input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="game-input bg-panel" placeholder="e.g. Track_" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <FormLabel text="START NUMBER" />
-                      <input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="game-input bg-white" />
+                      <input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="game-input bg-panel" />
                     </div>
                     <div>
                       <FormLabel text="PADDING" />
-                      <input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="game-input bg-white" />
+                      <input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="game-input bg-panel" />
                     </div>
                   </div>
                 </div>
@@ -255,7 +255,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
             </div>
             
             {history.length > 0 && (
-              <div className="p-4 rounded-xl bg-softpink border-4 border-ink flex items-start justify-between gap-3 shrink-0">
+              <div className="p-4 rounded-xl bg-softpink border-4 border-gameborder flex items-start justify-between gap-3 shrink-0">
                 <div>
                   <h4 className="font-bold text-sm text-ink mb-1 flex items-center gap-1"><Undo2 className="w-4 h-4"/> UNDO AVAILABLE</h4>
                   <p className="text-xs text-ink/80 font-mono">You can revert the last rename operation.</p>
@@ -287,10 +287,10 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       <Column isSidebar>
         <SectionHeader title="PREVIEW" align="right" variant="secondary" />
         <Panel className="flex flex-col bg-appbg" noPadding>
-          <div className="p-3 border-b-4 border-ink bg-white rounded-t-2xl shrink-0 flex items-center justify-between">
+          <div className="p-3 border-b-4 border-gameborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between">
             <FormLabel text="FILE CHANGES" />
             {hasConflicts && (
-              <span className="text-[10px] font-bold text-white bg-oshipink px-2 py-1 rounded-full flex items-center gap-1">
+              <span className="text-[10px] font-bold text-buttontext bg-oshipink px-2 py-1 rounded-full flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3"/> CONFLICTS
               </span>
             )}
@@ -307,7 +307,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                   const prog = progresses.find(x => x.file === p.oldName);
                   const isError = p.status !== 'ok' || prog?.status === 'error';
                   return (
-                    <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : 'bg-white border-ink'}`}>
+                    <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : 'bg-panel border-gameborder'}`}>
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[10px] font-bold text-muted truncate pr-2">OLD NAME</span>
                       </div>
@@ -315,8 +315,8 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                       
                       <div className="flex justify-between items-center mb-1">
                         <span className="text-[10px] font-bold text-toska truncate pr-2">NEW NAME</span>
-                        {p.status === 'collision' && <span className="text-[9px] font-bold text-white bg-oshipink px-1.5 py-0.5 rounded">Collision</span>}
-                        {p.status === 'exists' && <span className="text-[9px] font-bold text-white bg-oshipink px-1.5 py-0.5 rounded">Exists</span>}
+                        {p.status === 'collision' && <span className="text-[9px] font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded">Collision</span>}
+                        {p.status === 'exists' && <span className="text-[9px] font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded">Exists</span>}
                       </div>
                       <span className={`text-xs font-mono font-bold truncate ${isError ? 'text-oshipink' : 'text-ink'}`} title={p.newName}>{p.newName}</span>
                       
@@ -324,7 +324,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                         <div className={`mt-2 text-[10px] font-bold px-2 py-1 rounded-lg border-2 ${
                           prog.status === 'done' ? 'bg-softtoska border-toska text-toska' :
                           prog.status === 'error' ? 'bg-softpink border-oshipink text-oshipink' :
-                          'bg-appbg border-ink/20 text-muted'
+                          'bg-appbg border-gameborder/20 text-muted'
                         }`}>
                           STATUS: {prog.status.toUpperCase()} {prog.log ? `(${prog.log})` : ''}
                         </div>

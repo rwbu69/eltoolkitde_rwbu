@@ -119,25 +119,25 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
           </div>
 
           {/* ID3 Tag Inputs */}
-          <div className="bg-appbg border-4 border-ink rounded-2xl p-4 space-y-4 shrink-0">
-            <h3 className="font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">ID3 TAG CONFIG</h3>
+          <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 space-y-4 shrink-0">
+            <h3 className="font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">ID3 TAG CONFIG</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FormLabel text="TITLE" />
-                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-white" />
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
               </div>
               <div>
                 <FormLabel text="ARTIST" />
-                <input type="text" value={artist} onChange={e => setArtist(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-white" />
+                <input type="text" value={artist} onChange={e => setArtist(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
               </div>
               <div>
                 <FormLabel text="ALBUM" />
-                <input type="text" value={album} onChange={e => setAlbum(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-white" />
+                <input type="text" value={album} onChange={e => setAlbum(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
               </div>
               <div>
                 <FormLabel text="YEAR" />
-                <input type="text" value={year} onChange={e => setYear(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-white" />
+                <input type="text" value={year} onChange={e => setYear(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
               </div>
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
             {isProcessing && cancelFn && (
               <button 
                 onClick={() => cancelFn()}
-                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-white border-2"
+                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-buttontext border-2"
               >
                 <X className="w-5 h-5" /> CANCEL
               </button>
@@ -178,25 +178,25 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
           ) : (
             <PanelScrollArea className="flex flex-col gap-3">
               {progresses.map((p, i) => {
-                let cardClass = 'bg-white border-muted';
-                let tagClass = 'bg-ink-muted text-white';
+                let cardClass = 'bg-panel border-muted';
+                let tagClass = 'bg-ink-muted text-buttontext';
 
                 if (p.status === 'done') {
-                  cardClass = 'bg-softtoska border-ink';
+                  cardClass = 'bg-softtoska border-gameborder';
                   tagClass = 'bg-toska text-ink';
                 } else if (p.status === 'error') {
                   cardClass = 'bg-softpink border-oshipink';
-                  tagClass = 'bg-oshipink text-white';
+                  tagClass = 'bg-oshipink text-buttontext';
                 } else {
-                  cardClass = 'bg-white border-ink shadow-game-thin';
-                  tagClass = 'bg-ink text-white';
+                  cardClass = 'bg-panel border-gameborder shadow-game-thin';
+                  tagClass = 'bg-ink text-buttontext';
                 }
 
                 return (
                   <div key={i} className={`flex flex-col gap-2 border-2 p-3 rounded-xl transition-all shrink-0 ${cardClass}`}>
                     <div className="flex justify-between items-start gap-2">
                       <span className="text-ink font-mono font-bold text-xs truncate flex-1 leading-tight" title={p.file}>{p.file}</span>
-                      <span className={`px-2 py-0.5 border-2 border-ink rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
+                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
                         {p.status}
                       </span>
                     </div>

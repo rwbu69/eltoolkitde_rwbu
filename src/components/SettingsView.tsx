@@ -44,7 +44,7 @@ export default function SettingsView() {
           
           {/* GENERAL SECTION */}
           <div className="space-y-4">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <FolderOpen className="w-5 h-5 text-toska" /> GENERAL DEFAULTS
             </h3>
             
@@ -85,7 +85,7 @@ export default function SettingsView() {
 
           {/* MEDIA CONFIG SECTION */}
           <div className="space-y-4">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <FileBox className="w-5 h-5 text-toska" /> MEDIA PRESETS
             </h3>
             
@@ -121,7 +121,7 @@ export default function SettingsView() {
 
           {/* DOWNLOAD BEHAVIOR SECTION */}
           <div className="space-y-4">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <Download className="w-5 h-5 text-toska" /> DOWNLOAD BEHAVIOR
             </h3>
             
@@ -129,7 +129,7 @@ export default function SettingsView() {
               <div>
                 <FormLabel text="CONCURRENT DOWNLOADS" />
                 <label className="flex items-center gap-3 cursor-pointer group mt-2 select-none">
-                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-ink rounded-md transition-colors ${settings.enableConcurrentDownloads ? 'bg-white' : 'bg-appbg'}`}>
+                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-gameborder rounded-md transition-colors ${settings.enableConcurrentDownloads ? 'bg-panel' : 'bg-appbg'}`}>
                     <input 
                       type="checkbox" 
                       className="absolute opacity-0 cursor-pointer w-full h-full"
@@ -177,7 +177,7 @@ export default function SettingsView() {
 
           {/* SYSTEM BEHAVIOR SECTION */}
           <div className="space-y-4">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <Shield className="w-5 h-5 text-toska" /> SYSTEM BEHAVIOR
             </h3>
             
@@ -185,7 +185,7 @@ export default function SettingsView() {
               <div>
                 <FormLabel text="CLOSE BUTTON ACTION" />
                 <label className="flex items-center gap-3 cursor-pointer group mt-2 select-none">
-                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-ink rounded-md transition-colors ${settings.closeToTray ? 'bg-white' : 'bg-appbg'}`}>
+                  <div className={`relative flex items-center justify-center w-6 h-6 border-4 border-gameborder rounded-md transition-colors ${settings.closeToTray ? 'bg-panel' : 'bg-appbg'}`}>
                     <input 
                       type="checkbox" 
                       className="absolute opacity-0 cursor-pointer w-full h-full"
@@ -204,8 +204,8 @@ export default function SettingsView() {
           </div>
 
           {/* AUTHENTICATION SECTION */}
-          <div className="space-y-4 bg-appbg border-4 border-ink p-5 rounded-2xl">
-            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-ink pb-1.5 text-base">
+          <div className="space-y-4 bg-appbg border-4 border-gameborder p-5 rounded-2xl">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <Shield className="w-5 h-5 text-oshipink" /> AUTHENTICATION (FOR PREMIUM SITES)
             </h3>
             
@@ -215,7 +215,7 @@ export default function SettingsView() {
                 <select 
                   value={settings.browserForCookies}
                   onChange={(e) => updateSettings({ browserForCookies: e.target.value, cookiesFilePath: '' })}
-                  className="game-select font-bold bg-white"
+                  className="game-select font-bold bg-panel"
                 >
                   <option value="">None</option>
                   <option value="chrome">Chrome</option>
@@ -236,7 +236,7 @@ export default function SettingsView() {
                     value={settings.cookiesFilePath}
                     readOnly
                     placeholder="No file selected..."
-                    className="game-input bg-white"
+                    className="game-input bg-panel"
                   />
                   <button 
                     onClick={handleSelectCookies}

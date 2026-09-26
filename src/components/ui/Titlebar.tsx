@@ -16,7 +16,7 @@ export function Titlebar() {
   return (
     <div 
       onContextMenu={(e) => e.preventDefault()}
-      className="h-10 bg-white border-b-4 border-ink flex justify-between items-center shrink-0 shadow-game-thin z-[9999] select-none"
+      className="h-10 bg-panel border-b-4 border-gameborder flex justify-between items-center shrink-0 shadow-game-thin z-[9999] select-none"
     >
       
       {/* Drag Region & Title */}
@@ -47,7 +47,7 @@ export function Titlebar() {
         </button>
         <button 
           onClick={close}
-          className="w-8 h-8 flex items-center justify-center hover:bg-oshipink hover:text-white rounded text-ink transition-colors"
+          className="w-8 h-8 flex items-center justify-center hover:bg-oshipink hover:text-buttontext rounded text-ink transition-colors"
           title="Close"
         >
           <X className="w-4 h-4" />

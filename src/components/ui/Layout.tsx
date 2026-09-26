@@ -52,8 +52,8 @@ export function SectionHeader({
   const alignClass = align === 'left' ? 'self-start' : 'self-end';
   
   const boxClass = variant === 'primary' 
-    ? 'text-white bg-ink border-4 border-ink border-l-oshipink'
-    : 'bg-white border-4 text-ink border-ink';
+    ? 'text-inkinverse bg-ink border-4 border-gameborder border-l-oshipink'
+    : 'bg-panel border-4 text-ink border-gameborder';
 
   return (
     <div className={`${alignClass} inline-block shrink-0`}>
@@ -81,7 +81,7 @@ export function Panel({
   noPadding?: boolean;
 }) {
   return (
-    <div className={`bg-white border-4 border-ink rounded-3xl shadow-game-thick flex flex-col min-h-0 ${noPadding ? '' : 'p-5'} ${className}`}>
+    <div className={`bg-panel border-4 border-gameborder rounded-3xl shadow-game-thick flex flex-col min-h-0 ${noPadding ? '' : 'p-5'} ${className}`}>
       {children}
     </div>
   );
