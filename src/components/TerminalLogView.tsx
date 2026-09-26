@@ -41,20 +41,20 @@ export default function TerminalLogView() {
         {/* Toggle Tab (Nameplate) */}
         <button 
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-8 lg:left-12 top-[-48px] h-[48px] bg-oshipink border-4 border-b-0 border-ink px-8 rounded-t-2xl z-20 flex items-center gap-2 hover:bg-pink-500 transition-colors"
+          className="absolute left-8 lg:left-12 top-[-48px] h-[48px] bg-oshipink border-4 border-b-0 border-gameborder px-8 rounded-t-2xl z-20 flex items-center gap-2 hover:bg-pink-500 transition-colors"
         >
-          <Terminal className="w-5 h-5 text-white" />
-          <h2 className="text-lg font-black tracking-widest text-white font-zen uppercase">System</h2>
+          <Terminal className="w-5 h-5 text-buttontext" />
+          <h2 className="text-lg font-black tracking-widest text-buttontext font-zen uppercase">System</h2>
           {/* Notification dot */}
           {!isOpen && logs.length > 0 && (
-            <div className="absolute -top-2 -right-2 bg-toska text-ink text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-ink animate-bounce">
+            <div className="absolute -top-2 -right-2 bg-toska text-ink text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-gameborder animate-bounce">
               {logs.length > 99 ? '99+' : logs.length}
             </div>
           )}
         </button>
 
         {/* The Text Box */}
-        <div className="w-full h-full bg-white/95 backdrop-blur-md border-t-4 border-x-4 border-ink rounded-t-3xl shadow-[0_-8px_20px_rgba(58,46,66,0.15)] flex flex-col p-6 pt-8">
+        <div className="w-full h-full bg-panel/95 backdrop-blur-md border-t-4 border-x-4 border-gameborder rounded-t-3xl shadow-[0_-8px_20px_rgba(58,46,66,0.15)] flex flex-col p-6 pt-8">
           
           {/* Dialogue Text (Logs) */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto text-sm leading-relaxed font-inter text-ink custom-scrollbar pr-4">

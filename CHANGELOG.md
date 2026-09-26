@@ -1,3 +1,22 @@
+## ElToolkitDeRWBU v0.1.2 - The "Workflow & Aesthetics" Update
+
+Update ini berfokus pada penyempurnaan UI menjadi jauh lebih premium (True Dark Mode), penambahan alat manipulasi BPM berstandar studio, serta optimalisasi performa unduhan.
+
+### Visual & UI Overhaul (Catppuccin Theme)
+- **True Dark Mode**: Seluruh elemen UI dan token warna telah sepenuhnya dimigrasikan menggunakan palet warna **Catppuccin** (Latte untuk Light Mode, Mocha untuk Dark Mode). 
+- **Dynamic Contrast System**: Memperbaiki isu "blinding white" pada border di Dark Mode. Teks di atas warna-warna cerah pastel sekarang secara otomatis menyesuaikan tingkat kontrasnya agar mudah dibaca dan elegan di mata.
+
+### Fitur Baru (New Features)
+- **Batch BPM Modifier (Studio-Grade)**: Menambahkan sidecar baru yang ditenagai oleh Python dan FFmpeg untuk manipulasi tempo.
+  - **Librosa Detection**: Mendeteksi BPM secara akurat menggunakan algoritma *onset envelope* dan *dynamic programming*.
+  - **DJ-Style Constraints**: Mencegah *octave errors* dengan dukungan pembatasan rentang deteksi (contoh: 90-180 BPM).
+  - **Editable Precision**: Untuk mencegah *detection drift* (misal BPM 190.8), Anda kini dapat mengklik dan mengedit hasil deteksi BPM secara manual di UI sebelum dieksekusi agar hasil konversi menjadi akurat 100%.
+
+### Perbaikan & Peningkatan (Improvements & Fixes)
+- **Parallel Downloads**: Memperbarui konfigurasi aplikasi untuk mendukung *multi-threaded* dan *concurrent batch downloads* secara bersamaan (dapat diatur lewat Preferences) untuk mempercepat alur kerja Anda.
+
+---
+
 ## ElToolkitDeRWBU v0.1.1 - The "Visual & Control" Update
 
 Update kali ini berfokus pada perombakan estetika antarmuka secara keseluruhan agar selaras dengan tema "Visual Novel / Game" serta menambahkan kontrol penuh bagi pengguna terhadap proses-proses di balik layar.

@@ -6,25 +6,33 @@
 
 @layer base {
   :root {
-    --color-appbg: #FFFBF5;
-    --color-panel: #FFFFFF;
-    --color-ink: #4A3E54;
-    --color-muted: #A597B0;
-    --color-oshipink: #FF6FA0;
-    --color-toska: #2FD9C0;
-    --color-softpink: #FFEBF1;
-    --color-softtoska: #E5FAF7;
+    --color-appbg: #eff1f5;
+    --color-panel: #ffffff;
+    --color-gameborder: #4c4f69;
+    --color-ink: #4c4f69;
+    --color-inkinverse: #ffffff;
+    --color-muted: #8c8fa1;
+    --color-oshipink: #ea76cb;
+    --color-toska: #179299;
+    --color-softpink: #faddf1;
+    --color-softtoska: #e6f9f9;
+    --color-gameshadow: #4c4f69;
+    --color-buttontext: #ffffff;
   }
 
   .dark {
-    --color-appbg: #1A1625;
-    --color-panel: #262135;
-    --color-ink: #E8E3EE;
-    --color-muted: #8E8299;
-    --color-oshipink: #FF6FA0;
-    --color-toska: #2FD9C0;
-    --color-softpink: #3A1F2C;
-    --color-softtoska: #1F3637;
+    --color-appbg: #1e1e2e;
+    --color-panel: #181825;
+    --color-gameborder: #11111b;
+    --color-ink: #cdd6f4;
+    --color-inkinverse: #1e1e2e;
+    --color-muted: #a6adc8;
+    --color-oshipink: #f5c2e7;
+    --color-toska: #94e2d5;
+    --color-softpink: #311d2b;
+    --color-softtoska: #1a2a2a;
+    --color-gameshadow: #11111b;
+    --color-buttontext: #1e1e2e;
   }
 
   html, body, #root {
@@ -41,7 +49,7 @@
 @layer components {
   /* THE ARCADE BUTTON PHYSICS */
   .game-btn-primary {
-    @apply bg-oshipink text-white rounded-3xl border-4 border-ink shadow-game-thick transition-all duration-100 uppercase tracking-wide font-zen;
+    @apply bg-oshipink text-buttontext rounded-3xl border-4 border-gameborder shadow-game-thick transition-all duration-100 uppercase tracking-wide font-zen;
   }
   .game-btn-primary:active {
     @apply translate-y-[8px] shadow-none;
@@ -52,7 +60,7 @@
   }
 
   .game-btn-secondary {
-    @apply bg-panel text-ink rounded-2xl border-4 border-ink shadow-game-thin transition-all duration-100 font-zen font-bold;
+    @apply bg-panel text-ink rounded-2xl border-4 border-gameborder shadow-game-thin transition-all duration-100 font-zen font-bold;
   }
   .game-btn-secondary:active {
     @apply translate-y-[6px] shadow-none;
@@ -63,12 +71,12 @@
 
   /* Game Input Field */
   .game-input {
-    @apply w-full bg-panel border-4 border-ink rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors placeholder:text-muted;
+    @apply w-full bg-panel border-4 border-gameborder rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors placeholder:text-muted;
   }
   
   /* Select Input */
   .game-select {
-    @apply w-full bg-panel border-4 border-ink rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors appearance-none cursor-pointer;
+    @apply w-full bg-panel border-4 border-gameborder rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors appearance-none cursor-pointer;
   }
 
   /* Skewed containers */

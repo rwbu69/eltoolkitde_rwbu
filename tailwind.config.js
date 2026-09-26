@@ -10,7 +10,10 @@ export default {
       colors: {
         appbg: 'var(--color-appbg)',
         panel: 'var(--color-panel)',
+        gameborder: 'var(--color-gameborder)',
         ink: 'var(--color-ink)',
+        inkinverse: 'var(--color-inkinverse)',
+        buttontext: 'var(--color-buttontext)',
         muted: 'var(--color-muted)',
         oshipink: 'var(--color-oshipink)',
         toska: 'var(--color-toska)',
@@ -23,8 +26,8 @@ export default {
         mono: ['"JetBrains Mono"', 'monospace'],
       },
       boxShadow: {
-        'game-thick': '0 8px 0 0 var(--color-ink)',
-        'game-thin': '0 4px 0 0 var(--color-ink)',
+        'game-thick': '0 8px 0 0 var(--color-gameshadow)',
+        'game-thin': '0 4px 0 0 var(--color-gameshadow)',
         'vn-dialogue': '8px 8px 0 0 rgba(0,0,0,0.2)',
       }
     },

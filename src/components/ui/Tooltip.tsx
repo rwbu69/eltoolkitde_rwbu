@@ -24,7 +24,7 @@ export function Tooltip({ text, children, position = 'bottom', className = '' }:
       <div 
         className={`absolute z-[999] pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ${getPositionClasses()}`}
       >
-        <div className="bg-ink text-white border-2 border-white shadow-game-thin rounded-lg px-3 py-1.5 whitespace-nowrap">
+        <div className="bg-ink text-buttontext border-2 border-buttontext shadow-game-thin rounded-lg px-3 py-1.5 whitespace-nowrap">
           <span className="font-mono text-xs font-bold tracking-wider">{text}</span>
         </div>
       </div>

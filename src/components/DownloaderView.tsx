@@ -77,15 +77,15 @@ export default function DownloaderView() {
             <div className="flex flex-col xl:flex-row gap-4">
               <div className="flex-1 min-w-0">
                 <FormLabel text="FORMAT" icon={Disc} iconColor="text-toska" />
-                <div className="flex bg-appbg border-4 border-ink rounded-2xl p-1 shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] h-12">
+                <div className="flex bg-appbg border-4 border-gameborder rounded-2xl p-1 shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] h-12">
                   {(['mp4', 'mp3', 'video-only'] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => setFormat(f)}
                       className={`flex-1 text-[11px] font-bold rounded-xl transition-all font-zen uppercase tracking-wide truncate ${
                         format === f 
-                          ? 'bg-oshipink text-white shadow-sm border-2 border-transparent' 
-                          : 'text-ink hover:bg-white border-2 border-transparent'
+                          ? 'bg-oshipink text-buttontext shadow-sm border-2 border-transparent' 
+                          : 'text-ink hover:bg-panel border-2 border-transparent'
                       }`}
                     >
                       {f}
@@ -150,7 +150,7 @@ export default function DownloaderView() {
         <SectionHeader title="ACTIVE QUEUE" align="right" variant="secondary" />
 
         <Panel className="flex flex-col h-full gap-3 overflow-hidden p-0 bg-transparent border-none">
-          <div className="flex justify-between items-center bg-appbg border-4 border-ink rounded-xl px-4 py-3 shrink-0">
+          <div className="flex justify-between items-center bg-appbg border-4 border-gameborder rounded-xl px-4 py-3 shrink-0">
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <span className="text-xl font-black font-zen text-ink leading-none">{downloadingCount}</span>
@@ -170,7 +170,7 @@ export default function DownloaderView() {
             </button>
           </div>
 
-          <PanelScrollArea className="flex flex-col gap-2 h-full bg-appbg border-4 border-ink rounded-2xl p-2 custom-scrollbar">
+          <PanelScrollArea className="flex flex-col gap-2 h-full bg-appbg border-4 border-gameborder rounded-2xl p-2 custom-scrollbar">
             {queue.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink py-10">
                 <span className="font-zen font-bold text-lg">Queue is Empty</span>
@@ -180,24 +180,24 @@ export default function DownloaderView() {
               [...queue].reverse().map((item) => {
                 let statusIcon = <Circle className="w-4 h-4 text-muted" />;
                 let statusText = 'PENDING';
-                let cardClass = 'bg-white border-muted opacity-60';
+                let cardClass = 'bg-panel border-muted opacity-60';
                 let textClass = 'text-muted';
                 
                 if (item.status === 'done') {
-                  statusIcon = <CheckCircle2 className="w-4 h-4 text-white" />;
+                  statusIcon = <CheckCircle2 className="w-4 h-4 text-buttontext" />;
                   statusText = 'CLEARED';
-                  cardClass = 'bg-toska border-ink text-white opacity-100';
-                  textClass = 'text-white';
+                  cardClass = 'bg-toska border-gameborder text-buttontext opacity-100';
+                  textClass = 'text-buttontext';
                 } else if (item.status === 'downloading' || item.status === 'fetching') {
                   statusIcon = <Clock className="w-4 h-4 text-ink" />;
                   statusText = item.status === 'fetching' ? 'FETCHING' : 'DOWNLOADING';
-                  cardClass = 'bg-softtoska border-ink opacity-100 shadow-game-thin';
+                  cardClass = 'bg-softtoska border-gameborder opacity-100 shadow-game-thin';
                   textClass = 'text-ink';
                 } else if (item.status === 'error') {
-                  statusIcon = <X className="w-4 h-4 text-white" />;
+                  statusIcon = <X className="w-4 h-4 text-buttontext" />;
                   statusText = 'ERROR';
-                  cardClass = 'bg-oshipink border-ink text-white opacity-100';
-                  textClass = 'text-white';
+                  cardClass = 'bg-oshipink border-gameborder text-buttontext opacity-100';
+                  textClass = 'text-buttontext';
                 }
 
                 return (
@@ -217,7 +217,7 @@ export default function DownloaderView() {
                       
                       <button 
                         onClick={() => item.status === 'downloading' || item.status === 'fetching' ? cancelItem(item.id) : removeFromQueue(item.id)}
-                        className={`shrink-0 p-1 rounded-md opacity-50 hover:opacity-100 transition-opacity ${item.status === 'done' || item.status === 'error' ? 'hover:bg-black/20' : 'hover:bg-white/50 text-ink'}`}
+                        className={`shrink-0 p-1 rounded-md opacity-50 hover:opacity-100 transition-opacity ${item.status === 'done' || item.status === 'error' ? 'hover:bg-black/20' : 'hover:bg-panel/50 text-ink'}`}
                         title={item.status === 'downloading' || item.status === 'fetching' ? "Cancel Download" : "Remove from Queue"}
                       >
                         {item.status === 'downloading' || item.status === 'fetching' ? (
@@ -234,7 +234,7 @@ export default function DownloaderView() {
                           <span className="font-mono text-xs font-bold">{item.progress.speed || '--'}</span>
                           <span className="font-mono text-xs font-black">{item.progress.percent}%</span>
                         </div>
-                        <div className="relative w-full h-2 overflow-hidden border-2 rounded-full bg-white/50 border-ink">
+                        <div className="relative w-full h-2 overflow-hidden border-2 rounded-full bg-panel/50 border-gameborder">
                           <div className="h-full bg-toska" style={{ width: `${item.progress.percent}%` }}></div>
                         </div>
                         <div className="text-right mt-1">
