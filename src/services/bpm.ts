@@ -7,12 +7,13 @@ const dispatchLog = (msg: string) => {
 export interface BpmProgress {
   file: string;
   originalBPM?: number;
+  confidence?: 'high' | 'medium' | 'low';
   status: 'detecting' | 'processing' | 'done' | 'error';
   percent: number;
 }
 
 export class BpmService {
-  static async detectBPM(filePath: string, minBpm?: number, maxBpm?: number): Promise<number> {
+  static async detectBPM(filePath: string, minBpm?: number, maxBpm?: number): Promise<{bpm: number, confidence: 'high' | 'medium' | 'low'}> {
     dispatchLog(`[bpm_detector] Analyzing ${filePath}...`);
     
     let args = [filePath];
@@ -29,31 +30,46 @@ export class BpmService {
       throw new Error(`Failed to detect BPM: ${output.stderr}`);
     }
     
-    // Stdout should just be the float number as a string
-    const bpm = parseFloat(output.stdout.trim());
-    if (isNaN(bpm)) {
+    // Stdout should be JSON
+    let result;
+    try {
+      result = JSON.parse(output.stdout.trim());
+    } catch (e) {
+      dispatchLog(`[bpm_detector ERROR] Failed to parse JSON output: ${output.stdout}`);
+      throw new Error(`Failed to parse BPM output: ${output.stdout}`);
+    }
+
+    if (result.error) {
+      dispatchLog(`[bpm_detector ERROR] Python Error: ${result.error}`);
+      throw new Error(`Python Error: ${result.error}`);
+    }
+
+    const bpm = result.bpm;
+    const confidence = result.confidence || 'medium';
+
+    if (typeof bpm !== 'number' || isNaN(bpm)) {
       dispatchLog(`[bpm_detector ERROR] Invalid BPM output: ${output.stdout}`);
       throw new Error(`Invalid BPM output: ${output.stdout}`);
     }
-    dispatchLog(`[bpm_detector] Detected BPM: ${bpm}`);
-    return bpm;
+    dispatchLog(`[bpm_detector] Detected BPM: ${bpm} (Confidence: ${confidence})`);
+    return { bpm, confidence };
   }
 
   static async batchDetectBPM(
     files: string[], 
     range: { min?: number, max?: number } | undefined,
     onProgress: (progress: BpmProgress) => void
-  ): Promise<{ file: string, originalBPM: number }[]> {
+  ): Promise<{ file: string, originalBPM: number, confidence: 'high' | 'medium' | 'low' }[]> {
     dispatchLog(`[bpm] Starting batch BPM detection for ${files.length} files...`);
-    const results: { file: string, originalBPM: number }[] = [];
+    const results: { file: string, originalBPM: number, confidence: 'high' | 'medium' | 'low' }[] = [];
     
     for (const file of files) {
       const fileName = file.split('\\').pop() || file.split('/').pop() || 'unknown';
       try {
         onProgress({ file: fileName, status: 'detecting', percent: 50 });
-        const originalBPM = await this.detectBPM(file, range?.min, range?.max);
-        onProgress({ file: fileName, originalBPM, status: 'done', percent: 100 });
-        results.push({ file, originalBPM });
+        const { bpm: originalBPM, confidence } = await this.detectBPM(file, range?.min, range?.max);
+        onProgress({ file: fileName, originalBPM, confidence, status: 'done', percent: 100 });
+        results.push({ file, originalBPM, confidence });
       } catch (err: any) {
         console.error('Error detecting', file, err);
         dispatchLog(`[bpm ERROR] Failed detecting ${fileName}: ${err.message || String(err)}`);

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress } from '../services/bpm';
-import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3 } from 'lucide-react';
+import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3, AlertTriangle } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 
 interface SelectedFile {
   path: string;
   originalBPM?: number;
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 export default function BpmModifierView({ isActive = false }: { isActive?: boolean }) {
@@ -91,7 +92,10 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
         const newFiles = [...prevFiles];
         results.forEach(res => {
           const f = newFiles.find(x => x.path === res.file);
-          if (f) f.originalBPM = res.originalBPM;
+          if (f) {
+            f.originalBPM = res.originalBPM;
+            f.confidence = res.confidence;
+          }
         });
         return newFiles;
       });
@@ -301,15 +305,22 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                           DETECTED BPM:
                         </span>
                         {fileObj.originalBPM !== undefined ? (
-                          <div className="flex items-center gap-1 bg-appbg px-1.5 py-0.5 rounded border border-gameborder/30 focus-within:border-toska transition-colors" title="Click to manually correct BPM drift">
-                            <input 
-                              type="number" 
-                              step="0.01"
-                              value={fileObj.originalBPM}
-                              onChange={(e) => handleManualBpmEdit(fileObj.path, e.target.value)}
-                              className="w-14 bg-transparent text-right font-mono text-xs text-ink font-bold outline-none"
-                            />
-                            <Edit3 className="w-3 h-3 text-muted" />
+                          <div className="flex items-center gap-2">
+                            {(fileObj.confidence === 'low' || fileObj.confidence === 'medium') && (
+                              <div title={`Confidence: ${fileObj.confidence.toUpperCase()}. Please verify the BPM.`}>
+                                <AlertTriangle className="w-3.5 h-3.5 text-oshipink" />
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 bg-appbg px-1.5 py-0.5 rounded border border-gameborder/30 focus-within:border-toska transition-colors" title="Click to manually correct BPM drift">
+                              <input 
+                                type="number" 
+                                step="0.01"
+                                value={fileObj.originalBPM}
+                                onChange={(e) => handleManualBpmEdit(fileObj.path, e.target.value)}
+                                className="w-14 bg-transparent text-right font-mono text-xs text-ink font-bold outline-none"
+                              />
+                              <Edit3 className="w-3 h-3 text-muted" />
+                            </div>
                           </div>
                         ) : (
                           <span className="text-[10px] font-bold text-ink/40">---</span>
