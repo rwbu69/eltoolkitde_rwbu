@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { RenameService, RenameOptions, RenamePreview, RenameProgress } from '../services/rename';
 import { FolderOpen, Edit3, Undo2, CheckSquare, Search, Type, Hash, Settings2, AlertTriangle } from 'lucide-react';
-import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
+import { Button } from './ui/Button';
+import { PathPicker } from './ui/PathPicker';
+import { Tabs } from './ui/Tabs';
+import { Input } from './ui/Input';
+import { Toggle } from './ui/Toggle';
 
 export default function RenameView({ isActive = false }: { isActive?: boolean }) {
   const [inputPath, setInputPath] = useState('');
@@ -72,20 +76,10 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       });
   }, [inputPath, mode, findText, replaceText, caseSensitive, prefix, suffix, baseName, startNumber, padding]);
 
-  const handleSelectInput = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-      if (selected && typeof selected === 'string') {
-        setInputPath(selected);
-        setHistory([]); // reset history when changing folder
-        setProgresses([]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
+  const handleSelectInput = (path: string) => {
+    setInputPath(path);
+    setHistory([]); // reset history when changing folder
+    setProgresses([]);
   };
 
   const handleExecute = async () => {
@@ -151,49 +145,28 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
         <SectionHeader title="BATCH RENAME" icon={Edit3} />
 
         {/* Tab Buttons */}
-        <div className="flex gap-2 shrink-0 overflow-x-auto pb-2">
-          <button 
-            onClick={() => setMode('find-replace')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'find-replace' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Search className="w-4 h-4 mr-1.5" /> FIND & REPLACE
-          </button>
-          <button 
-            onClick={() => setMode('prefix-suffix')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'prefix-suffix' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Type className="w-4 h-4 mr-1.5" /> AFFIXES
-          </button>
-          <button 
-            onClick={() => setMode('numbering')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'numbering' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Hash className="w-4 h-4 mr-1.5" /> NUMBERING
-          </button>
-        </div>
+        <Tabs
+          options={[
+            { value: 'find-replace', label: 'FIND & REPLACE', icon: Search },
+            { value: 'prefix-suffix', label: 'AFFIXES', icon: Type },
+            { value: 'numbering', label: 'NUMBERING', icon: Hash }
+          ]}
+          value={mode}
+          onChange={(val) => setMode(val as any)}
+        />
 
-        <Panel className="flex flex-col">
+        <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
             
             {/* Target Directory */}
             <div>
               <FormLabel text="TARGET FOLDER" icon={FolderOpen} />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={inputPath}
-                  readOnly
-                  placeholder="Select target folder..."
-                  className="game-input"
-                />
-                <button 
-                  onClick={handleSelectInput}
-                  className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0"
-                  title="Select Folder"
-                >
-                  <FolderOpen className="w-5 h-5" />
-                </button>
-              </div>
+              <PathPicker 
+                value={inputPath}
+                onChange={handleSelectInput}
+                placeholder="Select target folder..."
+                directory={true}
+              />
             </div>
 
             {/* Configuration Area */}
@@ -206,18 +179,18 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="FIND TEXT" />
-                    <input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="game-input bg-panel" placeholder="Text to find..." />
+                    <Input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="bg-panel" placeholder="Text to find..." />
                   </div>
                   <div>
                     <FormLabel text="REPLACE WITH" />
-                    <input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="game-input bg-panel" placeholder="Replace with..." />
+                    <Input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="bg-panel" placeholder="Replace with..." />
                   </div>
-                  <label onClick={() => setCaseSensitive(!caseSensitive)} className="flex items-center gap-3 cursor-pointer group">
-                    <div className={`w-12 h-6 rounded-full border-2 border-gameborder transition-colors relative ${caseSensitive ? 'bg-toska' : 'bg-muted'}`}>
-                      <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-panel border-2 border-gameborder rounded-full transition-transform ${caseSensitive ? 'translate-x-6' : ''}`}></div>
-                    </div>
-                    <span className="font-mono text-xs font-bold text-ink group-hover:text-toska transition-colors">CASE SENSITIVE</span>
-                  </label>
+                  <Toggle 
+                    checked={caseSensitive}
+                    onChange={setCaseSensitive}
+                    label="CASE SENSITIVE"
+                    variant="switch"
+                  />
                 </div>
               )}
 
@@ -225,11 +198,11 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="PREFIX" />
-                    <input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="game-input bg-panel" placeholder="Add to beginning..." />
+                    <Input type="text" value={prefix} onChange={e => setPrefix(e.target.value)} className="bg-panel" placeholder="Add to beginning..." />
                   </div>
                   <div>
                     <FormLabel text="SUFFIX" />
-                    <input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="game-input bg-panel" placeholder="Add to end..." />
+                    <Input type="text" value={suffix} onChange={e => setSuffix(e.target.value)} className="bg-panel" placeholder="Add to end..." />
                   </div>
                 </div>
               )}
@@ -238,16 +211,16 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                 <div className="space-y-4">
                   <div>
                     <FormLabel text="BASE NAME (OPTIONAL)" />
-                    <input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="game-input bg-panel" placeholder="e.g. Track_" />
+                    <Input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="bg-panel" placeholder="e.g. Track_" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <FormLabel text="START NUMBER" />
-                      <input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="game-input bg-panel" />
+                      <Input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="bg-panel" />
                     </div>
                     <div>
                       <FormLabel text="PADDING" />
-                      <input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="game-input bg-panel" />
+                      <Input type="number" min="1" max="10" value={padding} onChange={e => setPadding(parseInt(e.target.value) || 1)} className="bg-panel" />
                     </div>
                   </div>
                 </div>
@@ -260,41 +233,45 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                   <h4 className="font-bold text-sm text-ink mb-1 flex items-center gap-1"><Undo2 className="w-4 h-4"/> UNDO AVAILABLE</h4>
                   <p className="text-xs text-ink/80 font-mono">You can revert the last rename operation.</p>
                 </div>
-                <button 
+                <Button 
                   onClick={handleUndo}
                   disabled={isProcessing}
-                  className="game-btn-primary px-4 py-2 text-xs flex items-center gap-2 shrink-0 bg-red-500"
+                  variant="primary"
+                  icon={Undo2}
+                  className="px-4 py-2 text-xs h-[36px] bg-red-500 border-red-700"
                 >
-                  <Undo2 className="w-3 h-3" /> UNDO
-                </button>
+                  UNDO
+                </Button>
               </div>
             )}
           </PanelScrollArea>
 
           {/* Action Button */}
           <div className="pt-3 mt-3 border-t-4 border-appbg shrink-0">
-            <button 
+            <Button 
               onClick={handleExecute}
+              variant="primary"
               disabled={previews.length === 0 || hasConflicts || isProcessing || !inputPath}
-              className="game-btn-primary w-full h-[48px] font-zen font-black text-base flex justify-center items-center gap-2"
+              icon={CheckSquare}
+              fullWidth
             >
-              <CheckSquare className="w-5 h-5" /> {isProcessing ? 'PROCESSING...' : `APPLY TO ${previews.length} FILE${previews.length !== 1 ? 'S' : ''}`}
-            </button>
+              {isProcessing ? 'PROCESSING...' : `APPLY TO ${previews.length} FILE${previews.length !== 1 ? 'S' : ''}`}
+            </Button>
           </div>
         </Panel>
       </Column>
 
       <Column isSidebar>
         <SectionHeader title="PREVIEW" align="right" variant="secondary" />
-        <Panel className="flex flex-col bg-appbg" noPadding>
-          <div className="p-3 border-b-4 border-gameborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between">
+        <Panel className="bg-appbg" noPadding>
+          <PanelHeader>
             <FormLabel text="FILE CHANGES" />
             {hasConflicts && (
               <span className="text-[10px] font-bold text-buttontext bg-oshipink px-2 py-1 rounded-full flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3"/> CONFLICTS
               </span>
             )}
-          </div>
+          </PanelHeader>
           <PanelScrollArea className="p-3">
             {previews.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">

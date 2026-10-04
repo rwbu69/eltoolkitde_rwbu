@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Download, FolderOpen, CheckCircle2, Circle, Clock, X, Target, Disc, Trash2 } from 'lucide-react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { useAppStore } from '../store/useAppStore';
-import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
+import { CustomSelect } from './ui/CustomSelect';
+import { Button } from './ui/Button';
+import { PathPicker } from './ui/PathPicker';
+import { Tabs } from './ui/Tabs';
+import { ProgressBar } from './ui/ProgressBar';
 
 export default function DownloaderView() {
   const { settings, updateSettings, queue, addToQueue, cancelItem, removeFromQueue, clearCompleted } = useAppStore();
@@ -16,21 +20,6 @@ export default function DownloaderView() {
       setOutputDir(settings.defaultOutputDir);
     }
   }, [settings.defaultOutputDir]);
-
-  const handleSelectFolder = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-      if (selected && typeof selected === 'string') {
-        setOutputDir(selected);
-        updateSettings({ defaultOutputDir: selected });
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
 
   const handleDownload = () => {
     if (!urlsInput.trim() || !outputDir) {
@@ -60,7 +49,7 @@ export default function DownloaderView() {
       <Column>
         <SectionHeader title="DOWNLOAD QUEUE" />
 
-        <Panel className="flex flex-col">
+        <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
             {/* Target URL */}
             <div>
@@ -69,78 +58,87 @@ export default function DownloaderView() {
                 value={urlsInput}
                 onChange={(e) => setUrlsInput(e.target.value)}
                 placeholder="Paste youtube link(s) here... Separate multiple links with spaces or newlines to batch download."
-                className="game-input min-h-[120px] py-3 resize-y"
+                className="game-input min-h-[120px] py-3 resize-y w-full"
               />
             </div>
             
             {/* Format & Quality */}
-            <div className="flex flex-col xl:flex-row gap-4">
-              <div className="flex-1 min-w-0">
+            <div className="flex flex-col md:flex-row gap-4">
+              <div className="w-full md:w-1/2 min-w-0 flex flex-col">
                 <FormLabel text="FORMAT" icon={Disc} iconColor="text-toska" />
-                <div className="flex bg-appbg border-4 border-gameborder rounded-2xl p-1 shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] h-12">
-                  {(['mp4', 'mp3', 'video-only'] as const).map((f) => (
-                    <button
-                      key={f}
-                      onClick={() => setFormat(f)}
-                      className={`flex-1 text-[11px] font-bold rounded-xl transition-all font-zen uppercase tracking-wide truncate ${
-                        format === f 
-                          ? 'bg-oshipink text-buttontext shadow-sm border-2 border-transparent' 
-                          : 'text-ink hover:bg-panel border-2 border-transparent'
-                      }`}
-                    >
-                      {f}
-                    </button>
-                  ))}
-                </div>
+                <Tabs 
+                  options={[
+                    { value: 'mp4', label: 'MP4' },
+                    { value: 'mp3', label: 'MP3' },
+                    { value: 'video-only', label: 'VIDEO-ONLY' }
+                  ]}
+                  value={format}
+                  onChange={(val) => setFormat(val as any)}
+                />
               </div>
 
-              {format !== 'mp3' && (
-                <div className="w-full xl:w-1/3 shrink-0">
-                  <FormLabel text="QUALITY" icon={Disc} iconColor="text-toska" />
-                  <select 
-                    value={settings.defaultVideoQuality} 
-                    onChange={(e) => updateSettings({ defaultVideoQuality: e.target.value as any })}
-                    className="game-select font-bold"
-                  >
-                    <option value="best">BEST</option>
-                    <option value="mid">MID</option>
-                    <option value="low">LOW</option>
-                  </select>
-                </div>
-              )}
+              <div className="w-full md:w-1/2 min-w-0 flex flex-col">
+                {format !== 'mp3' ? (
+                  <>
+                    <FormLabel text="VIDEO RESOLUTION" icon={Disc} iconColor="text-toska" />
+                    <CustomSelect 
+                      options={[
+                        { value: '4k', label: '4K (2160p)' },
+                        { value: '1440p', label: '1440p' },
+                        { value: '1080p', label: '1080p' },
+                        { value: '720p', label: '720p' },
+                        { value: '480p', label: '480p' },
+                        { value: '360p', label: '360p' },
+                      ]}
+                      value={settings.defaultVideoQuality}
+                      onChange={(val) => updateSettings({ defaultVideoQuality: val as any })}
+                      className="shrink-0"
+                    />
+                    <span className="text-[10px] font-mono text-muted mt-1 px-1">
+                      (Falls back to next best if unavailable)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <FormLabel text="AUDIO BITRATE" icon={Disc} iconColor="text-toska" />
+                    <CustomSelect 
+                      options={[
+                        { value: '320k', label: '320 kbps (High)' },
+                        { value: '256k', label: '256 kbps (Mid)' },
+                        { value: '192k', label: '192 kbps (Low)' },
+                      ]}
+                      value={settings.defaultAudioBitrate}
+                      onChange={(val) => updateSettings({ defaultAudioBitrate: val as any })}
+                      className="shrink-0"
+                    />
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Output Dir */}
             <div>
               <FormLabel text="OUTPUT FOLDER" icon={FolderOpen} iconColor="text-muted" />
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={outputDir}
-                  readOnly
-                  placeholder="Select output folder..."
-                  className="game-input"
-                />
-                <button 
-                  onClick={handleSelectFolder}
-                  className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0"
-                  title="Select Folder"
-                >
-                  <FolderOpen className="w-5 h-5" />
-                </button>
-              </div>
+              <PathPicker 
+                value={outputDir} 
+                onChange={(path) => { setOutputDir(path); updateSettings({ defaultOutputDir: path }); }} 
+                placeholder="Select output folder..." 
+                directory={true}
+              />
             </div>
           </PanelScrollArea>
             
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-4 mt-3 border-t-4 border-appbg shrink-0">
-            <button 
+          <div className="pt-4 mt-3 border-t-4 border-appbg shrink-0">
+            <Button 
+              variant="primary"
+              fullWidth
               onClick={handleDownload}
               disabled={!urlsInput.trim() || !outputDir}
-              className="game-btn-primary flex-1 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2"
+              icon={Download}
             >
-              <Download className="w-5 h-5" /> QUEUE {urlsInput.trim() ? urlsInput.split(/[\n\s]+/).filter(u => u.trim()).length : 0} ITEM(S)
-            </button>
+              QUEUE {urlsInput.trim() ? urlsInput.split(/[\n\s]+/).filter(u => u.trim()).length : 0} ITEM(S)
+            </Button>
           </div>
         </Panel>
       </Column>
@@ -149,8 +147,8 @@ export default function DownloaderView() {
       <Column isSidebar>
         <SectionHeader title="ACTIVE QUEUE" align="right" variant="secondary" />
 
-        <Panel className="flex flex-col h-full gap-3 overflow-hidden p-0 bg-transparent border-none">
-          <div className="flex justify-between items-center bg-appbg border-4 border-gameborder rounded-xl px-4 py-3 shrink-0">
+        <Panel className="gap-3 bg-appbg" noPadding>
+          <PanelHeader>
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <span className="text-xl font-black font-zen text-ink leading-none">{downloadingCount}</span>
@@ -161,16 +159,17 @@ export default function DownloaderView() {
                 <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Pending</span>
               </div>
             </div>
-            <button 
+            <Button 
+              variant="secondary"
               onClick={clearCompleted}
               disabled={!queue.some(q => q.status === 'done' || q.status === 'error')}
-              className="game-btn-secondary px-3 py-1.5 h-auto text-xs font-zen font-black disabled:opacity-50"
+              className="px-3 py-1.5 h-auto text-xs font-zen font-black !rounded-xl"
             >
               CLEAR DONE
-            </button>
-          </div>
+            </Button>
+          </PanelHeader>
 
-          <PanelScrollArea className="flex flex-col gap-2 h-full bg-appbg border-4 border-gameborder rounded-2xl p-2 custom-scrollbar">
+          <PanelScrollArea className="flex flex-col gap-2 h-full p-2">
             {queue.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink py-10">
                 <span className="font-zen font-bold text-lg">Queue is Empty</span>
@@ -234,9 +233,7 @@ export default function DownloaderView() {
                           <span className="font-mono text-xs font-bold">{item.progress.speed || '--'}</span>
                           <span className="font-mono text-xs font-black">{item.progress.percent}%</span>
                         </div>
-                        <div className="relative w-full h-2 overflow-hidden border-2 rounded-full bg-panel/50 border-gameborder">
-                          <div className="h-full bg-toska" style={{ width: `${item.progress.percent}%` }}></div>
-                        </div>
+                        <ProgressBar percent={item.progress.percent} status={item.status} />
                         <div className="text-right mt-1">
                           <span className="font-mono text-[10px] font-bold opacity-70">ETA: {item.progress.eta || '--'}</span>
                         </div>

@@ -11,6 +11,7 @@ import TerminalLogView from './components/TerminalLogView';
 import { Titlebar } from './components/ui/Titlebar';
 import { Tooltip } from './components/ui/Tooltip';
 import { useAppStore } from './store/useAppStore';
+import { YtDlpService } from './services/ytdlp';
 
 import appIcon from './assets/icon.png';
 
@@ -30,7 +31,12 @@ function App() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      invoke('close_splashscreen').catch(console.error);
+      invoke('close_splashscreen').then(() => {
+        // Automatically check for yt-dlp updates in the background
+        YtDlpService.updateYtDlp(() => {
+          // Logs are automatically dispatched to TerminalLogView by the service
+        }).catch(err => console.error('Failed to auto-update yt-dlp:', err));
+      }).catch(console.error);
     }, 1000);
     return () => clearTimeout(timer);
   }, []);
@@ -137,7 +143,7 @@ function App() {
       </header>
 
       {/* Main Content (Stage Area) */}
-      <main className="z-10 flex flex-col flex-1 w-full min-h-0 px-6 pt-2 pb-4 overflow-hidden lg:px-12">
+      <main className="z-10 flex flex-col flex-1 w-full min-h-0 px-6 pt-2 pb-16 overflow-hidden lg:px-12">
         <div className="max-w-[1400px] mx-auto w-full flex-1 min-h-0 overflow-hidden relative">
           <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'downloader' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
             <DownloaderView />

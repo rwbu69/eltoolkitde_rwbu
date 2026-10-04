@@ -80,35 +80,24 @@ export class BpmService {
     return results;
   }
 
-  static async changeTempo(inputPath: string, outputPath: string, originalBPM: number, targetBPM: number): Promise<void> {
-    const ratio = targetBPM / originalBPM;
+  static async changeTempo(inputPath: string, outputPath: string, _originalBPM: number, targetBPM: number): Promise<void> {
+    dispatchLog(`[bpm_modifier] Accurately quantizing audio to ${targetBPM} BPM (Fixing drift)...`);
     
-    let atempoFilter = '';
-    // ffmpeg's atempo filter allows ratios between 0.5 and 2.0. If outside, we must chain them.
-    if (ratio > 2.0) {
-      atempoFilter = `atempo=2.0,atempo=${ratio / 2.0}`;
-    } else if (ratio < 0.5) {
-      atempoFilter = `atempo=0.5,atempo=${ratio / 0.5}`;
-    } else {
-      atempoFilter = `atempo=${ratio}`;
-    }
-
-    dispatchLog(`[ffmpeg] Changing tempo from ${originalBPM} to ${targetBPM} (ratio: ${ratio.toFixed(2)})...`);
-    
-    // Call the ffmpeg sidecar
-    const command = Command.sidecar('ffmpeg', [
-      '-y', // Overwrite output files without asking
-      '-i', inputPath,
-      '-filter:a', atempoFilter,
-      outputPath
+    // Call our new accurate python sidecar instead of ffmpeg
+    const command = Command.sidecar('bpm_modifier', [
+      '--input', inputPath,
+      '--output', outputPath,
+      '--target-bpm', targetBPM.toString()
     ]);
 
     const output = await command.execute();
+    
     if (output.code !== 0) {
-      dispatchLog(`[ffmpeg ERROR] ${output.stderr}`);
-      throw new Error(`FFmpeg error: ${output.stderr}`);
+      dispatchLog(`[bpm_modifier ERROR] ${output.stderr}`);
+      throw new Error(`BPM Modification error: ${output.stderr}`);
     }
-    dispatchLog(`[ffmpeg] Successfully saved to ${outputPath}`);
+    
+    dispatchLog(`[bpm_modifier] Successfully saved quantized audio to ${outputPath}`);
   }
 
   static async batchChangeTempo(

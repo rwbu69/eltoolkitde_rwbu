@@ -6,8 +6,10 @@
   "scripts": {
     "tauri": "tauri",
     "test": "vitest run",
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "vite:dev": "vite",
+    "vite:build": "tsc -b && vite build",
+    "dev": "tauri dev",
+    "build": "tauri build",
     "lint": "oxlint",
     "preview": "vite preview"
   },
@@ -28,6 +30,7 @@
     "vitest": "^4.1.9"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
     "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-dialog": "^2.7.1",
     "@tauri-apps/plugin-fs": "^2.5.1",

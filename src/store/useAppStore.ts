@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 
 export interface AppSettings {
   defaultOutputDir: string;
-  defaultVideoQuality: 'best' | 'mid' | 'low';
+  defaultVideoQuality: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p';
   defaultAudioBitrate: '320k' | '256k' | '192k';
   cookiesFilePath: string;
   browserForCookies: string;
@@ -19,7 +19,7 @@ export interface AppSettings {
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultOutputDir: '',
-  defaultVideoQuality: 'best',
+  defaultVideoQuality: '1080p',
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',
