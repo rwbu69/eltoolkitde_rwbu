@@ -4,6 +4,11 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { FfmpegService, FfmpegProgress } from '../services/ffmpeg';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { Button } from './ui/Button';
+import { PathPicker } from './ui/PathPicker';
+import { Tabs } from './ui/Tabs';
+import { Input } from './ui/Input';
+import { ProgressBar } from './ui/ProgressBar';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
   const { settings } = useAppStore();
@@ -81,20 +86,6 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
     }
   };
 
-  const handleSelectFolderOutput = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-      if (selected && typeof selected === 'string') {
-        setOutputDir(selected);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const handleProcess = async () => {
     if (inputPaths.length === 0 || !outputDir) return;
     setIsProcessing(true);
@@ -148,28 +139,17 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
         <SectionHeader title="FFMPEG_TOOLS" />
 
         {/* Tab Buttons */}
-        <div className="flex gap-2 shrink-0 overflow-x-auto pb-2">
-          <button 
-            onClick={() => setMode('mp3')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'mp3' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Music className="w-4 h-4 mr-1.5" /> TO MP3
-          </button>
-          <button 
-            onClick={() => setMode('trim')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'trim' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Scissors className="w-4 h-4 mr-1.5" /> TRIM
-          </button>
-          <button 
-            onClick={() => setMode('mirror')}
-            className={`flex-1 h-[44px] min-w-[100px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'mirror' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <SplitSquareHorizontal className="w-4 h-4 mr-1.5" /> MIRROR
-          </button>
-        </div>
+        <Tabs
+          options={[
+            { value: 'mp3', label: 'TO MP3', icon: Music },
+            { value: 'trim', label: 'TRIM', icon: Scissors },
+            { value: 'mirror', label: 'MIRROR', icon: SplitSquareHorizontal }
+          ]}
+          value={mode}
+          onChange={(val) => setMode(val as any)}
+        />
 
-        <Panel className="space-y-5">
+        <Panel className="flex-1 flex flex-col min-w-0 space-y-5 overflow-y-auto custom-scrollbar">
           {/* Target Files */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-1.5 shrink-0">
@@ -180,20 +160,22 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
             </div>
             
             <div className="flex gap-2 shrink-0">
-              <button 
+              <Button 
                 onClick={handleSelectFiles} 
-                className="game-btn-secondary flex-1 h-12 flex items-center justify-center border-[3px]"
+                variant="secondary"
+                icon={FileAudio}
+                className="flex-1 border-[3px]"
               >
-                <FileAudio className="w-4 h-4 mr-2" /> 
-                <span className="text-xs font-bold tracking-wide">SELECT FILE(S)</span>
-              </button>
-              <button 
+                <span className="tracking-wide">SELECT FILE(S)</span>
+              </Button>
+              <Button 
                 onClick={handleSelectFolderInput} 
-                className="game-btn-secondary flex-1 h-12 flex items-center justify-center border-[3px]"
+                variant="secondary"
+                icon={FolderOpen}
+                className="flex-1 border-[3px]"
               >
-                <FolderOpen className="w-4 h-4 mr-2" /> 
-                <span className="text-xs font-bold tracking-wide">BATCH (FOLDER)</span>
-              </button>
+                <span className="tracking-wide">BATCH (FOLDER)</span>
+              </Button>
             </div>
 
             {inputPaths.length > 0 && (
@@ -226,11 +208,11 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <FormLabel text="START (HH:MM:SS)" />
-                  <input type="text" value={trimStart} onChange={e => setTrimStart(e.target.value)} className="game-input bg-panel" placeholder="00:00:00" />
+                  <Input type="text" value={trimStart} onChange={e => setTrimStart(e.target.value)} className="bg-panel" placeholder="00:00:00" />
                 </div>
                 <div>
                   <FormLabel text="END (HH:MM:SS)" />
-                  <input type="text" value={trimEnd} onChange={e => setTrimEnd(e.target.value)} className="game-input bg-panel" placeholder="00:01:00" />
+                  <Input type="text" value={trimEnd} onChange={e => setTrimEnd(e.target.value)} className="bg-panel" placeholder="00:01:00" />
                 </div>
               </div>
             )}
@@ -245,31 +227,35 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           {/* Output Dir */}
           <div className="shrink-0">
             <FormLabel text="OUTPUT FOLDER" icon={FolderOpen} iconColor="text-muted" />
-            <div className="flex gap-2">
-              <input type="text" value={outputDir} readOnly className="game-input" placeholder="Select output directory..." />
-              <button onClick={handleSelectFolderOutput} className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0">
-                <FolderOpen className="w-5 h-5" />
-              </button>
-            </div>
+            <PathPicker 
+              value={outputDir} 
+              onChange={setOutputDir} 
+              placeholder="Select output directory..." 
+              directory={true} 
+            />
           </div>
 
           {/* Action Button */}
           <div className="pt-3 mt-auto border-t-4 border-appbg shrink-0 flex gap-2">
             {isProcessing && cancelFn && (
-              <button 
+              <Button 
                 onClick={() => cancelFn()}
-                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-buttontext border-2"
+                variant="danger"
+                icon={X}
+                className="w-1/3"
               >
-                <X className="w-5 h-5" /> CANCEL
-              </button>
+                CANCEL
+              </Button>
             )}
-            <button 
+            <Button 
               onClick={handleProcess}
+              variant="primary"
               disabled={inputPaths.length === 0 || !outputDir || isProcessing}
-              className={`game-btn-primary ${isProcessing && cancelFn ? 'w-2/3' : 'w-full'} h-[48px] font-zen font-black text-base flex justify-center items-center gap-2`}
+              icon={Play}
+              className={isProcessing && cancelFn ? 'w-2/3' : 'w-full'}
             >
-              <Play className="w-5 h-5" /> {isProcessing ? 'PROCESSING...' : `PROCESS ${inputPaths.length} FILE${inputPaths.length !== 1 ? 'S' : ''}`}
-            </button>
+              {isProcessing ? 'PROCESSING...' : `PROCESS ${inputPaths.length} FILE${inputPaths.length !== 1 ? 'S' : ''}`}
+            </Button>
           </div>
 
         </Panel>
@@ -322,9 +308,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                       </span>
                     </div>
                     {p.status === 'processing' && p.percent !== undefined && (
-                      <div className="w-full h-2 bg-appbg rounded-full overflow-hidden border border-gameborder/20 mt-1">
-                        <div className="h-full bg-ink transition-all duration-300" style={{ width: `${p.percent}%` }}></div>
-                      </div>
+                      <ProgressBar percent={p.percent} status={p.status} />
                     )}
                     {p.log && (p.status === 'error' || p.status === 'skipped') && (
                       <span className="text-[10px] font-mono text-oshipink font-bold line-clamp-2 mt-1">{p.log}</span>

@@ -80,7 +80,7 @@ export class BpmService {
     return results;
   }
 
-  static async changeTempo(inputPath: string, outputPath: string, originalBPM: number, targetBPM: number): Promise<void> {
+  static async changeTempo(inputPath: string, outputPath: string, _originalBPM: number, targetBPM: number): Promise<void> {
     dispatchLog(`[bpm_modifier] Accurately quantizing audio to ${targetBPM} BPM (Fixing drift)...`);
     
     // Call our new accurate python sidecar instead of ffmpeg

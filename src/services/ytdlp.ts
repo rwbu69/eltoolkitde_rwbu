@@ -33,7 +33,7 @@ export interface DownloadOptions {
   url: string;
   format: 'mp4' | 'mp3' | 'video-only';
   outputDir: string;
-  videoQuality?: 'best' | 'mid' | 'low';
+  videoQuality?: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p';
   audioBitrate?: '320k' | '256k' | '192k';
   cookiesFilePath?: string;
   browserForCookies?: string;
@@ -98,16 +98,19 @@ export class YtDlpService {
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { url, format, outputDir, videoQuality = 'best', audioBitrate = '320k', cookiesFilePath, browserForCookies, rateLimit } = options;
+    const { url, format, outputDir, videoQuality = '1080p', audioBitrate = '320k', cookiesFilePath, browserForCookies, rateLimit } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
     let formatArgs: string[] = [];
     
     // Video quality map
-    const videoMap = {
-      best: 'bestvideo',
-      mid: 'bestvideo[height<=720]',
-      low: 'bestvideo[height<=480]'
+    const videoMap: Record<string, string> = {
+      '4k': 'bestvideo[height<=2160]',
+      '1440p': 'bestvideo[height<=1440]',
+      '1080p': 'bestvideo[height<=1080]',
+      '720p': 'bestvideo[height<=720]',
+      '480p': 'bestvideo[height<=480]',
+      '360p': 'bestvideo[height<=360]'
     };
     const vidArg = videoMap[videoQuality] || 'bestvideo';
 

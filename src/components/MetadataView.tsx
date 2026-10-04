@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react';
-import { open } from '@tauri-apps/plugin-dialog';
 import { MetadataService, MetadataProgress, MetadataOptions } from '../services/metadata';
-import { FolderOpen, Tag, Target, FileAudio, Folder, X } from 'lucide-react';
+import { Tag, Target, FileAudio, Folder, X } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { Button } from './ui/Button';
+import { PathPicker } from './ui/PathPicker';
+import { Tabs } from './ui/Tabs';
+import { Input } from './ui/Input';
 
 export default function MetadataView({ isActive = false }: { isActive?: boolean }) {
   const [mode, setMode] = useState<'file' | 'folder'>('file');
@@ -30,20 +33,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
     return () => window.removeEventListener('toolkit-drop', handleDrop);
   }, [isActive]);
 
-  const handleSelectInput = async () => {
-    try {
-      const selected = await open({
-        directory: mode === 'folder',
-        multiple: false,
-        filters: mode === 'file' ? [{ name: 'MP3 Files', extensions: ['mp3'] }] : undefined
-      });
-      if (selected && typeof selected === 'string') {
-        setInputPath(selected);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  // handleSelectInput handled by PathPicker
 
   const handleProcess = async () => {
     if (!inputPath) return;
@@ -81,42 +71,27 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
       <Column>
         <SectionHeader title="METADATA_EDITOR" />
 
-        <div className="flex gap-2 shrink-0 mb-2">
-          <button 
-            onClick={() => { setMode('file'); setInputPath(''); setProgresses([]); }}
-            className={`flex-1 h-[44px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'file' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <FileAudio className="w-4 h-4 mr-1.5" /> SINGLE FILE
-          </button>
-          <button 
-            onClick={() => { setMode('folder'); setInputPath(''); setProgresses([]); }}
-            className={`flex-1 h-[44px] text-xs font-bold flex items-center justify-center shrink-0 ${mode === 'folder' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}
-          >
-            <Folder className="w-4 h-4 mr-1.5" /> BATCH (FOLDER)
-          </button>
-        </div>
+        <Tabs
+          options={[
+            { value: 'file', label: 'SINGLE FILE', icon: FileAudio },
+            { value: 'folder', label: 'BATCH (FOLDER)', icon: Folder }
+          ]}
+          value={mode}
+          onChange={(val) => { setMode(val as any); setInputPath(''); setProgresses([]); }}
+        />
 
-        <Panel className="flex flex-col">
+        <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
-          {/* Target Path */}
-          <div>
-            <FormLabel text={mode === 'file' ? 'TARGET MP3 FILE' : 'TARGET DIRECTORY'} icon={Target} />
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={inputPath} 
-                readOnly 
-                className="game-input" 
-                placeholder={`Select target ${mode}...`} 
+            <div>
+              <FormLabel text={mode === 'file' ? 'TARGET MP3 FILE' : 'TARGET DIRECTORY'} icon={Target} />
+              <PathPicker 
+                value={inputPath}
+                onChange={setInputPath}
+                placeholder={`Select target ${mode}...`}
+                directory={mode === 'folder'}
+                filters={mode === 'file' ? [{ name: 'MP3 Files', extensions: ['mp3'] }] : undefined}
               />
-              <button 
-                onClick={handleSelectInput} 
-                className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0"
-              >
-                <FolderOpen className="w-5 h-5" />
-              </button>
             </div>
-          </div>
 
           {/* ID3 Tag Inputs */}
           <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 space-y-4 shrink-0">
@@ -125,19 +100,19 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <FormLabel text="TITLE" />
-                <input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
+                <Input type="text" value={title} onChange={e => setTitle(e.target.value)} placeholder="Leave blank to skip" className="bg-panel" />
               </div>
               <div>
                 <FormLabel text="ARTIST" />
-                <input type="text" value={artist} onChange={e => setArtist(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
+                <Input type="text" value={artist} onChange={e => setArtist(e.target.value)} placeholder="Leave blank to skip" className="bg-panel" />
               </div>
               <div>
                 <FormLabel text="ALBUM" />
-                <input type="text" value={album} onChange={e => setAlbum(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
+                <Input type="text" value={album} onChange={e => setAlbum(e.target.value)} placeholder="Leave blank to skip" className="bg-panel" />
               </div>
               <div>
                 <FormLabel text="YEAR" />
-                <input type="text" value={year} onChange={e => setYear(e.target.value)} placeholder="Leave blank to skip" className="game-input bg-panel" />
+                <Input type="text" value={year} onChange={e => setYear(e.target.value)} placeholder="Leave blank to skip" className="bg-panel" />
               </div>
             </div>
           </div>
@@ -146,21 +121,24 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-3 mt-3 border-t-4 border-appbg shrink-0">
             {isProcessing && cancelFn && (
-              <button 
+              <Button 
                 onClick={() => cancelFn()}
-                className="game-btn-secondary w-1/3 h-[48px] font-zen font-black text-base flex justify-center items-center gap-2 border-oshipink text-oshipink hover:bg-oshipink hover:text-buttontext border-2"
+                variant="danger"
+                icon={X}
+                className="w-1/3"
               >
-                <X className="w-5 h-5" /> CANCEL
-              </button>
+                CANCEL
+              </Button>
             )}
-            <button 
+            <Button 
               onClick={handleProcess}
+              variant="primary"
               disabled={!inputPath || isProcessing}
-              className={`game-btn-primary ${isProcessing && cancelFn ? 'w-2/3' : 'w-full'} h-[48px] font-zen font-black text-base flex justify-center items-center gap-2`}
+              icon={Tag}
+              className={isProcessing && cancelFn ? 'w-2/3' : 'w-full'}
             >
-              <Tag className="w-5 h-5" />
               {isProcessing ? 'PROCESSING...' : 'APPLY METADATA'}
-            </button>
+            </Button>
           </div>
         </Panel>
       </Column>

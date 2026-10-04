@@ -99,6 +99,17 @@ export function PanelScrollArea({ children, className = '' }: { children: React.
 }
 
 /**
+ * PanelHeader: A styled header for inside a Panel, especially useful when Panel has noPadding.
+ */
+export function PanelHeader({ children, className = '' }: { children: React.ReactNode, className?: string }) {
+  return (
+    <div className={`p-3 border-b-4 border-gameborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between ${className}`}>
+      {children}
+    </div>
+  );
+}
+
+/**
  * FormLabel: Standardized label component with icon support.
  */
 export function FormLabel({ 

@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress } from '../services/bpm';
 import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3, AlertTriangle } from 'lucide-react';
-import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
+import { Button } from './ui/Button';
+import { PathPicker } from './ui/PathPicker';
+import { Input } from './ui/Input';
+import { ProgressBar } from './ui/ProgressBar';
 
 interface SelectedFile {
   path: string;
@@ -49,19 +53,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     }
   };
 
-  const handleSelectOutput = async () => {
-    try {
-      const selected = await open({
-        directory: true,
-        multiple: false,
-      });
-      if (selected && typeof selected === 'string') {
-        setOutputDir(selected);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  // handleSelectOutput removed, using PathPicker
 
   const handleDetect = async () => {
     if (selectedFiles.length === 0) return;
@@ -159,7 +151,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
       <Column>
         <SectionHeader title="BATCH BPM MODIFIER" icon={Activity} />
 
-        <Panel className="flex flex-col">
+        <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
             
             {/* Phase 1: Input & Detection */}
@@ -172,20 +164,21 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                 <div>
                   <FormLabel text="INPUT FILES" icon={FileAudio} />
                   <div className="flex gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : ''}
                       readOnly
                       placeholder="Select audio files..."
-                      className="game-input bg-panel"
+                      className="bg-panel"
                     />
-                    <button 
+                    <Button 
                       onClick={handleSelectFiles}
-                      className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0 bg-panel"
+                      variant="secondary"
+                      className="px-4 h-[48px] !rounded-2xl"
                       title="Select Files"
                     >
                       <FolderOpen className="w-5 h-5" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
 
@@ -203,13 +196,15 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                   </select>
                 </div>
                 
-                <button 
+                <Button 
                   onClick={handleDetect}
                   disabled={!canDetect}
-                  className="game-btn-secondary w-full h-[40px] text-sm flex justify-center items-center gap-2"
+                  variant="secondary"
+                  icon={Search}
+                  fullWidth
                 >
-                  <Search className="w-4 h-4" /> {isDetecting ? 'DETECTING...' : 'DETECT BPMs'}
-                </button>
+                  {isDetecting ? 'DETECTING...' : 'DETECT BPMs'}
+                </Button>
               </div>
             </div>
 
@@ -222,31 +217,21 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
               <div className="space-y-4">
                 <div>
                   <FormLabel text="OUTPUT FOLDER" icon={FolderOpen} />
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={outputDir}
-                      readOnly
-                      placeholder="Select output folder..."
-                      className="game-input bg-panel"
-                    />
-                    <button 
-                      onClick={handleSelectOutput}
-                      className="game-btn-secondary px-4 h-12 flex items-center justify-center shrink-0 bg-panel"
-                      title="Select Output Folder"
-                    >
-                      <FolderOpen className="w-5 h-5" />
-                    </button>
-                  </div>
+                  <PathPicker 
+                    value={outputDir}
+                    onChange={setOutputDir}
+                    placeholder="Select output folder..."
+                    directory={true}
+                  />
                 </div>
 
                 <div>
                   <FormLabel text="TARGET BPM" />
-                  <input 
+                  <Input 
                     type="number" 
                     value={targetBPM} 
                     onChange={e => setTargetBPM(e.target.value)} 
-                    className="game-input bg-panel" 
+                    className="bg-panel" 
                     placeholder="Enter desired unified BPM (e.g. 192)" 
                   />
                 </div>
@@ -257,23 +242,25 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
 
           {/* Action Button */}
           <div className="pt-3 mt-3 border-t-4 border-appbg shrink-0">
-            <button 
+            <Button 
               onClick={handleExecute}
               disabled={!canModify}
-              className="game-btn-primary w-full h-[48px] font-zen font-black text-base flex justify-center items-center gap-2"
+              variant="primary"
+              icon={PlayCircle}
+              fullWidth
             >
-              <PlayCircle className="w-5 h-5" /> {isProcessing ? 'PROCESSING...' : `APPLY TARGET BPM`}
-            </button>
+              {isProcessing ? 'PROCESSING...' : `APPLY TARGET BPM`}
+            </Button>
           </div>
         </Panel>
       </Column>
 
       <Column isSidebar>
         <SectionHeader title="RESULTS" align="right" variant="secondary" />
-        <Panel className="flex flex-col bg-appbg" noPadding>
-          <div className="p-3 border-b-4 border-gameborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between">
+        <Panel className="bg-appbg" noPadding>
+          <PanelHeader>
             <FormLabel text="SELECTED FILES" />
-          </div>
+          </PanelHeader>
           <PanelScrollArea className="p-3">
             {selectedFiles.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">
@@ -329,12 +316,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                       
                       {prog && (
                         <div className="mt-2 flex flex-col gap-1">
-                          <div className="w-full h-1.5 bg-appbg rounded-full border border-gameborder/20 overflow-hidden shrink-0">
-                            <div 
-                              className={`h-full transition-all duration-300 ${isError ? 'bg-oshipink' : 'bg-toska'}`}
-                              style={{ width: `${prog.percent}%` }}
-                            />
-                          </div>
+                          <ProgressBar percent={prog.percent} status={prog.status} />
                           {isError && <span className="text-[9px] font-bold text-oshipink text-right">FAILED</span>}
                         </div>
                       )}
