@@ -63,15 +63,21 @@ jobs:
 
       - name: Build Python Sidecar (Windows)
         if: matrix.platform == 'windows-latest'
-        run: pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-pc-windows-msvc src-python/bpm_detector.py
+        run: |
+          pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-pc-windows-msvc src-python/bpm_detector.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-x86_64-pc-windows-msvc src-python/bpm_modifier.py
 
       - name: Build Python Sidecar (macOS)
         if: matrix.platform == 'macos-latest'
-        run: pyinstaller --onefile --distpath src-tauri --name bpm_detector-universal-apple-darwin src-python/bpm_detector.py
+        run: |
+          pyinstaller --onefile --distpath src-tauri --name bpm_detector-universal-apple-darwin src-python/bpm_detector.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-universal-apple-darwin src-python/bpm_modifier.py
 
       - name: Build Python Sidecar (Linux)
         if: matrix.platform == 'ubuntu-22.04'
-        run: pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-unknown-linux-gnu src-python/bpm_detector.py
+        run: |
+          pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-unknown-linux-gnu src-python/bpm_detector.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-x86_64-unknown-linux-gnu src-python/bpm_modifier.py
 
       - name: Clean macOS Quarantine & Perms
         if: matrix.platform == 'macos-latest'
