@@ -11,8 +11,10 @@ Update ini berfokus pada penyempurnaan UI menjadi jauh lebih premium (True Dark 
   - **Librosa Detection**: Mendeteksi BPM secara akurat menggunakan algoritma *onset envelope* dan *dynamic programming*.
   - **DJ-Style Constraints**: Mencegah *octave errors* dengan dukungan pembatasan rentang deteksi (contoh: 90-180 BPM).
   - **Editable Precision**: Untuk mencegah *detection drift* (misal BPM 190.8), Anda kini dapat mengklik dan mengedit hasil deteksi BPM secara manual di UI sebelum dieksekusi agar hasil konversi menjadi akurat 100%.
+- **yt-dlp Auto-Updater**: Aplikasi kini secara otomatis mengecek dan memperbarui *binary* yt-dlp di latar belakang setiap kali aplikasi diluncurkan. Log pembaruan terintegrasi langsung dengan panel **System Log**.
 
 ### Perbaikan & Peningkatan (Improvements & Fixes)
+- **Konsistensi Arsitektur UI (DRY Layout)**: Merombak ulang seluruh tampilan (Downloader, FFmpeg, Metadata, Rename, BPM Modifier) agar menggunakan komponen UI terpusat (`Button`, `Input`, `PathPicker`, `Tabs`, `ProgressBar`) sehingga tata letak, ukuran, interaksi, dan padding 100% konsisten antar tab, sekaligus memecahkan masalah elemen visual yang *overflow* di layar beresolusi kecil.
 - **Parallel Downloads**: Memperbarui konfigurasi aplikasi untuk mendukung *multi-threaded* dan *concurrent batch downloads* secara bersamaan (dapat diatur lewat Preferences) untuk mempercepat alur kerja Anda.
 
 ---
