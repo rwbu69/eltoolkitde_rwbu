@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import type { AudioBitrate, VideoQuality } from '../config/mediaSettings';
 
 export interface AppSettings {
   defaultOutputDir: string;
-  defaultVideoQuality: 'best' | 'mid' | 'low';
-  defaultAudioBitrate: '320k' | '256k' | '192k';
+  defaultVideoQuality: VideoQuality;
+  defaultAudioBitrate: AudioBitrate;
   cookiesFilePath: string;
   browserForCookies: string;
   closeToTray: boolean;
@@ -12,7 +13,7 @@ export interface AppSettings {
 
 const DEFAULT_SETTINGS: AppSettings = {
   defaultOutputDir: '',
-  defaultVideoQuality: 'best',
+  defaultVideoQuality: '1080p',
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',

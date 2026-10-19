@@ -1,6 +1,6 @@
 interface ProgressBarProps {
   percent: number;
-  status?: 'processing' | 'error' | 'done' | 'pending' | 'skipped' | 'fetching' | 'downloading' | 'detecting';
+  status?: 'processing' | 'error' | 'done' | 'pending' | 'skipped' | 'fetching' | 'downloading' | 'detecting' | 'canceled';
 }
 
 export function ProgressBar({ percent, status }: ProgressBarProps) {

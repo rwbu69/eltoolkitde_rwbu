@@ -108,6 +108,7 @@ export class MetadataService {
           
           command.spawn().then((child) => {
             childProcess = child;
+            if (cancelled) child.kill().catch(() => {});
           }).catch(() => {
             if (!cancelled) onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to spawn ffmpeg' });
             resolve();

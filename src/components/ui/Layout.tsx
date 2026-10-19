@@ -7,7 +7,7 @@ import { LucideIcon } from 'lucide-react';
  */
 export function PageLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-row gap-4 w-full h-full min-h-0 overflow-hidden">
+    <div className="flex flex-col xl:flex-row gap-4 w-full h-full min-h-0 overflow-y-auto xl:overflow-hidden">
       {children}
     </div>
   );
@@ -26,8 +26,10 @@ export function Column({
   isSidebar?: boolean;
   className?: string;
 }) {
-  const baseClass = "flex flex-col gap-4 h-full min-h-0";
-  const sizeClass = isSidebar ? "w-[280px] xl:w-[350px] shrink-0" : "flex-1 min-w-0";
+  const baseClass = "flex flex-col gap-4 min-h-0";
+  const sizeClass = isSidebar
+    ? "w-full xl:w-[34%] xl:min-w-[360px] xl:max-w-[480px] xl:h-full shrink-0"
+    : "w-full xl:flex-1 xl:h-full min-w-0";
   return (
     <div className={`${baseClass} ${sizeClass} ${className}`}>
       {children}
@@ -122,7 +124,7 @@ export function FormLabel({
   iconColor?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 mb-2 font-mono text-sm font-black text-ink uppercase">
+    <label className="flex items-center gap-2 mb-2 font-mono text-sm font-black text-ink">
       {Icon && <Icon className={`w-4 h-4 ${iconColor}`} />}
       {text}
     </label>

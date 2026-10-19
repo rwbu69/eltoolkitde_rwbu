@@ -36,7 +36,7 @@ export function Button({
       disabled={disabled || isLoading}
       {...props}
     >
-      {Icon && <Icon className="w-5 h-5" />}
+      {Icon && <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />}
       {children}
     </button>
   );

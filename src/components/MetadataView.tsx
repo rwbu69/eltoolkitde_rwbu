@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { MetadataService, MetadataProgress, MetadataOptions } from '../services/metadata';
-import { Tag, Target, FileAudio, Folder, X } from 'lucide-react';
+import { Tag, Target, FileAudio, Folder } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
-import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
+import { EmptyState } from './ui/EmptyState';
+import { InlineNotice } from './ui/InlineNotice';
+import { ActionFooter } from './ui/ActionFooter';
+import { getStatusLabel, getUserFacingError } from '../config/uiText';
 
 export default function MetadataView({ isActive = false }: { isActive?: boolean }) {
   const [mode, setMode] = useState<'file' | 'folder'>('file');
@@ -19,6 +22,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
   const [progresses, setProgresses] = useState<MetadataProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
+  const [notice, setNotice] = useState<string>('');
 
   useEffect(() => {
     if (!isActive) return;
@@ -37,6 +41,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
 
   const handleProcess = async () => {
     if (!inputPath) return;
+    setNotice('');
     setIsProcessing(true);
     setProgresses([]);
     
@@ -58,7 +63,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
       await task;
     } catch (e: any) {
       console.error(e);
-      alert(e.message || String(e));
+      setNotice(getUserFacingError(e, 'The metadata could not be applied. Check the selected input and try again.').message);
     } finally {
       setIsProcessing(false);
       setCancelFn(null);
@@ -69,12 +74,12 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
     <PageLayout>
       {/* LEFT COLUMN: Input & Config */}
       <Column>
-        <SectionHeader title="METADATA_EDITOR" />
+        <SectionHeader title="Metadata Editor" />
 
         <Tabs
           options={[
-            { value: 'file', label: 'SINGLE FILE', icon: FileAudio },
-            { value: 'folder', label: 'BATCH (FOLDER)', icon: Folder }
+            { value: 'file', label: 'Single file', icon: FileAudio },
+            { value: 'folder', label: 'Batch folder', icon: Folder }
           ]}
           value={mode}
           onChange={(val) => { setMode(val as any); setInputPath(''); setProgresses([]); }}
@@ -83,7 +88,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
         <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
             <div>
-              <FormLabel text={mode === 'file' ? 'TARGET MP3 FILE' : 'TARGET DIRECTORY'} icon={Target} />
+              <FormLabel text={mode === 'file' ? 'Target MP3 file' : 'Target directory'} icon={Target} />
               <PathPicker 
                 value={inputPath}
                 onChange={setInputPath}
@@ -95,7 +100,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
 
           {/* ID3 Tag Inputs */}
           <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 space-y-4 shrink-0">
-            <h3 className="font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">ID3 TAG CONFIG</h3>
+            <h3 className="font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">ID3 tag configuration</h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -119,39 +124,26 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
           </PanelScrollArea>
 
           {/* Action Buttons */}
-          <div className="flex gap-3 pt-3 mt-3 border-t-4 border-appbg shrink-0">
-            {isProcessing && cancelFn && (
-              <Button 
-                onClick={() => cancelFn()}
-                variant="danger"
-                icon={X}
-                className="w-1/3"
-              >
-                CANCEL
-              </Button>
-            )}
-            <Button 
-              onClick={handleProcess}
-              variant="primary"
-              disabled={!inputPath || isProcessing}
-              icon={Tag}
-              className={isProcessing && cancelFn ? 'w-2/3' : 'w-full'}
-            >
-              {isProcessing ? 'PROCESSING...' : 'APPLY METADATA'}
-            </Button>
-          </div>
+          <ActionFooter
+            onAction={handleProcess}
+            actionLabel="Apply metadata"
+            disabled={!inputPath}
+            loading={isProcessing}
+            actionIcon={Tag}
+            onCancel={isProcessing && cancelFn ? cancelFn : undefined}
+          />
+          {notice && <InlineNotice message={notice} tone="error" />}
         </Panel>
       </Column>
 
       {/* RIGHT COLUMN: Quest Board / Status */}
       <Column isSidebar>
-        <SectionHeader title="METADATA_LOGS" align="right" variant="secondary" />
+        <SectionHeader title="Metadata Logs" align="right" variant="secondary" />
 
         <Panel className="gap-4">
           {progresses.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink">
-              <span className="font-zen font-bold text-lg">No Recent Actions</span>
-              <span className="font-mono text-xs mt-1 text-center">Apply metadata to see results</span>
+              <EmptyState title="No recent actions" description="Apply metadata to see results" />
             </div>
           ) : (
             <PanelScrollArea className="flex flex-col gap-3">
@@ -175,7 +167,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
                     <div className="flex justify-between items-start gap-2">
                       <span className="text-ink font-mono font-bold text-xs truncate flex-1 leading-tight" title={p.file}>{p.file}</span>
                       <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
-                        {p.status}
+                        {getStatusLabel(p.status)}
                       </span>
                     </div>
                     {p.log && <span className="text-[10px] font-mono text-muted line-clamp-2">{p.log}</span>}

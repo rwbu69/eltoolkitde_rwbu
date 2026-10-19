@@ -1,5 +1,5 @@
 import { Command } from '@tauri-apps/plugin-shell';
-import { exists, mkdir } from '@tauri-apps/plugin-fs';
+import { exists, mkdir, remove, rename } from '@tauri-apps/plugin-fs';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 import { basename, joinPath } from '../utils/path';
 
@@ -79,6 +79,7 @@ export class FfmpegService {
         const file = basename(inputFile);
         const baseName = file.replace(/\.[^.]+$/, '');
         const outputFile = joinPath(destFolder, `${baseName}.mp3`);
+        const tempFile = `${outputFile}.part`;
         
         if (await exists(outputFile)) {
           onProgress({ file, status: 'skipped', log: 'File already exists' });
@@ -94,21 +95,24 @@ export class FfmpegService {
             '-map', '0:a:0?', '-vn', 
             '-codec:a', 'libmp3lame', 
             '-b:a', bitrate, 
-            outputFile
+            tempFile
           ]);
           
           command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg] ${line.trim()}`));
           command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg] ${line.trim()}`));
           
-          command.on('close', (data) => {
+          command.on('close', async (data) => {
             if (cancelled) {
               onProgress({ file, status: 'error', log: `Cancelled` });
+              if (await exists(tempFile)) await remove(tempFile);
               resolve();
               return;
             }
             if (data.code !== 0) {
               onProgress({ file, status: 'error', log: `Exit code ${data.code}` });
+              if (await exists(tempFile)) await remove(tempFile);
             } else {
+              await rename(tempFile, outputFile);
               onProgress({ file, status: 'done' });
             }
             resolve();
@@ -121,6 +125,7 @@ export class FfmpegService {
           
           command.spawn().then((child) => {
             childProcess = child;
+            if (cancelled) child.kill().catch(() => {});
           }).catch(() => {
             if (!cancelled) onProgress({ file, status: 'error', log: 'Failed to spawn ffmpeg' });
             resolve();
@@ -129,7 +134,7 @@ export class FfmpegService {
       }
       
       if (!cancelled) {
-        await notifySuccess('Konversi Audio Selesai', `Telah memproses file MP3.`);
+        await notifySuccess('Audio conversion complete', 'MP3 files have been processed.');
       }
     })();
 
@@ -163,6 +168,7 @@ export class FfmpegService {
         const name = base.replace(new RegExp(`\\${ext}$`), '');
         
         const outputFile = joinPath(outputDir, `${name}-MIRROR${ext}`);
+        const tempFile = `${outputFile}.part`;
         
         onProgress({ file: base, status: 'processing', log: 'Starting mirror...', percent: 0 });
         
@@ -193,7 +199,7 @@ export class FfmpegService {
             '-preset', 'veryfast',
             '-c:a', 'aac',
             '-b:a', '128k',
-            outputFile
+            tempFile
           ]);
           
           command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg mirror] ${line.trim()}`));
@@ -211,12 +217,15 @@ export class FfmpegService {
             }
           });
           
-          command.on('close', (data) => {
+          command.on('close', async (data) => {
             if (cancelled) {
               onProgress({ file: base, status: 'error', log: `Cancelled` });
+              if (await exists(tempFile)) await remove(tempFile);
             } else if (data.code !== 0) {
               onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
+              if (await exists(tempFile)) await remove(tempFile);
             } else {
+              await rename(tempFile, outputFile);
               onProgress({ file: base, status: 'done', percent: 100 });
             }
             resolve();
@@ -229,6 +238,7 @@ export class FfmpegService {
           
           command.spawn().then((child) => {
             childProcess = child;
+            if (cancelled) child.kill().catch(() => {});
           }).catch(() => {
             if (!cancelled) onProgress({ file: base, status: 'error', log: 'Failed to spawn ffmpeg' });
             resolve();
@@ -237,7 +247,7 @@ export class FfmpegService {
       }
       
       if (!cancelled) {
-        await notifySuccess('Proses Mirror Selesai', `Telah memproses ${inputFiles.length} file.`);
+        await notifySuccess('Mirror processing complete', `Processed ${inputFiles.length} file${inputFiles.length === 1 ? '' : 's'}.`);
       }
     })();
 
@@ -257,6 +267,7 @@ export class FfmpegService {
     const name = base.replace(new RegExp(`\\${ext}$`), '');
     
     const outputFile = joinPath(outputDir, `${name} (trimmed)${ext}`);
+    const tempFile = `${outputFile}.part`;
     
     onProgress({ file: base, status: 'processing', log: 'Starting trim...' });
     
@@ -277,20 +288,23 @@ export class FfmpegService {
         '-ss', startTime, 
         '-to', endTime, 
         '-c', 'copy', 
-        outputFile
+        tempFile
       ]);
       
       command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg trim] ${line.trim()}`));
       command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg trim] ${line.trim()}`));
       
-      command.on('close', (data) => {
+      command.on('close', async (data) => {
         if (cancelled) {
           onProgress({ file: base, status: 'error', log: `Cancelled` });
+          if (await exists(tempFile)) await remove(tempFile);
         } else if (data.code !== 0) {
           onProgress({ file: base, status: 'error', log: `Exit code ${data.code}` });
+          if (await exists(tempFile)) await remove(tempFile);
         } else {
+          await rename(tempFile, outputFile);
           onProgress({ file: base, status: 'done' });
-          notifySuccess('Proses Pemotongan Selesai', `File: ${base}`);
+          notifySuccess('Trim complete', `File: ${base}`);
         }
         resolve();
       });
@@ -302,6 +316,7 @@ export class FfmpegService {
       
       command.spawn().then((child) => {
         childProcess = child;
+        if (cancelled) child.kill().catch(() => {});
       }).catch(() => {
         if (!cancelled) onProgress({ file: base, status: 'error', log: 'Failed to spawn ffmpeg' });
         resolve();

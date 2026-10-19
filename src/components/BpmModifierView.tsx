@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
-import { BpmService, BpmProgress } from '../services/bpm';
+import { BpmService, BpmProgress, BpmOutputFormat } from '../services/bpm';
 import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3, AlertTriangle } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
 import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
 import { Input } from './ui/Input';
 import { ProgressBar } from './ui/ProgressBar';
+import { EmptyState } from './ui/EmptyState';
+import { InlineNotice } from './ui/InlineNotice';
+import { getStatusLabel, getUserFacingError } from '../config/uiText';
 
 interface SelectedFile {
   path: string;
   originalBPM?: number;
   confidence?: 'high' | 'medium' | 'low';
+  candidates?: number[];
 }
 
 export default function BpmModifierView({ isActive = false }: { isActive?: boolean }) {
@@ -19,10 +23,12 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   const [bpmRange, setBpmRange] = useState<string>('any');
   const [outputDir, setOutputDir] = useState<string>('');
   const [targetBPM, setTargetBPM] = useState<string>(''); 
+  const [outputFormat, setOutputFormat] = useState<BpmOutputFormat>('wav');
   
   const [progresses, setProgresses] = useState<BpmProgress[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [notice, setNotice] = useState<string>('');
 
   useEffect(() => {
     if (!isActive) return;
@@ -59,6 +65,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     if (selectedFiles.length === 0) return;
     setIsDetecting(true);
     setProgresses([]);
+    setNotice('');
 
     let range: { min: number, max: number } | undefined = undefined;
     if (bpmRange === '70-150') range = { min: 70, max: 150 };
@@ -87,13 +94,14 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
           if (f) {
             f.originalBPM = res.originalBPM;
             f.confidence = res.confidence;
+            f.candidates = res.candidates;
           }
         });
         return newFiles;
       });
 
     } catch (err: any) {
-      alert(err.message || String(err));
+      setNotice(getUserFacingError(err, 'BPM analysis failed. Check the selected audio files and try again.').message);
     } finally {
       setIsDetecting(false);
     }
@@ -113,19 +121,20 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     const readyFiles = selectedFiles.filter(f => f.originalBPM !== undefined) as { path: string, originalBPM: number }[];
     if (readyFiles.length === 0 || !outputDir || !targetBPM) return;
     
-    const bpmNumber = parseInt(targetBPM);
-    if (isNaN(bpmNumber) || bpmNumber <= 0) {
-      alert('Please enter a valid Target BPM');
+    const bpmNumber = parseFloat(targetBPM);
+    if (isNaN(bpmNumber) || bpmNumber < 20 || bpmNumber > 300) {
+      setNotice('Target BPM must be between 20 and 300.');
       return;
     }
 
     setIsProcessing(true);
+    setNotice('');
     // Keep detection progresses but start new ones for processing
     setProgresses([]);
     
     try {
       const payload = readyFiles.map(f => ({ file: f.path, originalBPM: f.originalBPM }));
-      await BpmService.batchChangeTempo(payload, bpmNumber, outputDir, (p) => {
+      await BpmService.batchChangeTempo(payload, bpmNumber, outputDir, outputFormat, (p) => {
         setProgresses(prev => {
           const idx = prev.findIndex(x => x.file === p.file);
           if (idx >= 0) {
@@ -137,7 +146,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
         });
       });
     } catch (err: any) {
-      alert(err.message || String(err));
+      setNotice(getUserFacingError(err, 'The BPM-adjusted files could not be created. Check the output folder and try again.').message);
     } finally {
       setIsProcessing(false);
     }
@@ -149,7 +158,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   return (
     <PageLayout>
       <Column>
-        <SectionHeader title="BATCH BPM MODIFIER" icon={Activity} />
+        <SectionHeader title="BPM Modifier" icon={Activity} />
 
         <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">
@@ -157,12 +166,12 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
             {/* Phase 1: Input & Detection */}
             <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
               <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-                1. DETECT BPM
+                1. Detect BPM
               </h3>
 
               <div className="space-y-4">
                 <div>
-                  <FormLabel text="INPUT FILES" icon={FileAudio} />
+                  <FormLabel text="Input files" icon={FileAudio} />
                   <div className="flex gap-2">
                     <Input
                       type="text"
@@ -183,7 +192,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                 </div>
 
                 <div>
-                  <FormLabel text="EXPECTED BPM RANGE" />
+                  <FormLabel text="Expected BPM range" />
                   <select 
                     value={bpmRange} 
                     onChange={e => setBpmRange(e.target.value)}
@@ -203,7 +212,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                   icon={Search}
                   fullWidth
                 >
-                  {isDetecting ? 'DETECTING...' : 'DETECT BPMs'}
+                  {isDetecting ? 'Analyzing...' : 'Detect BPM'}
                 </Button>
               </div>
             </div>
@@ -211,12 +220,12 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
             {/* Phase 2: Modify */}
             <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
               <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-                2. MODIFY TEMPO
+                2. Modify tempo
               </h3>
 
               <div className="space-y-4">
                 <div>
-                  <FormLabel text="OUTPUT FOLDER" icon={FolderOpen} />
+                  <FormLabel text="Output folder" icon={FolderOpen} />
                   <PathPicker 
                     value={outputDir}
                     onChange={setOutputDir}
@@ -226,7 +235,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                 </div>
 
                 <div>
-                  <FormLabel text="TARGET BPM" />
+                  <FormLabel text="Target BPM" />
                   <Input 
                     type="number" 
                     value={targetBPM} 
@@ -234,6 +243,18 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                     className="bg-panel" 
                     placeholder="Enter desired unified BPM (e.g. 192)" 
                   />
+                </div>
+
+                <div>
+                  <FormLabel text="Output format" />
+                  <select
+                    value={outputFormat}
+                    onChange={e => setOutputFormat(e.target.value as BpmOutputFormat)}
+                    className="game-input bg-panel"
+                  >
+                    <option value="wav">WAV (lossless)</option>
+                    <option value="mp3">MP3 (compressed)</option>
+                  </select>
                 </div>
               </div>
             </div>
@@ -249,23 +270,23 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
               icon={PlayCircle}
               fullWidth
             >
-              {isProcessing ? 'PROCESSING...' : `APPLY TARGET BPM`}
+              {isProcessing ? 'Processing...' : 'Apply target BPM'}
             </Button>
           </div>
+          {notice && <InlineNotice message={notice} tone="error" />}
         </Panel>
       </Column>
 
       <Column isSidebar>
-        <SectionHeader title="RESULTS" align="right" variant="secondary" />
+        <SectionHeader title="Results" align="right" variant="secondary" />
         <Panel className="bg-appbg" noPadding>
           <PanelHeader>
-            <FormLabel text="SELECTED FILES" />
+            <FormLabel text="Selected files" />
           </PanelHeader>
           <PanelScrollArea className="p-3">
             {selectedFiles.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">
-                <p className="text-sm font-bold font-zen">No files selected</p>
-                <p className="text-[10px] font-mono text-center">Select files to begin</p>
+                <EmptyState title="No files selected" description="Select files to begin" />
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -278,7 +299,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                   return (
                     <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : isDone && !isDetecting ? 'bg-softtoska border-toska' : 'bg-panel border-gameborder'}`}>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-muted truncate pr-2">FILE</span>
+                        <span className="text-[10px] font-bold text-muted truncate pr-2">File</span>
                         {prog && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-gameborder/20">
                             {prog.percent}%
@@ -289,7 +310,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                       
                       <div className="flex justify-between items-center mb-1">
                         <span className={`text-[10px] font-bold ${fileObj.originalBPM ? 'text-toska' : 'text-ink/40'}`}>
-                          DETECTED BPM:
+                          Detected BPM:
                         </span>
                         {fileObj.originalBPM !== undefined ? (
                           <div className="flex items-center gap-2">
@@ -312,12 +333,17 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                         ) : (
                           <span className="text-[10px] font-bold text-ink/40">---</span>
                         )}
+                        {fileObj.candidates && fileObj.candidates.length > 1 && (
+                          <span className="text-[9px] text-muted">
+                            Candidates: {fileObj.candidates.slice(0, 3).map(candidate => `${candidate.toFixed(1)} BPM`).join(' / ')}
+                          </span>
+                        )}
                       </div>
                       
                       {prog && (
                         <div className="mt-2 flex flex-col gap-1">
                           <ProgressBar percent={prog.percent} status={prog.status} />
-                          {isError && <span className="text-[9px] font-bold text-oshipink text-right">FAILED</span>}
+                          {isError && <span className="text-[9px] font-bold text-oshipink text-right">{getStatusLabel('error')}</span>}
                         </div>
                       )}
                     </div>

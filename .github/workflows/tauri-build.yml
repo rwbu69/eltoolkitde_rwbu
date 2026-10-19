@@ -13,11 +13,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-latest' # untuk arm64 dan x64 mac
-            args: '--target universal-apple-darwin'
+          - platform: 'macos-13'
+            target: 'x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin --bundles dmg'
+          - platform: 'macos-14'
+            target: 'aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin --bundles dmg'
           - platform: 'ubuntu-22.04'
+            target: 'x86_64-unknown-linux-gnu'
             args: '--bundles deb,appimage'
           - platform: 'windows-latest'
+            target: 'x86_64-pc-windows-msvc'
             args: '--bundles nsis'
 
     runs-on: ${{ matrix.platform }}
@@ -34,24 +40,26 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.target }}
 
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install dependencies (ubuntu only)
+      - name: Install dependencies (Linux only)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libsndfile1
 
       - name: Install frontend dependencies
-        run: npm install
+        run: npm ci
 
       - name: Setup Dynamic Sidecars
         run: node scripts/setup-sidecars.cjs
+        env:
+          TARGET_TRIPLE: ${{ matrix.target }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -59,31 +67,30 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python Dependencies
-        run: pip install pyinstaller librosa
+        run: pip install pyinstaller librosa soundfile
 
-      - name: Build Python Sidecar (Windows)
-        if: matrix.platform == 'windows-latest'
+      - name: Build Python Sidecars
         run: |
-          pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-pc-windows-msvc src-python/bpm_detector.py
-          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-x86_64-pc-windows-msvc src-python/bpm_modifier.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_detector-${{ matrix.target }} src-python/bpm_detector.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-${{ matrix.target }} src-python/bpm_modifier.py
+        env:
+          TARGET_TRIPLE: ${{ matrix.target }}
 
-      - name: Build Python Sidecar (macOS)
-        if: matrix.platform == 'macos-latest'
+      - name: Verify sidecars
+        shell: bash
         run: |
-          pyinstaller --onefile --distpath src-tauri --name bpm_detector-universal-apple-darwin src-python/bpm_detector.py
-          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-universal-apple-darwin src-python/bpm_modifier.py
-
-      - name: Build Python Sidecar (Linux)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-unknown-linux-gnu src-python/bpm_detector.py
-          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-x86_64-unknown-linux-gnu src-python/bpm_modifier.py
-
-      - name: Clean macOS Quarantine & Perms
-        if: matrix.platform == 'macos-latest'
-        run: |
-          chmod +x src-tauri/* || true
-          xattr -cr src-tauri/* || true
+          set -euo pipefail
+          for binary in ffmpeg ffprobe yt-dlp node bpm_detector bpm_modifier; do
+            path="src-tauri/${binary}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}"
+            test -s "$path"
+            if [[ "${{ matrix.target }}" != "x86_64-pc-windows-msvc" ]]; then
+              chmod +x "$path"
+            fi
+          done
+          if [[ "${{ matrix.target }}" == *"apple-darwin" ]]; then
+            file src-tauri/bpm_detector-${{ matrix.target }}
+            file src-tauri/bpm_modifier-${{ matrix.target }}
+          fi
 
       - name: Load Release Notes
         shell: bash

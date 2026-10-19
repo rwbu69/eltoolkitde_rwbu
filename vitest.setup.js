@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 // Setup Mock DOM
-const html = fs.readFileSync(path.resolve(__dirname, 'src/index.html'), 'utf-8');
+const html = fs.readFileSync(path.resolve(__dirname, 'index.html'), 'utf-8');
 document.body.innerHTML = html.match(/<body[^>]*>([\s\S]*)<\/body>/)[1];
 
 // Mock Tauri API secara Global
