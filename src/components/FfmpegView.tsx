@@ -9,6 +9,10 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { ProgressBar } from './ui/ProgressBar';
+import { EmptyState } from './ui/EmptyState';
+import { InlineNotice } from './ui/InlineNotice';
+import { ActionFooter } from './ui/ActionFooter';
+import { getStatusLabel, getUserFacingError } from '../config/uiText';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
   const { settings } = useAppStore();
@@ -23,6 +27,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
   const [progresses, setProgresses] = useState<FfmpegProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
+  const [notice, setNotice] = useState<string>('');
 
   useEffect(() => {
     if (!outputDir && settings.defaultOutputDir) {
@@ -88,6 +93,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
 
   const handleProcess = async () => {
     if (inputPaths.length === 0 || !outputDir) return;
+    setNotice('');
     setIsProcessing(true);
     setProgresses(inputPaths.map(p => ({ file: p.split(/[\\/]/).pop() || p, status: 'pending', percent: 0 })));
     
@@ -125,7 +131,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
       }
     } catch (e: any) {
       console.error(e);
-      alert(e.message || String(e));
+      setNotice(getUserFacingError(e, 'The files could not be processed. Check the inputs and try again.').message);
     } finally {
       setIsProcessing(false);
       setCancelFn(null);
@@ -136,7 +142,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
     <PageLayout>
       {/* LEFT COLUMN: Input & Config */}
       <Column>
-        <SectionHeader title="FFMPEG_TOOLS" />
+        <SectionHeader title="FFmpeg tools" />
 
         {/* Tab Buttons */}
         <Tabs
@@ -153,7 +159,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           {/* Target Files */}
           <div className="flex flex-col min-h-0">
             <div className="flex items-center justify-between mb-1.5 shrink-0">
-              <FormLabel text={mode === 'trim' ? 'TARGET FILE (FIRST ONLY)' : 'TARGET FILES'} icon={FolderOpen} />
+              <FormLabel text={mode === 'trim' ? 'Target file (first only)' : 'Target files'} icon={FolderOpen} />
               <span className="font-mono text-[10px] font-bold text-muted bg-appbg px-2 py-0.5 rounded-full border border-gameborder/20">
                 {inputPaths.length} selected
               </span>
@@ -166,7 +172,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                 icon={FileAudio}
                 className="flex-1 border-[3px]"
               >
-                <span className="tracking-wide">SELECT FILE(S)</span>
+                <span className="tracking-wide">Select file(s)</span>
               </Button>
               <Button 
                 onClick={handleSelectFolderInput} 
@@ -195,7 +201,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           {/* Settings Area */}
           <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <Settings2 className="w-4 h-4" /> CONFIGURATION
+              <Settings2 className="w-4 h-4" /> Configuration
             </h3>
 
             {mode === 'mp3' && (
@@ -226,7 +232,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
 
           {/* Output Dir */}
           <div className="shrink-0">
-            <FormLabel text="OUTPUT FOLDER" icon={FolderOpen} iconColor="text-muted" />
+            <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-muted" />
             <PathPicker 
               value={outputDir} 
               onChange={setOutputDir} 
@@ -236,40 +242,27 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           </div>
 
           {/* Action Button */}
-          <div className="pt-3 mt-auto border-t-4 border-appbg shrink-0 flex gap-2">
-            {isProcessing && cancelFn && (
-              <Button 
-                onClick={() => cancelFn()}
-                variant="danger"
-                icon={X}
-                className="w-1/3"
-              >
-                CANCEL
-              </Button>
-            )}
-            <Button 
-              onClick={handleProcess}
-              variant="primary"
-              disabled={inputPaths.length === 0 || !outputDir || isProcessing}
-              icon={Play}
-              className={isProcessing && cancelFn ? 'w-2/3' : 'w-full'}
-            >
-              {isProcessing ? 'PROCESSING...' : `PROCESS ${inputPaths.length} FILE${inputPaths.length !== 1 ? 'S' : ''}`}
-            </Button>
-          </div>
+          <ActionFooter
+            onAction={handleProcess}
+            actionLabel={`Process ${inputPaths.length} file${inputPaths.length !== 1 ? 's' : ''}`}
+            disabled={inputPaths.length === 0 || !outputDir}
+            loading={isProcessing}
+            actionIcon={Play}
+            onCancel={isProcessing && cancelFn ? cancelFn : undefined}
+          />
+          {notice && <InlineNotice message={notice} tone="error" />}
 
         </Panel>
       </Column>
 
       {/* RIGHT COLUMN: Process Log / Status */}
       <Column isSidebar>
-        <SectionHeader title="PROCESS_LOG" align="right" variant="secondary" />
+        <SectionHeader title="Process Log" align="right" variant="secondary" />
 
         <Panel className="gap-4">
           {progresses.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink">
-              <span className="font-zen font-bold text-lg">Queue is empty</span>
-              <span className="font-mono text-xs mt-1 text-center">Add files and start processing</span>
+              <EmptyState title="No files selected" description="Select files and start processing" />
             </div>
           ) : (
             <PanelScrollArea className="flex flex-col gap-3">
@@ -303,8 +296,8 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                         {statusIcon}
                         <span className="text-ink font-mono font-bold text-xs truncate leading-tight" title={p.file}>{p.file}</span>
                       </div>
-                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
-                        {p.status}
+                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap ${tagClass}`}>
+                        {getStatusLabel(p.status)}
                       </span>
                     </div>
                     {p.status === 'processing' && p.percent !== undefined && (

@@ -14,7 +14,6 @@ dist-ssr
 
 referensi1.html
 referensi2.html
-legacy/core/cookies.txt
 
 # Sidecar binaries
 src-tauri/ffmpeg-*

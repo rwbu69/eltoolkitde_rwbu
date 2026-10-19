@@ -211,8 +211,8 @@ pub fn run() {
                         api.prevent_close();
                         
                         let _ = window.app_handle().notification().builder()
-                            .title("ElToolkit Disembunyikan")
-                            .body("Aplikasi berjalan di latar belakang. Klik ikon tray untuk membuka kembali.")
+                            .title("ElToolkit is hidden")
+                            .body("App is currently running in the background.")
                             .show();
                     }
                 }

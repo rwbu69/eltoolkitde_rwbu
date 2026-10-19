@@ -136,31 +136,31 @@ function App() {
               className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'settings' ? 'game-btn-primary' : 'game-btn-secondary text-oshipink hover:text-oshipink'}`}
             >
               <Settings className="w-4 h-4 shrink-0" />
-              <span className="hidden text-xs font-bold lg:inline">Prefs</span>
+              <span className="hidden text-xs font-bold lg:inline">Settings</span>
             </button>
           </Tooltip>
         </nav>
       </header>
 
       {/* Main Content (Stage Area) */}
-      <main className="z-10 flex flex-col flex-1 w-full min-h-0 px-6 pt-2 pb-16 overflow-hidden lg:px-12">
-        <div className="max-w-[1400px] mx-auto w-full flex-1 min-h-0 overflow-hidden relative">
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'downloader' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+      <main className="z-10 flex flex-col flex-1 w-full min-h-0 px-4 pt-2 pb-16 overflow-y-auto xl:overflow-hidden lg:px-12">
+        <div className="max-w-[1400px] mx-auto w-full flex-1 min-h-0 overflow-visible xl:overflow-hidden relative">
+          <div className={`${activeTab === 'downloader' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <DownloaderView />
           </div>
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'ffmpeg' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+          <div className={`${activeTab === 'ffmpeg' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <FfmpegView isActive={activeTab === 'ffmpeg'} />
           </div>
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'metadata' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+          <div className={`${activeTab === 'metadata' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <MetadataView isActive={activeTab === 'metadata'} />
           </div>
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'rename' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+          <div className={`${activeTab === 'rename' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <RenameView isActive={activeTab === 'rename'} />
           </div>
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'bpm' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+          <div className={`${activeTab === 'bpm' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <BpmModifierView isActive={activeTab === 'bpm'} />
           </div>
-          <div className={`absolute inset-0 transition-opacity duration-300 ${activeTab === 'settings' ? 'opacity-100 z-10' : 'opacity-0 z-0 pointer-events-none'}`}>
+          <div className={`${activeTab === 'settings' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <SettingsView />
           </div>
         </div>

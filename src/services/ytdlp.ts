@@ -52,7 +52,7 @@ export class YtDlpService {
 
   static async fetchVideoInfo(url: string, cookiesFilePath?: string, browserForCookies?: string): Promise<VideoInfo> {
     const ffmpegLocation = await this.getFfmpegLocation();
-    const fetchArgs = ['--encoding', 'utf-8', '-J', '--no-check-certificate'];
+    const fetchArgs = ['--encoding', 'utf-8', '-J'];
 
     if (browserForCookies) {
       fetchArgs.push('--cookies-from-browser', browserForCookies);
@@ -165,11 +165,12 @@ export class YtDlpService {
       dlArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
     }
 
-    dlArgs.push('--no-check-certificate', '--', url);
+    dlArgs.push('--', url);
 
     let currentPlaylistIndex = 0;
     let totalPlaylistItems = 0;
     let cancelFn: () => void;
+    let cancelled = false;
 
     const task = new Promise<void>((resolve, reject) => {
       onProgress({ percent: 0, speed: '--', eta: '--', status: 'starting' });
@@ -180,6 +181,7 @@ export class YtDlpService {
       
       // We will expose a way to kill this command
       const killCommand = () => {
+        cancelled = true;
         if (childProcess) {
           childProcess.kill().catch(() => {});
         }
@@ -229,7 +231,10 @@ export class YtDlpService {
       });
 
       command.on('close', async (data) => {
-        if (data.code === 0) {
+        if (cancelled) {
+          onProgress({ percent: 0, speed: '--', eta: '--', status: 'canceled' });
+          resolve();
+        } else if (data.code === 0) {
           onProgress({ percent: 100, speed: '--', eta: '--', status: 'done' });
           resolve();
           let permissionGranted = await isPermissionGranted();
@@ -238,7 +243,7 @@ export class YtDlpService {
             permissionGranted = permission === 'granted';
           }
           if (permissionGranted) {
-            sendNotification({ title: 'Unduhan Selesai', body: `Tugas Selesai: ${options.url}` });
+            sendNotification({ title: 'Download complete', body: `Task complete: ${options.url}` });
           }
         } else {
           onProgress({ percent: 0, speed: '--', eta: '--', status: 'error' });
@@ -253,6 +258,7 @@ export class YtDlpService {
 
       command.spawn().then((child) => {
         childProcess = child;
+        if (cancelled) child.kill().catch(() => {});
       }).catch(reject);
     });
 

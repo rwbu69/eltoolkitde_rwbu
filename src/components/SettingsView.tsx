@@ -4,6 +4,7 @@ import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout
 import { Input } from './ui/Input';
 import { PathPicker } from './ui/PathPicker';
 import { Toggle } from './ui/Toggle';
+import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 
 export default function SettingsView() {
   const { settings, updateSettings } = useAppStore();
@@ -12,19 +13,19 @@ export default function SettingsView() {
     <PageLayout>
       {/* FULL WIDTH COLUMN for Settings */}
       <Column>
-        <SectionHeader title="PREFERENCES" />
+        <SectionHeader title="Settings" />
 
         <Panel className="space-y-6 flex-1 min-w-0 overflow-y-auto custom-scrollbar">
           
           {/* GENERAL SECTION */}
           <div className="space-y-4">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <FolderOpen className="w-5 h-5 text-toska" /> GENERAL DEFAULTS
+              <FolderOpen className="w-5 h-5 text-toska" /> General defaults
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <FormLabel text="DEFAULT OUTPUT FOLDER" icon={FolderOpen} />
+                <FormLabel text="Default output folder" icon={FolderOpen} />
                 <PathPicker 
                   value={settings.defaultOutputDir}
                   onChange={(path) => updateSettings({ defaultOutputDir: path })}
@@ -40,8 +41,8 @@ export default function SettingsView() {
                   onChange={(e) => updateSettings({ theme: e.target.value as 'light' | 'dark' })}
                   className="game-select font-bold"
                 >
-                  <option value="light">LIGHT MODE</option>
-                  <option value="dark">DARK MODE (Midnight)</option>
+                  <option value="light">Light mode</option>
+                  <option value="dark">Dark mode (Midnight)</option>
                 </select>
                 <p className="mt-2 text-[10px] font-mono font-bold text-muted uppercase">Changes apply immediately.</p>
               </div>
@@ -51,34 +52,33 @@ export default function SettingsView() {
           {/* MEDIA CONFIG SECTION */}
           <div className="space-y-4">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <FileBox className="w-5 h-5 text-toska" /> MEDIA PRESETS
+              <FileBox className="w-5 h-5 text-toska" /> Media presets
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <FormLabel text="DEFAULT VIDEO QUALITY" />
+                <FormLabel text="Default video quality" />
                 <select 
                   value={settings.defaultVideoQuality}
-                  onChange={(e) => updateSettings({ defaultVideoQuality: e.target.value as any })}
+                  onChange={(e) => updateSettings({ defaultVideoQuality: e.target.value as VideoQuality })}
                   className="game-select font-bold"
                 >
-                  <option value="best">BEST</option>
-                  <option value="mid">MID</option>
-                  <option value="low">LOW</option>
+                  {VIDEO_QUALITY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </div>
               
               <div>
-                <FormLabel text="DEFAULT AUDIO BITRATE (MP3)" />
+                <FormLabel text="Default audio bitrate (MP3)" />
                 <select 
                   value={settings.defaultAudioBitrate}
-                  onChange={(e) => updateSettings({ defaultAudioBitrate: e.target.value as any })}
+                  onChange={(e) => updateSettings({ defaultAudioBitrate: e.target.value as AudioBitrate })}
                   className="game-select font-bold"
                 >
-                  <option value="320k">320 kbps (High)</option>
-                  <option value="256k">256 kbps (Standard)</option>
-                  <option value="192k">192 kbps (Good)</option>
-                  <option value="128k">128 kbps (Basic)</option>
+                  {AUDIO_BITRATE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -87,12 +87,12 @@ export default function SettingsView() {
           {/* DOWNLOAD BEHAVIOR SECTION */}
           <div className="space-y-4">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <Download className="w-5 h-5 text-toska" /> DOWNLOAD BEHAVIOR
+              <Download className="w-5 h-5 text-toska" /> Download behavior
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <FormLabel text="CONCURRENT DOWNLOADS" />
+                <FormLabel text="Concurrent downloads" />
                 <Toggle 
                   checked={settings.enableConcurrentDownloads}
                   onChange={(checked) => updateSettings({ enableConcurrentDownloads: checked })}
@@ -103,7 +103,7 @@ export default function SettingsView() {
               </div>
 
               <div>
-                <FormLabel text="MAX CONCURRENT ITEMS" />
+                <FormLabel text="Max concurrent items" />
                 <Input
                   type="number"
                   min="1"
@@ -119,7 +119,7 @@ export default function SettingsView() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
               <div>
-                <FormLabel text="RATE LIMIT SPEED" icon={Zap} iconColor="text-oshipink" />
+                <FormLabel text="Rate limit speed" icon={Zap} iconColor="text-oshipink" />
                 <Input
                   type="text"
                   value={settings.rateLimitSpeed}
@@ -134,12 +134,12 @@ export default function SettingsView() {
           {/* SYSTEM BEHAVIOR SECTION */}
           <div className="space-y-4">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <Shield className="w-5 h-5 text-toska" /> SYSTEM BEHAVIOR
+              <Shield className="w-5 h-5 text-toska" /> System behavior
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <FormLabel text="CLOSE BUTTON ACTION" />
+                <FormLabel text="Close button action" />
                 <Toggle 
                   checked={settings.closeToTray}
                   onChange={(checked) => updateSettings({ closeToTray: checked })}
@@ -154,12 +154,12 @@ export default function SettingsView() {
           {/* AUTHENTICATION SECTION */}
           <div className="space-y-4 bg-appbg border-4 border-gameborder p-5 rounded-2xl">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-              <Shield className="w-5 h-5 text-oshipink" /> AUTHENTICATION (FOR PREMIUM SITES)
+              <Shield className="w-5 h-5 text-oshipink" /> Authentication for premium sites
             </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <FormLabel text="USE BROWSER COOKIES" />
+                <FormLabel text="Use browser cookies" />
                 <select 
                   value={settings.browserForCookies}
                   onChange={(e) => updateSettings({ browserForCookies: e.target.value, cookiesFilePath: '' })}
@@ -177,7 +177,7 @@ export default function SettingsView() {
               </div>
               
               <div>
-                <FormLabel text="OR USE COOKIES.TXT FILE" />
+                <FormLabel text="Or use a cookies.txt file" />
                 <PathPicker 
                   value={settings.cookiesFilePath}
                   onChange={(path) => updateSettings({ cookiesFilePath: path })}

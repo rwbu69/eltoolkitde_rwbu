@@ -7,6 +7,9 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { Toggle } from './ui/Toggle';
+import { EmptyState } from './ui/EmptyState';
+import { InlineNotice } from './ui/InlineNotice';
+import { getStatusLabel, getUserFacingError } from '../config/uiText';
 
 export default function RenameView({ isActive = false }: { isActive?: boolean }) {
   const [inputPath, setInputPath] = useState('');
@@ -31,6 +34,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
   const [progresses, setProgresses] = useState<RenameProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<{oldPath: string, newPath: string}[]>([]);
+  const [notice, setNotice] = useState<string>('');
 
   // Re-generate previews whenever inputs change
   useEffect(() => {
@@ -84,6 +88,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
 
   const handleExecute = async () => {
     if (previews.length === 0 || hasConflicts) return;
+    setNotice('');
     setIsProcessing(true);
     setProgresses([]);
     
@@ -105,7 +110,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       }, 500);
       
     } catch (err: any) {
-      alert(err.message || String(err));
+      setNotice(getUserFacingError(err, 'The file names could not be previewed. Check the selected folder and try again.').message);
     } finally {
       setIsProcessing(false);
     }
@@ -131,7 +136,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       }, 500);
       
     } catch (err: any) {
-      alert(err.message || String(err));
+      setNotice(getUserFacingError(err, 'The files could not be renamed. Check the preview and try again.').message);
     } finally {
       setIsProcessing(false);
     }
@@ -142,7 +147,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
   return (
     <PageLayout>
       <Column>
-        <SectionHeader title="BATCH RENAME" icon={Edit3} />
+        <SectionHeader title="Batch Rename" icon={Edit3} />
 
         {/* Tab Buttons */}
         <Tabs
@@ -160,7 +165,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
             
             {/* Target Directory */}
             <div>
-              <FormLabel text="TARGET FOLDER" icon={FolderOpen} />
+              <FormLabel text="Target folder" icon={FolderOpen} />
               <PathPicker 
                 value={inputPath}
                 onChange={handleSelectInput}
@@ -172,23 +177,23 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
             {/* Configuration Area */}
             <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0 mt-2">
               <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-                <Settings2 className="w-4 h-4" /> CONFIGURATION
+                <Settings2 className="w-4 h-4" /> Configuration
               </h3>
 
               {mode === 'find-replace' && (
                 <div className="space-y-4">
                   <div>
-                    <FormLabel text="FIND TEXT" />
+                    <FormLabel text="Find text" />
                     <Input type="text" value={findText} onChange={e => setFindText(e.target.value)} className="bg-panel" placeholder="Text to find..." />
                   </div>
                   <div>
-                    <FormLabel text="REPLACE WITH" />
+                    <FormLabel text="Replace with" />
                     <Input type="text" value={replaceText} onChange={e => setReplaceText(e.target.value)} className="bg-panel" placeholder="Replace with..." />
                   </div>
                   <Toggle 
                     checked={caseSensitive}
                     onChange={setCaseSensitive}
-                    label="CASE SENSITIVE"
+                    label="Case sensitive"
                     variant="switch"
                   />
                 </div>
@@ -210,12 +215,12 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
               {mode === 'numbering' && (
                 <div className="space-y-4">
                   <div>
-                    <FormLabel text="BASE NAME (OPTIONAL)" />
+                    <FormLabel text="Base name (optional)" />
                     <Input type="text" value={baseName} onChange={e => setBaseName(e.target.value)} className="bg-panel" placeholder="e.g. Track_" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <FormLabel text="START NUMBER" />
+                      <FormLabel text="Start number" />
                       <Input type="number" min="0" value={startNumber} onChange={e => setStartNumber(parseInt(e.target.value) || 0)} className="bg-panel" />
                     </div>
                     <div>
@@ -230,7 +235,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
             {history.length > 0 && (
               <div className="p-4 rounded-xl bg-softpink border-4 border-gameborder flex items-start justify-between gap-3 shrink-0">
                 <div>
-                  <h4 className="font-bold text-sm text-ink mb-1 flex items-center gap-1"><Undo2 className="w-4 h-4"/> UNDO AVAILABLE</h4>
+                  <h4 className="font-bold text-sm text-ink mb-1 flex items-center gap-1"><Undo2 className="w-4 h-4"/> Undo available</h4>
                   <p className="text-xs text-ink/80 font-mono">You can revert the last rename operation.</p>
                 </div>
                 <Button 
@@ -255,28 +260,28 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
               icon={CheckSquare}
               fullWidth
             >
-              {isProcessing ? 'PROCESSING...' : `APPLY TO ${previews.length} FILE${previews.length !== 1 ? 'S' : ''}`}
+              {isProcessing ? 'Processing...' : `Apply to ${previews.length} file${previews.length !== 1 ? 's' : ''}`}
             </Button>
           </div>
+          {notice && <InlineNotice message={notice} tone="error" />}
         </Panel>
       </Column>
 
       <Column isSidebar>
-        <SectionHeader title="PREVIEW" align="right" variant="secondary" />
+        <SectionHeader title="Preview" align="right" variant="secondary" />
         <Panel className="bg-appbg" noPadding>
           <PanelHeader>
-            <FormLabel text="FILE CHANGES" />
+            <FormLabel text="File changes" />
             {hasConflicts && (
               <span className="text-[10px] font-bold text-buttontext bg-oshipink px-2 py-1 rounded-full flex items-center gap-1">
-                <AlertTriangle className="w-3 h-3"/> CONFLICTS
+                <AlertTriangle className="w-3 h-3"/> Conflicts
               </span>
             )}
           </PanelHeader>
           <PanelScrollArea className="p-3">
             {previews.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">
-                <p className="text-sm font-bold font-zen">No files selected</p>
-                <p className="text-[10px] font-mono text-center">Select a folder to see previews</p>
+                <EmptyState title="No files selected" description="Select a folder to see previews" />
               </div>
             ) : (
               <div className="flex flex-col gap-2">
@@ -286,12 +291,12 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                   return (
                     <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : 'bg-panel border-gameborder'}`}>
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-muted truncate pr-2">OLD NAME</span>
+                        <span className="text-[10px] font-bold text-muted truncate pr-2">Old name</span>
                       </div>
                       <span className="text-xs font-mono font-bold text-ink truncate mb-2" title={p.oldName}>{p.oldName}</span>
                       
                       <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-toska truncate pr-2">NEW NAME</span>
+                        <span className="text-[10px] font-bold text-toska truncate pr-2">New name</span>
                         {p.status === 'collision' && <span className="text-[9px] font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded">Collision</span>}
                         {p.status === 'exists' && <span className="text-[9px] font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded">Exists</span>}
                       </div>
@@ -303,7 +308,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                           prog.status === 'error' ? 'bg-softpink border-oshipink text-oshipink' :
                           'bg-appbg border-gameborder/20 text-muted'
                         }`}>
-                          STATUS: {prog.status.toUpperCase()} {prog.log ? `(${prog.log})` : ''}
+                          {getStatusLabel(prog.status)}{prog.log ? ` (${prog.log})` : ''}
                         </div>
                       )}
                     </div>
