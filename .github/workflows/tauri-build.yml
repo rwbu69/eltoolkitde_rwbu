@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: 'macos-13'
+          - platform: 'macos-15-intel'
             target: 'x86_64-apple-darwin'
             args: '--target x86_64-apple-darwin --bundles dmg'
           - platform: 'macos-14'
@@ -28,12 +28,12 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -62,7 +62,7 @@ jobs:
           TARGET_TRIPLE: ${{ matrix.target }}
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
