@@ -35,3 +35,4 @@ STYLE_GUIDE.md
 
 build/
 *.spec
+*.tsbuildinfo
