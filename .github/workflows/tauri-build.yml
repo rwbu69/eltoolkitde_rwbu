@@ -2,6 +2,7 @@ name: 'Tauri Build'
 on:
   push:
     branches:
+      - main
       - build
   workflow_dispatch:
 
