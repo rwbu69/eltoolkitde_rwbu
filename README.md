@@ -55,6 +55,16 @@ I kept reaching for the same command-line tools to download a video, trim a clip
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history.
 
+## Project status and contributing
+
+This is an early release maintained by a small team. Contributions and bug
+reports are welcome, but response times may vary. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) before opening a pull request, and use the
+issue templates for bug reports and feature requests.
+
+Security issues must be reported privately according to [SECURITY.md](SECURITY.md).
+Please do not include cookies, credentials, or personal data in public issues.
+
 ## Download
 
 Grab the latest prebuilt release for your operating system from the [Releases page](https://github.com/rwbu69/eltoolkitde_rwbu/releases/latest). All dependencies (FFmpeg, FFprobe, yt-dlp, Node.js, and BPM tools) are bundled with the installer.

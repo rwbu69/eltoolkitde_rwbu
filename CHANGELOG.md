@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+### Repository maintenance
+
+- Added contribution guidelines, code of conduct, security reporting guidance,
+  issue and pull request templates, and CODEOWNERS.
+- Added pull request CI for frontend tests, linting, production builds, and
+  Rust checks.
+
 ### Cross-platform release support
 
 - Updated the GitHub Actions release workflow to build Windows, Linux, Intel macOS, and Apple Silicon macOS packages on native runners.
