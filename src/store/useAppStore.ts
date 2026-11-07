@@ -4,6 +4,7 @@ import pLimit from 'p-limit';
 import { YtDlpService, DownloadProgress, DownloadOptions } from '../services/ytdlp';
 import { invoke } from '@tauri-apps/api/core';
 import type { AudioBitrate, VideoQuality } from '../config/mediaSettings';
+import { isValidMediaUrl, normalizeConcurrency, normalizeRateLimit } from '../utils/validation';
 
 const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => ({
   ...DEFAULT_SETTINGS,
@@ -16,6 +17,8 @@ const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => 
   defaultAudioBitrate:
     (settings as { defaultAudioBitrate?: string }).defaultAudioBitrate === '128k' ? '192k' :
     settings.defaultAudioBitrate ?? DEFAULT_SETTINGS.defaultAudioBitrate,
+  maxConcurrentDownloads: normalizeConcurrency(settings.maxConcurrentDownloads),
+  rateLimitSpeed: normalizeRateLimit(settings.rateLimitSpeed),
 });
 
 export interface AppSettings {
@@ -85,6 +88,7 @@ interface AppState {
 // Create a singleton limit outside the store to easily recreate it if limit changes
 let activeLimit = pLimit(DEFAULT_SETTINGS.maxConcurrentDownloads);
 let downloadGeneration = 0;
+const MAX_PLAYLIST_ITEMS = 500;
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -93,7 +97,7 @@ export const useAppStore = create<AppState>()(
       
       updateSettings: (updates) => {
         set((state) => {
-          const nextSettings = { ...state.settings, ...updates };
+          const nextSettings = normalizeSettings({ ...state.settings, ...updates });
           
           // Sync with Rust backend for close behavior
           if (updates.closeToTray !== undefined) {
@@ -124,6 +128,20 @@ export const useAppStore = create<AppState>()(
           browserForCookies: state.settings.browserForCookies,
           rateLimit: state.settings.rateLimitSpeed,
         };
+        if (!isValidMediaUrl(url)) {
+          set((currentState) => ({
+            queue: [...currentState.queue, {
+              id,
+              url,
+              title: 'Invalid URL',
+              format,
+              status: 'error',
+              options: queueOptions,
+              error: 'Enter a valid http:// or https:// media URL.',
+            }],
+          }));
+          return;
+        }
         const newItem: QueueItem = {
           id,
           url,
@@ -142,9 +160,6 @@ export const useAppStore = create<AppState>()(
             return;
           }
 
-          const state = get();
-          const { settings } = state;
-          
           if (!queueOptions.outputDir) {
             set((s) => ({
               queue: s.queue.map(q => q.id === id ? { ...q, status: 'error', error: 'No output directory set in settings.' } : q)
@@ -158,7 +173,7 @@ export const useAppStore = create<AppState>()(
               queue: s.queue.map(q => q.id === id ? { ...q, status: 'fetching' } : q)
             }));
             
-            const info = await YtDlpService.fetchVideoInfo(url, settings.cookiesFilePath, settings.browserForCookies);
+            const info = await YtDlpService.fetchVideoInfo(url, queueOptions.cookiesFilePath, queueOptions.browserForCookies);
 
             if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
               set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
@@ -167,12 +182,25 @@ export const useAppStore = create<AppState>()(
             
             // If it's a playlist, we need to extract the items and queue them individually instead!
             if (info.isPlaylist && info.entries && info.entries.length > 0) {
+              const entries = info.entries;
+              if (entries.length > MAX_PLAYLIST_ITEMS) {
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id ? {
+                    ...q,
+                    title: info.title,
+                    playlistItemCount: entries.length,
+                    status: 'error',
+                    error: `Playlist has ${entries.length} items. The maximum supported size is ${MAX_PLAYLIST_ITEMS}.`,
+                  } : q),
+                }));
+                return;
+              }
               if (!allowPlaylistExpansion) {
                 set((s) => ({
                   queue: s.queue.map(q => q.id === id ? {
                     ...q,
                     title: info.title,
-                    playlistItemCount: info.entries?.length,
+                    playlistItemCount: entries.length,
                     status: 'error' as QueueItemStatus,
                     error: 'Playlist detected. Inspect and confirm it before queueing.'
                   } : q)
@@ -182,15 +210,15 @@ export const useAppStore = create<AppState>()(
               set((s) => ({
                 queue: s.queue.map(q => q.id === id ? {
                   ...q,
-                  title: `${info.title} (${info.entries?.length ?? 0} items)`,
-                  playlistItemCount: info.entries?.length,
+                  title: `${info.title} (${entries.length} items)`,
+                  playlistItemCount: entries.length,
                   status: 'expanded' as QueueItemStatus,
                   error: 'Playlist added to the queue'
                 } : q)
               }));
               
               // Queue each entry
-              for (const entry of info.entries) {
+              for (const entry of entries) {
                 if (generation !== downloadGeneration) break;
                 // Construct URL from ID
                 const entryUrl = entry.url || (entry.id.length === 11 ? `https://www.youtube.com/watch?v=${entry.id}` : entry.id);
@@ -299,10 +327,20 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'eltoolkit-storage',
-      partialize: (state) => ({ settings: state.settings }), // Only persist settings, not the queue
+      partialize: (state) => ({
+        settings: {
+          ...state.settings,
+          cookiesFilePath: '',
+          browserForCookies: '',
+        },
+      }),
       merge: (persistedState, currentState) => ({
         ...currentState,
-        settings: normalizeSettings((persistedState as Partial<AppState>)?.settings),
+        settings: normalizeSettings({
+          ...(persistedState as Partial<AppState>)?.settings,
+          cookiesFilePath: '',
+          browserForCookies: '',
+        }),
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

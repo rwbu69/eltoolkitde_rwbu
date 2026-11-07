@@ -1,5 +1,5 @@
 import { Command } from '@tauri-apps/plugin-shell';
-import { readDir, exists, rename, remove } from '@tauri-apps/plugin-fs';
+import { readDir, exists, rename, remove, copyFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, joinPath } from '../utils/path';
 
 const dispatchLog = (msg: string) => {
@@ -19,9 +19,22 @@ export interface MetadataProgress {
   file: string;
   status: 'pending' | 'processing' | 'done' | 'error';
   log?: string;
+  backupPath?: string;
+  inputPath?: string;
 }
 
 export class MetadataService {
+  static async restoreBackup(inputPath: string, backupPath: string): Promise<void> {
+    if (!(await exists(backupPath))) {
+      throw new Error('The metadata backup no longer exists.');
+    }
+    const temporaryPath = `${inputPath}.restore.tmp`;
+    if (await exists(temporaryPath)) await remove(temporaryPath);
+    await copyFile(backupPath, temporaryPath);
+    await remove(inputPath);
+    await rename(temporaryPath, inputPath);
+  }
+
   static async processMetadata(
     options: MetadataOptions,
     onProgress: (progress: MetadataProgress) => void
@@ -72,6 +85,7 @@ export class MetadataService {
         const baseName = basename(inputFile).replace(/\.[^.]+$/, '');
         const dir = dirname(inputFile);
         const tempFile = joinPath(dir, `${baseName}_temp.mp3`);
+        const backupPath = joinPath(dir, `${baseName}.metadata-backup.mp3`);
         
         onProgress({ file: basename(inputFile), status: 'processing' });
         
@@ -95,8 +109,11 @@ export class MetadataService {
               onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to write metadata' });
               if (await exists(tempFile)) await remove(tempFile);
             } else {
+              if (!(await exists(backupPath))) {
+                await copyFile(inputFile, backupPath);
+              }
               await rename(tempFile, inputFile);
-              onProgress({ file: basename(inputFile), status: 'done' });
+              onProgress({ file: basename(inputFile), status: 'done', backupPath, inputPath });
             }
             resolve();
           });

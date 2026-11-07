@@ -12,16 +12,21 @@ import { ProgressBar } from './ui/ProgressBar';
 import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
+import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
+
+const MAX_PLAYLIST_ITEMS = 500;
 
 export default function DownloaderView() {
   const { settings, updateSettings, queue, addToQueue, retryItem, retryFailed, cancelItem, cancelAllDownloads, removeFromQueue, clearCompleted } = useAppStore();
   
   const [urlsInput, setUrlsInput] = useState('');
   const [format, setFormat] = useState<'mp4' | 'mp3' | 'video-only'>('mp4');
+  const [preset, setPreset] = useState<DownloadPresetId | 'custom'>('custom');
   const [outputDir, setOutputDir] = useState<string>(settings.defaultOutputDir || '');
   const [isInspecting, setIsInspecting] = useState(false);
   const [confirmation, setConfirmation] = useState<{ urls: string[]; infos: VideoInfo[]; totalItems: number } | null>(null);
   const [notice, setNotice] = useState<string>('');
+  const [queueFilter, setQueueFilter] = useState<'all' | 'active' | 'failed' | 'completed'>('all');
 
   useEffect(() => {
     if (!outputDir && settings.defaultOutputDir) {
@@ -33,6 +38,18 @@ export default function DownloaderView() {
     .split(/[\n\s]+/)
     .map(u => u.trim())
     .filter(u => u.length > 0);
+
+  const getUniqueUrls = (urls: string[]) => [...new Set(urls)];
+
+  const applyPreset = (presetId: DownloadPresetId | 'custom') => {
+    setPreset(presetId);
+    if (presetId === 'custom') return;
+    const selected = DOWNLOAD_PRESETS.find(item => item.id === presetId);
+    if (!selected) return;
+    setFormat(selected.format);
+    if (selected.videoQuality) updateSettings({ defaultVideoQuality: selected.videoQuality });
+    if (selected.audioBitrate) updateSettings({ defaultAudioBitrate: selected.audioBitrate });
+  };
 
   const queueInspectedUrls = (urls: string[], infos: VideoInfo[]) => {
     urls.forEach((url, index) => {
@@ -49,9 +66,16 @@ export default function DownloaderView() {
       return;
     }
 
-    const urls = parseUrls();
+    const enteredUrls = parseUrls();
+    const urls = getUniqueUrls(enteredUrls);
+    if (urls.length === 0) {
+      setNotice('Enter at least one valid-looking URL.');
+      return;
+    }
     setIsInspecting(true);
-    setNotice('');
+    setNotice(enteredUrls.length !== urls.length
+      ? `${enteredUrls.length - urls.length} duplicate URL(s) removed before inspection.`
+      : '');
     try {
       const infos = await Promise.all(urls.map(url => YtDlpService.fetchVideoInfo(
         url,
@@ -59,6 +83,10 @@ export default function DownloaderView() {
         settings.browserForCookies
       )));
       const totalItems = infos.reduce((total, info) => total + (info.isPlaylist ? info.entries?.length ?? 0 : 1), 0);
+      if (totalItems > MAX_PLAYLIST_ITEMS) {
+        setNotice(`This batch contains ${totalItems} items. The maximum supported playlist size is ${MAX_PLAYLIST_ITEMS}.`);
+        return;
+      }
       const needsConfirmation = urls.length > 1 || infos.some(info => info.isPlaylist) || totalItems > 10;
       if (needsConfirmation) {
         setConfirmation({ urls, infos, totalItems });
@@ -78,6 +106,14 @@ export default function DownloaderView() {
   const failedCount = queue.filter(q => q.status === 'error').length;
   const canceledCount = queue.filter(q => q.status === 'canceled').length;
   const totalCount = queue.length;
+  const finishedCount = queue.filter(q => q.status === 'done' || q.status === 'error' || q.status === 'canceled' || q.status === 'expanded').length;
+  const overallProgress = totalCount === 0 ? 0 : Math.round((finishedCount / totalCount) * 100);
+  const visibleQueue = queue.filter((item) => {
+    if (queueFilter === 'active') return item.status === 'pending' || item.status === 'fetching' || item.status === 'downloading';
+    if (queueFilter === 'failed') return item.status === 'error' || item.status === 'canceled';
+    if (queueFilter === 'completed') return item.status === 'done' || item.status === 'expanded';
+    return true;
+  });
   const hasActiveDownloads = queue.some(q => q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading');
   const urlsCount = parseUrls().length;
 
@@ -114,7 +150,7 @@ export default function DownloaderView() {
                     { value: 'video-only', label: 'Video only' }
                   ]}
                   value={format}
-                  onChange={(val) => setFormat(val as any)}
+                  onChange={(val) => { setPreset('custom'); setFormat(val as any); }}
                 />
               </div>
 
@@ -125,7 +161,7 @@ export default function DownloaderView() {
                     <OptionGrid
                       options={VIDEO_QUALITY_OPTIONS}
                       value={settings.defaultVideoQuality}
-                      onChange={(val) => updateSettings({ defaultVideoQuality: val as VideoQuality })}
+                      onChange={(val) => { setPreset('custom'); updateSettings({ defaultVideoQuality: val as VideoQuality }); }}
                       ariaLabel="Video resolution"
                     />
                     <span className="text-[10px] font-mono text-muted mt-1 px-1">
@@ -138,7 +174,7 @@ export default function DownloaderView() {
                     <CustomSelect 
                       options={[...AUDIO_BITRATE_OPTIONS]}
                       value={settings.defaultAudioBitrate}
-                      onChange={(val) => updateSettings({ defaultAudioBitrate: val as AudioBitrate })}
+                      onChange={(val) => { setPreset('custom'); updateSettings({ defaultAudioBitrate: val as AudioBitrate }); }}
                       className="shrink-0"
                     />
                   </>
@@ -147,6 +183,21 @@ export default function DownloaderView() {
             </div>
 
             {/* Output Dir */}
+            <div className="space-y-2">
+              <FormLabel text="Quick preset" icon={Gauge} iconColor="text-toska" />
+              <select
+                value={preset}
+                onChange={(event) => applyPreset(event.target.value as DownloadPresetId | 'custom')}
+                className="game-select font-bold"
+                aria-label="Download preset"
+              >
+                <option value="custom">Custom</option>
+                {DOWNLOAD_PRESETS.map(option => (
+                  <option key={option.id} value={option.id}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-2">
               <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-muted" />
               <PathPicker 
@@ -216,11 +267,34 @@ export default function DownloaderView() {
 
         <Panel className="gap-3 bg-appbg h-[520px] xl:h-auto xl:min-h-0" noPadding>
           <PanelHeader className="flex-col items-stretch gap-3">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] font-mono font-bold text-muted uppercase">Show queue</span>
+              <select
+                value={queueFilter}
+                onChange={(event) => setQueueFilter(event.target.value as typeof queueFilter)}
+                className="game-select h-8 py-1 text-[10px] font-bold"
+                aria-label="Filter download queue"
+              >
+                <option value="all">All</option>
+                <option value="active">Active</option>
+                <option value="failed">Failed / canceled</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
             <div className="grid grid-cols-3 gap-3">
               <div className="flex flex-col items-center">
                 <span className="text-xl font-black font-zen text-ink leading-none">{downloadingCount}</span>
                 <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Active</span>
               </div>
+              {totalCount > 0 && (
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[9px] font-mono font-bold text-muted uppercase">
+                    <span>Batch progress</span>
+                    <span>{finishedCount}/{totalCount} · {overallProgress}%</span>
+                  </div>
+                  <ProgressBar percent={overallProgress} status={overallProgress === 100 ? 'done' : 'downloading'} />
+                </div>
+              )}
               <div className="flex flex-col items-center">
                 <span className="text-xl font-black font-zen text-ink leading-none">{pendingCount}</span>
                 <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Pending</span>
@@ -291,13 +365,15 @@ export default function DownloaderView() {
           </PanelHeader>
 
           <PanelScrollArea className="flex flex-col gap-2 h-full p-2">
-            {queue.length === 0 ? (
+            {visibleQueue.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink py-10">
                 <span className="font-zen font-bold text-lg">Queue is empty</span>
-                <span className="font-mono text-xs mt-1 text-center">Add URLs to start downloading</span>
+                <span className="font-mono text-xs mt-1 text-center">
+                  {queue.length === 0 ? 'Add URLs to start downloading' : 'No items match this filter'}
+                </span>
               </div>
             ) : (
-              [...queue].reverse().map((item) => {
+              [...visibleQueue].reverse().map((item) => {
                 let statusIcon = <Circle className="w-4 h-4 text-muted" />;
                 let statusText = getStatusLabel('pending');
                 let cardClass = 'bg-panel border-muted opacity-60';

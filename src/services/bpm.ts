@@ -70,17 +70,19 @@ export class BpmService {
   static async batchDetectBPM(
     files: string[], 
     range: { min?: number, max?: number } | undefined,
-    onProgress: (progress: BpmProgress) => void
+    onProgress: (progress: BpmProgress) => void,
+    isCancelled: () => boolean = () => false
   ): Promise<{ file: string, originalBPM: number, confidence: 'high' | 'medium' | 'low', candidates: number[] }[]> {
     dispatchLog(`[bpm] Starting batch BPM detection for ${files.length} files...`);
     const results: { file: string, originalBPM: number, confidence: 'high' | 'medium' | 'low', candidates: number[] }[] = [];
     
-    for (const file of files) {
+    for (const [index, file] of files.entries()) {
+      if (isCancelled()) break;
       const fileName = file.split('\\').pop() || file.split('/').pop() || 'unknown';
       try {
         onProgress({ file: fileName, status: 'detecting', percent: 50 });
         const { bpm: originalBPM, confidence, candidates } = await this.detectBPM(file, range?.min, range?.max);
-        onProgress({ file: fileName, originalBPM, confidence, status: 'done', percent: 100 });
+        onProgress({ file: fileName, originalBPM, confidence, status: 'done', percent: Math.round(((index + 1) / files.length) * 100) });
         results.push({ file, originalBPM, confidence, candidates });
       } catch (err: any) {
         console.error('Error detecting', file, err);
@@ -145,10 +147,12 @@ export class BpmService {
     targetBPM: number,
     outputDir: string,
     format: BpmOutputFormat,
-    onProgress: (progress: BpmProgress) => void
+    onProgress: (progress: BpmProgress) => void,
+    isCancelled: () => boolean = () => false
   ): Promise<void> {
     dispatchLog(`[bpm] Starting batch tempo modifier to ${targetBPM} BPM...`);
-    for (const item of filesWithBpm) {
+    for (const [index, item] of filesWithBpm.entries()) {
+      if (isCancelled()) break;
       const { file, originalBPM } = item;
       const fileName = file.split('\\').pop() || file.split('/').pop() || 'unknown';
       try {
@@ -157,7 +161,7 @@ export class BpmService {
         onProgress({ file: fileName, originalBPM, status: 'processing', percent: 50 });
         await this.changeTempo(file, outputPath, originalBPM, targetBPM, format);
 
-        onProgress({ file: fileName, originalBPM, status: 'done', percent: 100 });
+        onProgress({ file: fileName, originalBPM, status: 'done', percent: Math.round(((index + 1) / filesWithBpm.length) * 100) });
       } catch (err: any) {
         console.error('Error processing', file, err);
         dispatchLog(`[bpm ERROR] Failed processing ${fileName}: ${err.message || String(err)}`);

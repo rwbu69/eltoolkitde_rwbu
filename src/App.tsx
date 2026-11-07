@@ -11,7 +11,6 @@ import TerminalLogView from './components/TerminalLogView';
 import { Titlebar } from './components/ui/Titlebar';
 import { Tooltip } from './components/ui/Tooltip';
 import { useAppStore } from './store/useAppStore';
-import { YtDlpService } from './services/ytdlp';
 
 import appIcon from './assets/icon.png';
 
@@ -31,12 +30,7 @@ function App() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      invoke('close_splashscreen').then(() => {
-        // Automatically check for yt-dlp updates in the background
-        YtDlpService.updateYtDlp(() => {
-          // Logs are automatically dispatched to TerminalLogView by the service
-        }).catch(err => console.error('Failed to auto-update yt-dlp:', err));
-      }).catch(console.error);
+      invoke('close_splashscreen').catch(console.error);
     }, 1000);
     return () => clearTimeout(timer);
   }, []);

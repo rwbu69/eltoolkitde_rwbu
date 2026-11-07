@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
+const { spawnSync } = require('child_process');
 const ffmpegStatic = require('ffmpeg-static');
 const ffprobeStatic = require('ffprobe-static');
 
@@ -72,50 +72,57 @@ if (!fs.existsSync(nodeSource)) {
 copyExecutable(nodeSource, path.join(binDir, targetName('node')));
 
 function downloadFile(url, destination) {
-    return new Promise((resolve, reject) => {
-        if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {
+    if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {
+        const canValidate = target === getDefaultTarget();
+        const validation = canValidate
+            ? spawnSync(process.platform === 'win32' ? 'cmd.exe' : destination, process.platform === 'win32' ? ['/c', destination, '--version'] : ['--version'], {
+                stdio: 'ignore',
+                windowsHide: true,
+            })
+            : null;
+
+        if (!canValidate || validation?.status === 0) {
             console.log(`[SKIP] ${path.basename(destination)} already exists`);
-            resolve();
             return;
         }
 
-        console.log(`[INFO] Downloading yt-dlp for ${target}...`);
-        const request = https.get(url, (response) => {
-            if (response.statusCode === 301 || response.statusCode === 302 || response.statusCode === 303) {
-                response.resume();
-                downloadFile(response.headers.location, destination).then(resolve, reject);
-                return;
-            }
+        console.log(`[WARN] Existing ${path.basename(destination)} failed validation; replacing it`);
+        fs.rmSync(destination, { force: true });
+    }
 
-            if (response.statusCode !== 200) {
-                response.resume();
-                reject(new Error(`Failed to download yt-dlp: HTTP ${response.statusCode}`));
-                return;
-            }
+    const temporaryDestination = `${destination}.download`;
+    fs.rmSync(temporaryDestination, { force: true });
+    console.log(`[INFO] Downloading yt-dlp for ${target}...`);
 
-            const file = fs.createWriteStream(destination);
-            response.pipe(file);
-            file.on('finish', () => {
-                file.close(() => {
-                    fs.chmodSync(destination, 0o755);
-                    console.log(`[OK] Downloaded ${path.basename(destination)}`);
-                    resolve();
-                });
-            });
-            file.on('error', (error) => {
-                file.close();
-                fs.rm(destination, { force: true }, () => reject(error));
-            });
-        });
+    const result = spawnSync(
+        process.platform === 'win32' ? 'curl.exe' : 'curl',
+        ['--fail', '--location', '--retry', '3', '--output', temporaryDestination, url],
+        { stdio: 'inherit', windowsHide: true }
+    );
 
-        request.on('error', (error) => {
-            fs.rm(destination, { force: true }, () => reject(error));
-        });
-    });
+    if (result.error) {
+        fs.rmSync(temporaryDestination, { force: true });
+        throw new Error(`Failed to start curl.exe: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+        fs.rmSync(temporaryDestination, { force: true });
+        throw new Error(`curl.exe failed with exit code ${result.status}`);
+    }
+
+    const downloadedSize = fs.statSync(temporaryDestination).size;
+    if (downloadedSize < 1024 * 1024) {
+        fs.rmSync(temporaryDestination, { force: true });
+        throw new Error(`Downloaded yt-dlp is unexpectedly small (${downloadedSize} bytes)`);
+    }
+
+    fs.renameSync(temporaryDestination, destination);
+    fs.chmodSync(destination, 0o755);
+    console.log(`[OK] Downloaded ${path.basename(destination)} (${downloadedSize} bytes)`);
 }
 
-downloadFile(targetConfig.ytdlpUrl, path.join(binDir, targetName('yt-dlp')))
-    .catch((error) => {
-        console.error(`[ERROR] Failed to set up sidecars: ${error.message}`);
-        process.exitCode = 1;
-    });
+try {
+    downloadFile(targetConfig.ytdlpUrl, path.join(binDir, targetName('yt-dlp')));
+} catch (error) {
+    console.error(`[ERROR] Failed to set up sidecars: ${error.message}`);
+    process.exitCode = 1;
+}

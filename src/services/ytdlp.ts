@@ -139,6 +139,7 @@ export class YtDlpService {
       '--encoding', 'utf-8',
       '--newline',
       '--progress-delta', '1',
+      '--no-overwrites',
       ...formatArgs,
       '-o', template,
       '-P', outputDir
@@ -268,39 +269,16 @@ export class YtDlpService {
   static async updateYtDlp(
     onProgress: (log: string) => void
   ): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const command = Command.sidecar('yt-dlp', ['-U']);
-      
-      command.stdout.on('data', (line) => {
-        if (line.trim()) {
-          onProgress(line.trim());
-          dispatchLog(`[yt-dlp update] ${line.trim()}`);
-        }
-      });
-
-      command.stderr.on('data', (line) => {
-        if (line.trim()) {
-          onProgress(`ERROR: ${line.trim()}`);
-          dispatchLog(`[yt-dlp update ERROR] ${line.trim()}`);
-        }
-      });
-
-      command.on('close', (data) => {
-        if (data.code === 0) {
-          onProgress('Update finished successfully.');
-          resolve();
-        } else {
-          onProgress(`Update failed with code ${data.code}`);
-          reject(new Error(`Update failed with code ${data.code}`));
-        }
-      });
-
-      command.on('error', (error) => {
-        onProgress(`Failed to start update: ${error}`);
-        reject(error);
-      });
-
-      command.spawn().catch(reject);
-    });
+    try {
+      const version = await invoke<string>('update_ytdlp');
+      const message = `Updated yt-dlp successfully (${version}).`;
+      onProgress(message);
+      dispatchLog(`[yt-dlp update] ${message}`);
+    } catch (error) {
+      const message = `Update failed: ${String(error)}`;
+      onProgress(message);
+      dispatchLog(`[yt-dlp update ERROR] ${message}`);
+      throw new Error(message);
+    }
   }
 }

@@ -1,13 +1,18 @@
-import { FolderOpen, Shield, FileBox, Download, Zap } from 'lucide-react';
+import { useState } from 'react';
+import { FolderOpen, Shield, FileBox, Download, Zap, RefreshCcw } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout';
 import { Input } from './ui/Input';
 import { PathPicker } from './ui/PathPicker';
 import { Toggle } from './ui/Toggle';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
+import { YtDlpService } from '../services/ytdlp';
+import { InlineNotice } from './ui/InlineNotice';
 
 export default function SettingsView() {
   const { settings, updateSettings } = useAppStore();
+  const [isUpdatingYtDlp, setIsUpdatingYtDlp] = useState(false);
+  const [updateNotice, setUpdateNotice] = useState('');
 
   return (
     <PageLayout>
@@ -151,11 +156,43 @@ export default function SettingsView() {
             </div>
           </div>
 
+          <div className="space-y-3">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
+              <RefreshCcw className="w-5 h-5 text-toska" /> Component updates
+            </h3>
+            <p className="text-xs font-mono font-bold text-muted">
+              Updates yt-dlp only when you request it. The download is validated before replacement.
+            </p>
+            <button
+              type="button"
+              disabled={isUpdatingYtDlp}
+              onClick={async () => {
+                setIsUpdatingYtDlp(true);
+                setUpdateNotice('');
+                try {
+                  await YtDlpService.updateYtDlp(setUpdateNotice);
+                } catch (error) {
+                  setUpdateNotice(String(error));
+                } finally {
+                  setIsUpdatingYtDlp(false);
+                }
+              }}
+              className="game-btn-secondary inline-flex items-center gap-2"
+            >
+              <RefreshCcw className={`w-4 h-4 ${isUpdatingYtDlp ? 'animate-spin' : ''}`} />
+              {isUpdatingYtDlp ? 'Updating yt-dlp...' : 'Check for yt-dlp update'}
+            </button>
+            {updateNotice && <InlineNotice message={updateNotice} tone={updateNotice.startsWith('Update failed') ? 'error' : 'success'} />}
+          </div>
+
           {/* AUTHENTICATION SECTION */}
           <div className="space-y-4 bg-appbg border-4 border-gameborder p-5 rounded-2xl">
             <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
               <Shield className="w-5 h-5 text-oshipink" /> Authentication for premium sites
             </h3>
+            <p className="text-xs font-mono font-bold text-muted">
+              Authentication choices are session-only and are cleared when the app is restarted.
+            </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

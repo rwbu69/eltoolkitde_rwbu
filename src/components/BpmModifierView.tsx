@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress, BpmOutputFormat } from '../services/bpm';
 import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3, AlertTriangle } from 'lucide-react';
@@ -29,6 +29,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   const [isDetecting, setIsDetecting] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [notice, setNotice] = useState<string>('');
+  const cancelRequested = useRef(false);
 
   useEffect(() => {
     if (!isActive) return;
@@ -64,6 +65,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   const handleDetect = async () => {
     if (selectedFiles.length === 0) return;
     setIsDetecting(true);
+    cancelRequested.current = false;
     setProgresses([]);
     setNotice('');
 
@@ -84,7 +86,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
           }
           return [...prev, p];
         });
-      });
+      }, () => cancelRequested.current);
 
       // Update selectedFiles with detected BPMs
       setSelectedFiles(prevFiles => {
@@ -128,6 +130,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     }
 
     setIsProcessing(true);
+    cancelRequested.current = false;
     setNotice('');
     // Keep detection progresses but start new ones for processing
     setProgresses([]);
@@ -144,7 +147,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
           }
           return [...prev, p];
         });
-      });
+      }, () => cancelRequested.current);
     } catch (err: any) {
       setNotice(getUserFacingError(err, 'The BPM-adjusted files could not be created. Check the output folder and try again.').message);
     } finally {
@@ -264,13 +267,20 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
           {/* Action Button */}
           <div className="pt-3 mt-3 border-t-4 border-appbg shrink-0">
             <Button 
-              onClick={handleExecute}
-              disabled={!canModify}
+              onClick={() => {
+                if (isProcessing) {
+                  cancelRequested.current = true;
+                  setNotice('Cancellation requested. The current file will finish before the batch stops.');
+                  return;
+                }
+                void handleExecute();
+              }}
+              disabled={!canModify && !isProcessing}
               variant="primary"
               icon={PlayCircle}
               fullWidth
             >
-              {isProcessing ? 'Processing...' : 'Apply target BPM'}
+              {isProcessing ? 'Stop after current file' : 'Apply target BPM'}
             </Button>
           </div>
           {notice && <InlineNotice message={notice} tone="error" />}

@@ -23,6 +23,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
   const [notice, setNotice] = useState<string>('');
+  const [restoringFile, setRestoringFile] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isActive) return;
@@ -171,6 +172,29 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
                       </span>
                     </div>
                     {p.log && <span className="text-[10px] font-mono text-muted line-clamp-2">{p.log}</span>}
+                    {p.status === 'done' && p.backupPath && (
+                      <button
+                        type="button"
+                        disabled={restoringFile === p.file}
+                        onClick={async () => {
+                          setRestoringFile(p.file);
+                          try {
+                            await MetadataService.restoreBackup(
+                              p.inputPath!,
+                              p.backupPath!,
+                            );
+                            setNotice(`Restored the original metadata for ${p.file}.`);
+                          } catch (error) {
+                            setNotice(getUserFacingError(error, 'The metadata backup could not be restored.').message);
+                          } finally {
+                            setRestoringFile(null);
+                          }
+                        }}
+                        className="self-start text-[10px] font-mono font-bold underline disabled:opacity-50"
+                      >
+                        {restoringFile === p.file ? 'Restoring...' : 'Restore original'}
+                      </button>
+                    )}
                   </div>
                 );
               })}

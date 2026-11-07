@@ -23,7 +23,11 @@ I kept reaching for the same command-line tools to download a video, trim a clip
   - Pre-download inspection modal for multi-URL batches and full playlists.
   - Parallel downloads (1–10 concurrent jobs managed via `p-limit`) and download rate throttling (e.g. `5M` or `500K`).
   - Authentication support via direct browser cookie extraction (Chrome, Firefox, Edge, Brave, Safari, Opera) or Netscape `cookies.txt` files.
-  - Safe queue management: cancel individual or all tasks, retry failed downloads, and trigger in-app `yt-dlp -U` updates reporting to the live System Log.
+  - Safe queue management: cancel individual or all tasks and retry failed downloads.
+  - Queue filters for active, failed/canceled, and completed items.
+  - Quick presets for MP3 320 kbps, MP4 1080p, and 1080p video-only downloads.
+  - Manual yt-dlp updates use a temporary download and executable validation
+    before replacing the bundled binary.
 
 - **FFmpeg Tools:**
   - **Audio Extraction:** Batch convert media files to MP3 using `libmp3lame` at user-selected bitrates.
@@ -52,6 +56,10 @@ I kept reaching for the same command-line tools to download a video, trim a clip
   - Optional minimize-to-system-tray behavior with native desktop notifications.
   - Live System Terminal Log view for troubleshooting background operations.
   - Graceful cancellation for every running child process.
+  - Authentication selections are kept for the current session only and are
+    cleared when the app restarts.
+  - Metadata edits create a same-folder backup that can be restored from the
+    Metadata Editor.
 
 See [CHANGELOG.md](CHANGELOG.md) for the complete version history.
 

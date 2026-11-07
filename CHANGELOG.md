@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased
+## ElToolkitDeRWBU v0.1.3 — Release Readiness Update
+
+Released: 2026-11-08
 
 ### Repository maintenance
 
@@ -29,6 +31,7 @@
 - Standardized button icon sizing and reduced excessive arcade-style button movement and border weight.
 - Improved downloader icon semantics for video format, resolution, and audio bitrate.
 - Replaced the downloader's scrolling resolution dropdown with a compact responsive resolution grid.
+- Added download queue filters for active, failed/canceled, and completed items.
 
 ### Downloader and BPM improvements
 
@@ -40,6 +43,7 @@
 - Added candidate BPM analysis, half-time and double-time handling, confidence scoring, and manual BPM correction.
 - Added WAV and MP3 output support for BPM processing.
 - Improved BPM validation and partial-output cleanup.
+- Added quick download presets for common MP3, MP4, and video-only workflows.
 
 ### Security and maintenance
 
@@ -47,6 +51,12 @@
 - Authorized the BPM modifier sidecar in the Tauri capability configuration.
 - Removed the yt-dlp certificate-bypass behavior.
 - Unified shared media settings and migrated older persisted setting values.
+- Stopped persisting browser-cookie and cookies.txt authentication settings.
+- Disabled automatic yt-dlp self-updates during application startup.
+- Added validation for media URLs, concurrency limits, and download rate limits.
+- Prevented file rename overwrites and cross-directory rename operations.
+- Added metadata backups with a restore action in the Metadata Editor.
+- Added atomic manual yt-dlp updates with executable validation and rollback.
 
 ---
 
