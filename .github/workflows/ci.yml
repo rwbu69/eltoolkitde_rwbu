@@ -43,6 +43,37 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: .
+
+      - name: Setup dynamic sidecars
+        run: node scripts/setup-sidecars.cjs
+        working-directory: .
+        env:
+          TARGET_TRIPLE: x86_64-unknown-linux-gnu
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install pyinstaller librosa soundfile
+        working-directory: .
+
+      - name: Build Python sidecars
+        run: |
+          pyinstaller --onefile --distpath src-tauri --name bpm_detector-x86_64-unknown-linux-gnu src-python/bpm_detector.py
+          pyinstaller --onefile --distpath src-tauri --name bpm_modifier-x86_64-unknown-linux-gnu src-python/bpm_modifier.py
+        working-directory: .
+
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
