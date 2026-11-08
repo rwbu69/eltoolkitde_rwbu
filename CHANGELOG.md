@@ -46,9 +46,21 @@ Released: 2026-11-08
   cancellation, retry handling, sanitized filenames, and album subfolders.
 - Added consistent right-aligned track controls for MP3, FLAC, and source-link
   actions.
+- Refactored the Album Details toolbar into separate storage and selection/action
+  zones, with an indeterminate select-all checkbox, contextual selection count,
+  format choices for selected downloads, and clearer download-all actions.
+- Standardized Khinsider control dimensions, typography, spacing, container
+  styling, disabled states, and denser track-row spacing across light and dark
+  themes without changing download behavior.
+- Added selected-row highlighting, a sticky selection toolbar for active
+  selections, compact folder-path presentation, and accessible source-link
+  labels.
 - Added viewport-aware album artwork loading with `IntersectionObserver`,
   placeholder artwork, a 300px preload margin, and a failure fallback for
   fast scrolling.
+- Improved album artwork parsing to use the exact lazy/source URL from each
+  Khinsider result row, preserve VGMTreasureChest hosts and filenames, cache
+  detail-page fallbacks, and expose explicit cover loading states for diagnosis.
 - Added conservative Khinsider request pacing, five-minute in-memory HTML
   caching, request deduplication through the cache, `Retry-After` support, and
   exponential backoff for rate-limited or temporary server errors.

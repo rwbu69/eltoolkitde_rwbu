@@ -18,6 +18,16 @@
     --color-softtoska: #e6f9f9;
     --color-gameshadow: #4c4f69;
     --color-buttontext: #3d2540;
+    --kh-control-md-height: 40px;
+    --kh-control-sm-height: 32px;
+    --kh-control-md-font-size: 0.6875rem;
+    --kh-control-sm-font-size: 0.625rem;
+    --kh-control-border-width: 2px;
+    --kh-control-radius: 0.75rem;
+    --kh-control-gap: 0.5rem;
+    --kh-container-padding: 0.5rem;
+    --kh-track-padding-y: 0.375rem;
+    --kh-control-shadow: 2px 2px 0 var(--color-gameshadow);
   }
 
   .dark {
@@ -33,6 +43,7 @@
     --color-softtoska: #1a2a2a;
     --color-gameshadow: #11111b;
     --color-buttontext: #1e1e2e;
+    --kh-control-shadow: 2px 2px 0 var(--color-gameshadow);
   }
 
   html, body, #root {
@@ -77,6 +88,73 @@
   /* Select Input */
   .game-select {
     @apply w-full bg-panel border-4 border-gameborder rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors appearance-none cursor-pointer;
+  }
+
+  .kh-control-md,
+  .kh-control-sm {
+    font-family: 'JetBrains Mono', monospace;
+    border-radius: var(--kh-control-radius) !important;
+    gap: var(--kh-control-gap) !important;
+    border-width: var(--kh-control-border-width) !important;
+    box-shadow: var(--kh-control-shadow) !important;
+  }
+
+  .kh-control-md {
+    height: var(--kh-control-md-height) !important;
+    min-height: var(--kh-control-md-height) !important;
+    padding-block: 0;
+    font-size: var(--kh-control-md-font-size) !important;
+  }
+
+  .kh-control-sm {
+    height: var(--kh-control-sm-height) !important;
+    min-height: var(--kh-control-sm-height) !important;
+    padding-block: 0;
+    font-size: var(--kh-control-sm-font-size) !important;
+  }
+
+  .kh-container {
+    border: var(--kh-control-border-width) solid var(--color-gameborder);
+    border-radius: var(--kh-control-radius);
+    background: var(--color-appbg);
+    padding: var(--kh-container-padding);
+  }
+
+  .kh-control-md:focus-visible,
+  .kh-control-sm:focus-visible,
+  .kh-input:focus-visible {
+    outline: 2px solid var(--color-oshipink);
+    outline-offset: 2px;
+  }
+
+  .kh-control-md:disabled,
+  .kh-control-sm:disabled {
+    opacity: 0.5;
+    filter: saturate(0.65);
+    box-shadow: none !important;
+    cursor: not-allowed;
+  }
+
+  .kh-input {
+    height: var(--kh-control-md-height) !important;
+    min-height: var(--kh-control-md-height) !important;
+    border-width: var(--kh-control-border-width) !important;
+    border-radius: var(--kh-control-radius) !important;
+    padding-block: 0;
+    font-size: var(--kh-control-sm-font-size) !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .kh-track-row {
+    min-height: 3rem;
+    padding-block: var(--kh-track-padding-y);
+  }
+
+  .kh-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: var(--kh-control-sm-font-size);
   }
 
   /* Skewed containers */

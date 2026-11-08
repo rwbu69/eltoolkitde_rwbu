@@ -9,6 +9,7 @@ interface PathPickerProps {
   placeholder?: string;
   directory?: boolean;
   filters?: { name: string; extensions: string[] }[];
+  compact?: boolean;
 }
 
 export function PathPicker({
@@ -16,7 +17,8 @@ export function PathPicker({
   onChange,
   placeholder = "Select path...",
   directory = true,
-  filters
+  filters,
+  compact = false
 }: PathPickerProps) {
   const handleSelect = async () => {
     try {
@@ -30,18 +32,19 @@ export function PathPicker({
   };
 
   return (
-    <div className="flex gap-2">
+    <div className={`flex gap-2 ${compact ? 'min-w-0' : ''}`}>
       <Input
         type="text"
         value={value}
         readOnly
         placeholder={placeholder}
-        className="flex-1 min-w-0"
+        title={value || placeholder}
+        className={`flex-1 min-w-0 ${compact ? 'kh-input px-3' : ''}`}
       />
       <Button 
         onClick={handleSelect}
         variant="secondary"
-        className="px-4 h-[48px] !rounded-2xl"
+        className={`kh-control-md px-4 ${compact ? '' : 'h-[48px] !rounded-2xl'}`}
         title="Select Path"
       >
         <FolderOpen className="w-5 h-5" />

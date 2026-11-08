@@ -12,52 +12,62 @@ import { showToast } from './ui/Toast';
 import { PathPicker } from './ui/PathPicker';
 
 function CoverImage({ src, alt, className }: { src?: string; alt: string; className: string }) {
-  const [failed, setFailed] = useState(false);
-  const [shouldLoad, setShouldLoad] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const [state, setState] = useState<'no-src' | 'loading' | 'loaded' | 'failed'>(src ? 'loading' : 'no-src');
 
   useEffect(() => {
-    setFailed(false);
-    setLoaded(false);
-    setShouldLoad(false);
+    setState(src ? 'loading' : 'no-src');
   }, [src]);
 
-  useEffect(() => () => observerRef.current?.disconnect(), []);
-
-  const observeCover = (element: HTMLDivElement | null) => {
-    observerRef.current?.disconnect();
-    if (!element || !src || failed || shouldLoad) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      setShouldLoad(true);
-      return;
+  useEffect(() => {
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) {
+      setState('loaded');
     }
-    observerRef.current = new IntersectionObserver(([entry]) => {
-      if (entry?.isIntersecting) {
-        setShouldLoad(true);
-        observerRef.current?.disconnect();
-      }
-    }, { rootMargin: '300px 0px', threshold: 0 });
-    observerRef.current.observe(element);
+  }, [src]);
+
+  const handleError = () => {
+    setState('failed');
+    if (import.meta.env.DEV && src) {
+      console.warn('[Khinsider cover] failed', { url: src });
+    }
   };
 
-  if (!src || failed) return <Music2 className="w-8 h-8 text-muted" aria-label="Cover unavailable" />;
   return (
-    <div ref={observeCover} className="flex items-center justify-center w-full h-full bg-panel" aria-busy={!loaded}>
-      {shouldLoad ? (
+    <div className="relative flex items-center justify-center w-full h-full bg-panel" data-cover-state={state} aria-busy={state === 'loading'}>
+      {state !== 'loaded' && <Music2 className="absolute w-8 h-8 text-muted" aria-label={state === 'failed' ? 'Cover unavailable' : 'Cover loading'} />}
+      {src && (
         <img
+          ref={imageRef}
           src={src}
           alt={alt}
-          className={`${className} ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          className={`${className} transition-opacity ${state === 'loaded' ? 'opacity-100' : 'opacity-0'}`}
+          loading="lazy"
           decoding="async"
-          onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
+          referrerPolicy="no-referrer"
+          onLoad={() => setState('loaded')}
+          onError={handleError}
         />
-      ) : (
-        <Music2 className="w-8 h-8 text-muted" aria-label="Cover loading" />
       )}
     </div>
   );
+}
+
+function logCoverDiagnostics(page: KhinsiderPage) {
+  if (!import.meta.env.DEV) return;
+  console.table(page.albums.map((item) => {
+    const url = item.cover_url ? new URL(item.cover_url) : undefined;
+    const path = url?.pathname ?? '';
+    return {
+      title: item.title,
+      rawUrl: item.cover_url ?? '(none)',
+      finalUrl: item.cover_url ?? '(none)',
+      host: url?.host ?? '(none)',
+      hasSpecialCharacters: /[\s%()[\]{}]/.test(path),
+      extension: path.split('.').pop() || '(none)',
+      state: item.cover_url ? 'pending' : 'no-src',
+    };
+  }));
 }
 
 export default function KhinsiderView() {
@@ -70,13 +80,26 @@ export default function KhinsiderView() {
   const [downloadState, setDownloadState] = useState<Record<string, string>>({});
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [resolvingTracks, setResolvingTracks] = useState(false);
+  const [selectedDownloadMenuOpen, setSelectedDownloadMenuOpen] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement>(null);
+  const coverCacheRef = useRef(new Map<string, string>());
   const { settings, updateSettings } = useAppStore();
+  const selectedCount = selectedTracks.size;
 
   const loadPage = async (loader: () => Promise<KhinsiderPage>) => {
     setLoading(true);
     setError('');
     try {
-      setPage(await loader());
+      const nextPage = await loader();
+      nextPage.albums = nextPage.albums.map((item) => {
+        const cachedCover = coverCacheRef.current.get(item.url);
+        return cachedCover ? { ...item, cover_url: cachedCover } : item;
+      });
+      nextPage.albums.forEach((item) => {
+        if (item.cover_url) coverCacheRef.current.set(item.url, item.cover_url);
+      });
+      logCoverDiagnostics(nextPage);
+      setPage(nextPage);
       setAlbum(null);
       setSelectedAlbum(null);
       setSelectedTracks(new Set());
@@ -106,12 +129,27 @@ export default function KhinsiderView() {
     return () => unlisten?.();
   }, []);
 
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = selectedCount > 0 && selectedCount < (album?.tracks.length ?? 0);
+    }
+  }, [selectedCount, album?.tracks.length]);
+
   const openAlbum = async (selected: KhinsiderAlbum) => {
     setLoading(true);
     setError('');
     try {
       setSelectedAlbum(selected);
       const albumPage = await KhinsiderService.fetchPage(selected.url);
+      const resolvedCover = albumPage.cover_url ?? selected.cover_url;
+      if (resolvedCover) {
+        coverCacheRef.current.set(selected.url, resolvedCover);
+        setSelectedAlbum({ ...selected, cover_url: resolvedCover });
+        setPage((current) => current ? {
+          ...current,
+          albums: current.albums.map((item) => item.url === selected.url ? { ...item, cover_url: resolvedCover } : item),
+        } : current);
+      }
       setResolvingTracks(true);
       const resolveLimit = pLimit(2);
       const tracks = await Promise.all(albumPage.tracks.map((track) => resolveLimit(async () => {
@@ -182,17 +220,24 @@ export default function KhinsiderView() {
     });
   };
 
-  const downloadSelected = async (format: 'mp3' | 'flac') => {
+  const toggleAllTracks = () => {
+    if (!album) return;
+    setSelectedTracks(selectedCount === album.tracks.length
+      ? new Set()
+      : new Set(album.tracks.map((track) => track.source_url)));
+  };
+
+  const downloadSelected = async (format: 'mp3' | 'flac', allTracks = false) => {
     if (!album || !settings.defaultOutputDir) {
       showToast('Select an output folder before downloading.', 'warning');
       return;
     }
     const tracks = album.tracks.filter((track) => {
       const url = format === 'mp3' ? track.mp3_url : track.flac_url;
-      return selectedTracks.has(track.source_url) && Boolean(url);
+      return (allTracks || selectedTracks.has(track.source_url)) && Boolean(url);
     });
     if (!tracks.length) {
-      showToast(`Select at least one track with ${format.toUpperCase()} available.`, 'warning');
+      showToast(allTracks ? `No ${format.toUpperCase()} tracks are available.` : `Select at least one track with ${format.toUpperCase()} available.`, 'warning');
       return;
     }
     setError('');
@@ -221,7 +266,7 @@ export default function KhinsiderView() {
           <div className="flex flex-col h-full min-h-0 gap-4">
             <form onSubmit={submitSearch} className="flex gap-2 shrink-0">
               <input
-                className="game-input"
+                className="game-input kh-input"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search game, album, or artist..."
@@ -234,14 +279,14 @@ export default function KhinsiderView() {
                 disabled={!query.trim()}
                 aria-label="Search Khinsider"
                 title="Search Khinsider"
-                className="w-[48px] px-0"
+                className="kh-control-md w-[48px] px-0"
               />
             </form>
 
             {error && !album && (
               <Button
                 onClick={() => void loadPage(() => query.trim() ? KhinsiderService.search(query.trim()) : KhinsiderService.fetchPage(KHINSIDER_HOME))}
-                className="h-9 self-start px-3 text-[10px]"
+                className="kh-control-md self-start px-3"
               >
                 Retry
               </Button>
@@ -253,18 +298,17 @@ export default function KhinsiderView() {
             ) : album ? (
               <PanelScrollArea>
                 <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-gameborder">
-                  <Button icon={ArrowLeft} onClick={() => setAlbum(null)}>Back</Button>
-                  <span className="font-mono text-[10px] text-muted">{album.tracks.length} tracks</span>
-                </div>
-                <div className="mt-4">
-                  <label className="flex items-center gap-2 mb-2 font-mono text-xs font-black text-ink">
-                    <FolderOpen className="w-4 h-4 text-toska" /> Download folder
-                  </label>
-                  <PathPicker
-                    value={settings.defaultOutputDir}
-                    onChange={(path) => updateSettings({ defaultOutputDir: path })}
-                    placeholder="Select a folder for downloaded tracks..."
-                  />
+                  <Button
+                    icon={ArrowLeft}
+                    onClick={() => setAlbum(null)}
+                    aria-label="Back to soundtrack list"
+                    className="kh-control-md min-w-[88px] px-3"
+                  >
+                    Back
+                  </Button>
+                  <span className="rounded-lg bg-appbg px-3 py-2 font-mono text-[10px] font-bold text-ink">
+                    {album.tracks.length} tracks
+                  </span>
                 </div>
                 <div className="flex flex-col gap-4 mt-4 sm:flex-row">
                   <div className="flex items-center justify-center w-32 h-32 overflow-hidden rounded-2xl bg-appbg border-gameborder border-3 shrink-0">
@@ -279,23 +323,72 @@ export default function KhinsiderView() {
                 {resolvingTracks && (
                   <InlineNotice tone="info" message="Preparing available MP3 and FLAC formats..." detail="Requests are limited to avoid triggering Khinsider rate limits." />
                 )}
-                <div className="flex flex-wrap items-center gap-2 mt-4">
-                  <Button onClick={() => setSelectedTracks(new Set(album.tracks.map((track) => track.source_url)))} className="h-9 px-3 text-[10px]">
-                    Select all
-                  </Button>
-                  <Button onClick={() => setSelectedTracks(new Set())} className="h-9 px-3 text-[10px]">
-                    Clear
-                  </Button>
-                  <span className="font-mono text-[10px] text-muted">{selectedTracks.size} selected</span>
-                  <div className="flex gap-1 ml-auto">
-                    <Button onClick={() => void downloadSelected('mp3')} icon={Download} className="h-9 px-3 text-[10px]">MP3 all</Button>
-                    <Button onClick={() => void downloadSelected('flac')} icon={Download} className="h-9 px-3 text-[10px]">FLAC all</Button>
+                <div className="flex flex-col gap-3 mt-4">
+                  <div className="kh-container sticky top-2 z-10 order-2 flex flex-wrap items-center gap-3 bg-panel">
+                    <div className="flex items-center gap-2">
+                      <input
+                        ref={selectAllRef}
+                        type="checkbox"
+                        checked={album.tracks.length > 0 && selectedCount === album.tracks.length}
+                        onChange={toggleAllTracks}
+                        aria-label="Select all tracks"
+                        aria-checked={selectedCount > 0 && selectedCount < album.tracks.length ? 'mixed' : selectedCount === album.tracks.length}
+                        className="h-4 w-4 accent-oshipink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oshipink"
+                      />
+                      <span className="kh-meta font-bold text-ink" aria-live="polite">
+                        {selectedCount} of {album.tracks.length} selected
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedTracks(new Set())}
+                        className={`kh-control-sm border-0 bg-transparent px-2 font-bold text-toska underline-offset-2 shadow-none hover:underline ${selectedCount === 0 ? 'invisible pointer-events-none' : ''}`}
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className="relative flex flex-wrap items-center gap-2 sm:ml-auto">
+                      <Button
+                        variant="primary"
+                        icon={Download}
+                        disabled={selectedCount === 0}
+                        title={selectedCount === 0 ? 'Select at least one track first' : 'Choose MP3 or FLAC for the selected tracks'}
+                        aria-haspopup="menu"
+                        aria-expanded={selectedDownloadMenuOpen}
+                        onClick={() => setSelectedDownloadMenuOpen((open) => !open)}
+                        className="kh-control-md px-3"
+                      >
+                        Download selected ({selectedCount})
+                      </Button>
+                      {selectedDownloadMenuOpen && selectedCount > 0 && (
+                        <div className="absolute right-0 top-full z-20 mt-2 flex min-w-[180px] flex-col gap-1 rounded-xl border-2 border-gameborder bg-panel p-2 shadow-game-thin" role="menu" aria-label="Selected download format">
+                          <span className="px-2 py-1 font-mono text-[10px] font-bold text-muted">Choose format</span>
+                          <Button role="menuitem" onClick={() => { setSelectedDownloadMenuOpen(false); void downloadSelected('mp3'); }} className="kh-control-sm px-2">MP3 selected</Button>
+                          <Button role="menuitem" onClick={() => { setSelectedDownloadMenuOpen(false); void downloadSelected('flac'); }} className="kh-control-sm px-2">FLAC selected</Button>
+                        </div>
+                      )}
+                      <Button onClick={() => void downloadSelected('mp3', true)} icon={Download} className="kh-control-md px-3">Download all (MP3)</Button>
+                      <Button onClick={() => void downloadSelected('flac', true)} icon={Download} className="kh-control-md px-3">Download all (FLAC)</Button>
+                    </div>
+                  </div>
+                  <div className="kh-container order-1 flex flex-wrap items-center gap-2">
+                    <label className="kh-meta flex items-center gap-1 font-black text-ink shrink-0" title="Download folder">
+                      <FolderOpen className="w-4 h-4 text-toska" />
+                      <span>Folder</span>
+                    </label>
+                    <div className="min-w-[220px] flex-1" title={settings.defaultOutputDir || 'No download folder selected'}>
+                      <PathPicker
+                        value={settings.defaultOutputDir}
+                        onChange={(path) => updateSettings({ defaultOutputDir: path })}
+                        placeholder="Select download folder..."
+                        compact
+                      />
+                    </div>
                   </div>
                 </div>
-                <div className="grid gap-2 mt-4">
+                <div className="grid gap-2 mt-3">
                   {album.tracks.length ? album.tracks.map((track, index) => (
-                    <div key={track.source_url} className="grid items-center grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 p-3 border-2 rounded-xl border-gameborder bg-appbg">
-                      <label className="flex items-center min-w-0 gap-2 cursor-pointer">
+                    <div key={track.source_url} className={`kh-track-row kh-container grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-3 gap-y-1 transition-colors ${selectedTracks.has(track.source_url) ? 'border-oshipink bg-softpink' : ''}`}>
+                      <label className="flex items-center min-w-0 gap-2 min-h-[40px] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={selectedTracks.has(track.source_url)}
@@ -314,14 +407,14 @@ export default function KhinsiderView() {
                               key={format}
                               onClick={() => void (downloadState[stateKey]?.startsWith('Downloading') ? cancelTrackDownload(track, format) : downloadTrack(track, format))}
                               title={downloadState[stateKey]?.startsWith('Downloading') ? `Cancel ${format.toUpperCase()}` : (downloadState[stateKey] ?? `Download ${format.toUpperCase()}`)}
-                              className="h-8 px-2 text-[10px]"
+                              className="kh-control-sm px-2"
                               icon={downloadState[stateKey]?.startsWith('Downloading') ? X : Download}
                             >
                               {format.toUpperCase()}
                             </Button>
                           ) : null;
                         })}
-                        <a className="text-toska" href={track.mp3_url ?? track.flac_url ?? track.source_url} target="_blank" rel="noreferrer" title="Open track source">
+                        <a className="ml-2 rounded-md p-1 text-toska focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-oshipink" href={track.mp3_url ?? track.flac_url ?? track.source_url} target="_blank" rel="noreferrer" title="Open source page" aria-label={`Open source page for ${track.title}`}>
                           <ExternalLink className="w-4 h-4" />
                         </a>
                       </div>

@@ -23,6 +23,7 @@ export interface KhinsiderPage {
   categories: KhinsiderCategory[];
   albums: KhinsiderAlbum[];
   tracks: KhinsiderTrack[];
+  cover_url?: string;
 }
 
 export const KHINSIDER_HOME = 'https://downloads.khinsider.com/';

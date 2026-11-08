@@ -62,6 +62,30 @@ struct KhinsiderPage {
     categories: Vec<KhinsiderCategory>,
     albums: Vec<KhinsiderAlbum>,
     tracks: Vec<KhinsiderTrack>,
+    cover_url: Option<String>,
+}
+
+fn normalize_cover_url(raw: &str) -> Option<String> {
+    let value = raw.trim();
+    if value.is_empty() || value.starts_with("data:") || value.contains("placeholder") {
+        return None;
+    }
+    let decoded = value.replace("%2520", "%20");
+    let normalized = if decoded.starts_with("//") {
+        format!("https:{decoded}")
+    } else if decoded.starts_with('/') {
+        format!("https://vgmtreasurechest.com{decoded}")
+    } else if decoded.starts_with("http://") {
+        decoded.replacen("http://", "https://", 1)
+    } else if decoded.starts_with("https://") {
+        decoded
+    } else {
+        return None;
+    };
+    if !normalized.contains("vgmtreasurechest.com/soundtracks/") {
+        return None;
+    }
+    Some(normalized)
 }
 
 fn absolute_khinsider_url(href: &str) -> Option<String> {
@@ -72,6 +96,28 @@ fn absolute_khinsider_url(href: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+fn image_source(image: scraper::ElementRef<'_>) -> Option<String> {
+    ["data-src", "data-original", "data-lazy-src", "src"]
+        .iter()
+        .find_map(|attribute| image.value().attr(attribute))
+        .and_then(normalize_cover_url)
+}
+
+fn cover_from_ancestors(
+    element: scraper::ElementRef<'_>,
+    image_selector: &Selector,
+) -> Option<String> {
+    let mut current = element.parent();
+    for _ in 0..5 {
+        let parent = current.and_then(scraper::ElementRef::wrap)?;
+        if let Some(image) = parent.select(image_selector).find_map(image_source) {
+            return Some(image);
+        }
+        current = parent.parent();
+    }
+    None
 }
 
 fn text_content(element: scraper::ElementRef<'_>) -> String {
@@ -138,16 +184,6 @@ fn safe_file_name(file_name: &str) -> String {
     }
 }
 
-fn derived_cover_url(album_url: &str) -> Option<String> {
-    let slug = album_url.trim_end_matches('/').rsplit('/').next()?;
-    if slug.is_empty() {
-        return None;
-    }
-    Some(format!(
-        "https://vgmtreasurechest.com/soundtracks/{slug}/thumbs/cover.jpg"
-    ))
-}
-
 fn parse_khinsider_html(html: &str, page_url: &str) -> KhinsiderPage {
     let document = Html::parse_document(html);
     let title_selector = Selector::parse("title").expect("valid selector");
@@ -201,17 +237,14 @@ fn parse_khinsider_html(html: &str, page_url: &str) -> KhinsiderPage {
                     });
                 }
             } else if seen_albums.insert(url.clone()) {
-                let cover_url = link.select(&image_selector).find_map(|image| {
-                    image
-                        .value()
-                        .attr("src")
-                        .or_else(|| image.value().attr("data-src"))
-                        .and_then(absolute_khinsider_url)
-                });
+                let cover_url = link
+                    .select(&image_selector)
+                    .find_map(image_source)
+                    .or_else(|| cover_from_ancestors(link, &image_selector));
                 albums.push(KhinsiderAlbum {
                     title: label,
                     url: url.clone(),
-                    cover_url: cover_url.or_else(|| derived_cover_url(&url)),
+                    cover_url,
                 });
             }
         } else if href.contains("/game-soundtracks/") && !href.contains("/album/") {
@@ -230,13 +263,10 @@ fn parse_khinsider_html(html: &str, page_url: &str) -> KhinsiderPage {
                 continue;
             }
             album.cover_url = document.select(&image_selector).find_map(|image| {
-                let src = image
-                    .value()
-                    .attr("src")
-                    .or_else(|| image.value().attr("data-src"))?;
+                let src = image_source(image)?;
                 let alt = image.value().attr("alt").unwrap_or_default().to_lowercase();
                 if alt.contains(&album.title.to_lowercase()) {
-                    absolute_khinsider_url(src)
+                    Some(src)
                 } else {
                     None
                 }
@@ -244,11 +274,18 @@ fn parse_khinsider_html(html: &str, page_url: &str) -> KhinsiderPage {
         }
     }
 
+    let cover_url = if page_url.contains("/album/") {
+        document.select(&image_selector).find_map(image_source)
+    } else {
+        None
+    };
+
     KhinsiderPage {
         title,
         categories,
         albums,
         tracks,
+        cover_url,
     }
 }
 
