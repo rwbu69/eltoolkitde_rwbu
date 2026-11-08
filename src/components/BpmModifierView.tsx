@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress, BpmOutputFormat } from '../services/bpm';
-import { FileAudio, PlayCircle, FolderOpen, Activity, Search, Edit3, AlertTriangle } from 'lucide-react';
+import { FileAudio, PlayCircle, FolderOpen, Search, Edit3, AlertTriangle } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
 import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
@@ -10,6 +10,7 @@ import { ProgressBar } from './ui/ProgressBar';
 import { EmptyState } from './ui/EmptyState';
 import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { showToast } from './ui/Toast';
 
 interface SelectedFile {
   path: string;
@@ -103,7 +104,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
       });
 
     } catch (err: any) {
-      setNotice(getUserFacingError(err, 'BPM analysis failed. Check the selected audio files and try again.').message);
+      showToast('BPM analysis failed.', 'error', getUserFacingError(err, 'Check the selected audio files and try again.').detail);
     } finally {
       setIsDetecting(false);
     }
@@ -125,7 +126,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     
     const bpmNumber = parseFloat(targetBPM);
     if (isNaN(bpmNumber) || bpmNumber < 20 || bpmNumber > 300) {
-      setNotice('Target BPM must be between 20 and 300.');
+      showToast('Target BPM must be between 20 and 300.', 'warning');
       return;
     }
 
@@ -149,7 +150,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
         });
       }, () => cancelRequested.current);
     } catch (err: any) {
-      setNotice(getUserFacingError(err, 'The BPM-adjusted files could not be created. Check the output folder and try again.').message);
+      showToast('The BPM-adjusted files could not be created.', 'error', getUserFacingError(err, 'Check the output folder and try again.').detail);
     } finally {
       setIsProcessing(false);
     }
@@ -161,7 +162,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   return (
     <PageLayout>
       <Column>
-        <SectionHeader title="BPM Modifier" icon={Activity} />
+        <SectionHeader title="BPM Modifier" />
 
         <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-4 pr-2">

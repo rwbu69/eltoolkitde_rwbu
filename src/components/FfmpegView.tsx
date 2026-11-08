@@ -13,6 +13,7 @@ import { EmptyState } from './ui/EmptyState';
 import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { showToast } from './ui/Toast';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
   const { settings } = useAppStore();
@@ -131,7 +132,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
       }
     } catch (e: any) {
       console.error(e);
-      setNotice(getUserFacingError(e, 'The files could not be processed. Check the inputs and try again.').message);
+      showToast('The files could not be processed.', 'error', getUserFacingError(e, 'Check the inputs and try again.').detail);
     } finally {
       setIsProcessing(false);
       setCancelFn(null);

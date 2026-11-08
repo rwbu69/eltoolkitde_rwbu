@@ -8,6 +8,7 @@ import { Toggle } from './ui/Toggle';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 import { YtDlpService } from '../services/ytdlp';
 import { InlineNotice } from './ui/InlineNotice';
+import { showToast } from './ui/Toast';
 
 export default function SettingsView() {
   const { settings, updateSettings } = useAppStore();
@@ -171,8 +172,11 @@ export default function SettingsView() {
                 setUpdateNotice('');
                 try {
                   await YtDlpService.updateYtDlp(setUpdateNotice);
+                  showToast('yt-dlp updated successfully.', 'success');
                 } catch (error) {
-                  setUpdateNotice(String(error));
+                  const detail = String(error);
+                  setUpdateNotice(detail);
+                  showToast('yt-dlp update failed.', 'error', detail);
                 } finally {
                   setIsUpdatingYtDlp(false);
                 }

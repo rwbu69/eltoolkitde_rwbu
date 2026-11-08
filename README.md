@@ -2,9 +2,12 @@
 
 # ElToolkitDeRWBU
 
-**Download, convert, tag, rename, and analyze BPM. One window, zero terminal.**
+**A friendly desktop toolkit for downloading, converting, tagging, renaming, and analyzing audio.**
 
-A cross-platform desktop toolkit that puts FFmpeg, yt-dlp, and a studio-minded BPM tool behind a clean, game-flavored interface. Everything it needs is bundled.
+ElToolkitDeRWBU brings several excellent open-source tools together in one
+comfortable, game-inspired desktop application. My goal is to make common
+media and audio workflows feel approachable without requiring a terminal for
+every task.
 
 ![ElToolkitDeRWBU](images/screen_awal.png)
 
@@ -12,7 +15,16 @@ A cross-platform desktop toolkit that puts FFmpeg, yt-dlp, and a studio-minded B
 
 ## Why this exists
 
-I kept reaching for the same command-line tools to download a video, trim a clip, fix a batch of MP3 tags, or rename a messy folder, and retyping the same flags every time. ElToolkitDeRWBU is my answer: the tools I actually use, wrapped in an interface that is quick to use and fun to look at. It started as a personal script collection and grew into a proper app, built from scratch and developed iteratively with AI assistance.
+I kept reaching for the same command-line tools to download a video, trim a
+clip, fix a batch of MP3 tags, or rename a messy folder, and retyping the same
+flags every time. ElToolkitDeRWBU is my answer: the tools I actually use,
+wrapped in an interface that is quick to use and pleasant to look at.
+
+This project would not be possible without the remarkable work of the
+open-source communities behind [FFmpeg](https://ffmpeg.org),
+[yt-dlp](https://github.com/yt-dlp/yt-dlp), [Tauri](https://tauri.app), and
+many other projects listed below. I am sincerely grateful to the maintainers
+and contributors who make these tools available.
 
 ## Features
 
@@ -28,6 +40,18 @@ I kept reaching for the same command-line tools to download a video, trim a clip
   - Quick presets for MP3 320 kbps, MP4 1080p, and 1080p video-only downloads.
   - Manual yt-dlp updates use a temporary download and executable validation
     before replacing the bundled binary.
+
+- **Khinsider Browser and Downloader:**
+  - Browse Khinsider categories and soundtrack pages inside the app.
+  - Search for games, albums, or artists without opening a separate browser.
+  - Open an album to inspect its detected track list.
+  - Display album artwork when available, with lazy loading and a fallback.
+  - Download individual or selected tracks as MP3 or FLAC.
+  - Track batch progress and provide a summary when the batch is complete.
+  - Uses conservative request pacing, short-lived caching, and respectful
+    retry backoff when loading Khinsider pages.
+  - This feature is intended to complement [Khinsider](https://downloads.khinsider.com/)
+    and respects the service's availability and access limitations.
 
 - **FFmpeg Tools:**
   - **Audio Extraction:** Batch convert media files to MP3 using `libmp3lame` at user-selected bitrates.
@@ -186,23 +210,59 @@ npm ci
 
 ## Acknowledgements
 
-This project is built on the shoulders of outstanding open-source projects:
-- [FFmpeg](https://ffmpeg.org) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) for media processing and download engines.
-- [Tauri](https://tauri.app) for the lightweight desktop framework.
-- [librosa](https://librosa.org) and the Python audio community.
-- [Catppuccin](https://github.com/catppuccin/catppuccin) for the color palette foundations.
-- Visual novel and game HUD designs for layout and interface styling inspirations.
-- Built iteratively with AI assistance.
+I would like to give my sincere thanks to the people and communities behind
+the projects that make this application possible:
+
+- [FFmpeg](https://ffmpeg.org) and [FFprobe](https://ffmpeg.org/) for the
+  dependable media processing, conversion, trimming, and inspection foundation.
+- [yt-dlp](https://github.com/yt-dlp/yt-dlp) for its powerful and flexible
+  media download capabilities.
+- [Khinsider](https://downloads.khinsider.com/) for the soundtrack browsing
+  experience that inspired the in-app browser and downloader.
+- [VGMTreasureChest](https://vgmtreasurechest.com/) for the soundtrack media
+  delivery infrastructure used by links surfaced through Khinsider.
+- [Tauri](https://tauri.app) for making it possible to build a lightweight
+  cross-platform desktop application with native OS integrations.
+- [React](https://react.dev), [TypeScript](https://www.typescriptlang.org),
+  [Vite](https://vitejs.dev), and [Zustand](https://github.com/pmndrs/zustand)
+  for the application foundation.
+- [librosa](https://librosa.org) and
+  [python-soundfile](https://github.com/bastibe/python-soundfile) for the BPM
+  analysis and audio-processing features.
+- [Tailwind CSS](https://tailwindcss.com) and
+  [Catppuccin](https://github.com/catppuccin/catppuccin) for helping shape the
+  application's visual language.
+- [Vitest](https://vitest.dev) and [oxlint](https://oxc.rs) for helping keep
+  the project reliable during development.
+- The visual novel and game HUD communities, whose design language continues
+  to inspire the layout and interface.
+
+The project is developed with care and with the help of AI-assisted
+development workflows. AI assistance supports the process, while the
+architecture, product decisions, and implementation are reviewed as part of
+the project itself.
 
 ## Third-Party Software
 
-Release packages bundle FFmpeg, FFprobe, yt-dlp, Node.js runtime binaries, and Python audio libraries, each distributed under its respective open-source license. The bundled static FFmpeg and FFprobe builds are licensed under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**.
+Release packages bundle FFmpeg, FFprobe, yt-dlp, Node.js runtime binaries, and
+Python audio libraries, each distributed under its respective open-source
+license. The bundled static FFmpeg and FFprobe builds are licensed under the
+**GNU General Public License v3.0 or later (GPL-3.0-or-later)**.
+
+Please take a moment to review and support the upstream projects when you find
+them useful. Their documentation, issue trackers, and contributor communities
+are valuable resources for everyone who builds on top of them.
 
 For full license texts, upstream links, and instructions on obtaining source code for bundled software, please review [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Disclaimer
 
-Only download and convert media content you have the legal right or permission to process. Respect the intellectual property rights and terms of service of any third-party websites or platforms you access with this tool.
+Please only download, convert, or modify media that you have the legal right
+or permission to process. Please respect the intellectual property rights,
+terms of service, robots policies, and access limits of third-party websites
+and services, including [Khinsider](https://downloads.khinsider.com/).
+ElToolkitDeRWBU is provided as a tool and does not grant permission to access
+or redistribute content.
 
 ## License
 

@@ -1,20 +1,22 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { Download, Settings, RefreshCcw, FileAudio, Edit3, Activity } from 'lucide-react';
+import { Download, Settings, RefreshCcw, FileAudio, Edit3, Activity, Library } from 'lucide-react';
 import DownloaderView from './components/DownloaderView';
 import FfmpegView from './components/FfmpegView';
 import MetadataView from './components/MetadataView';
 import RenameView from './components/RenameView';
 import BpmModifierView from './components/BpmModifierView';
 import SettingsView from './components/SettingsView';
+import KhinsiderView from './components/KhinsiderView';
 import TerminalLogView from './components/TerminalLogView';
 import { Titlebar } from './components/ui/Titlebar';
 import { Tooltip } from './components/ui/Tooltip';
 import { useAppStore } from './store/useAppStore';
+import { ToastHost } from './components/ui/Toast';
 
 import appIcon from './assets/icon.png';
 
-type Tab = 'downloader' | 'ffmpeg' | 'metadata' | 'rename' | 'bpm' | 'settings';
+type Tab = 'downloader' | 'khinsider' | 'ffmpeg' | 'metadata' | 'rename' | 'bpm' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('downloader');
@@ -52,6 +54,7 @@ function App() {
   return (
     <div className="flex flex-col w-screen h-screen overflow-hidden bg-appbg">
       <Titlebar />
+      <ToastHost />
       
       {/* TOP HUD BAR */}
       <header className="z-50 flex items-start justify-between flex-none w-full p-4 pointer-events-none">
@@ -85,6 +88,12 @@ function App() {
             >
               <Download className="w-4 h-4 shrink-0" />
               <span className="hidden text-xs font-bold lg:inline">Downloader</span>
+            </button>
+          </Tooltip>
+          <Tooltip text="KHINSIDER">
+            <button onClick={() => setActiveTab('khinsider')} className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'khinsider' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}>
+              <Library className="w-4 h-4 shrink-0" />
+              <span className="hidden text-xs font-bold lg:inline">Khinsider</span>
             </button>
           </Tooltip>
           <Tooltip text="FFMPEG">
@@ -141,6 +150,9 @@ function App() {
         <div className="max-w-[1400px] mx-auto w-full flex-1 min-h-0 overflow-visible xl:overflow-hidden relative">
           <div className={`${activeTab === 'downloader' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <DownloaderView />
+          </div>
+          <div className={`${activeTab === 'khinsider' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
+            <KhinsiderView />
           </div>
           <div className={`${activeTab === 'ffmpeg' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <FfmpegView isActive={activeTab === 'ffmpeg'} />

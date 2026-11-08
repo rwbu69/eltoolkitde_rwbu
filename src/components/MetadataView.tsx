@@ -9,6 +9,7 @@ import { EmptyState } from './ui/EmptyState';
 import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { showToast } from './ui/Toast';
 
 export default function MetadataView({ isActive = false }: { isActive?: boolean }) {
   const [mode, setMode] = useState<'file' | 'folder'>('file');
@@ -64,7 +65,7 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
       await task;
     } catch (e: any) {
       console.error(e);
-      setNotice(getUserFacingError(e, 'The metadata could not be applied. Check the selected input and try again.').message);
+      showToast('The metadata could not be applied.', 'error', getUserFacingError(e, 'Check the selected input and try again.').detail);
     } finally {
       setIsProcessing(false);
       setCancelFn(null);
@@ -183,9 +184,9 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
                               p.inputPath!,
                               p.backupPath!,
                             );
-                            setNotice(`Restored the original metadata for ${p.file}.`);
+                            showToast(`Restored the original metadata for ${p.file}.`, 'success');
                           } catch (error) {
-                            setNotice(getUserFacingError(error, 'The metadata backup could not be restored.').message);
+                            showToast('The metadata backup could not be restored.', 'error', getUserFacingError(error, 'Try again.').detail);
                           } finally {
                             setRestoringFile(null);
                           }

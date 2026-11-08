@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { RenameService, RenameOptions, RenamePreview, RenameProgress } from '../services/rename';
-import { FolderOpen, Edit3, Undo2, CheckSquare, Search, Type, Hash, Settings2, AlertTriangle } from 'lucide-react';
+import { FolderOpen, Undo2, CheckSquare, Search, Type, Hash, Settings2, AlertTriangle } from 'lucide-react';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
 import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
@@ -10,6 +10,7 @@ import { Toggle } from './ui/Toggle';
 import { EmptyState } from './ui/EmptyState';
 import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { showToast } from './ui/Toast';
 
 export default function RenameView({ isActive = false }: { isActive?: boolean }) {
   const [inputPath, setInputPath] = useState('');
@@ -110,7 +111,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       }, 500);
       
     } catch (err: any) {
-      setNotice(getUserFacingError(err, 'The file names could not be previewed. Check the selected folder and try again.').message);
+      showToast('The file names could not be previewed.', 'error', getUserFacingError(err, 'Check the selected folder and try again.').detail);
     } finally {
       setIsProcessing(false);
     }
@@ -136,7 +137,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       }, 500);
       
     } catch (err: any) {
-      setNotice(getUserFacingError(err, 'The files could not be renamed. Check the preview and try again.').message);
+      showToast('The files could not be renamed.', 'error', getUserFacingError(err, 'Check the preview and try again.').detail);
     } finally {
       setIsProcessing(false);
     }
@@ -147,7 +148,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
   return (
     <PageLayout>
       <Column>
-        <SectionHeader title="Batch Rename" icon={Edit3} />
+        <SectionHeader title="Batch Rename" />
 
         {/* Tab Buttons */}
         <Tabs

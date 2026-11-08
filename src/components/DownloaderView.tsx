@@ -13,6 +13,7 @@ import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
+import { showToast } from './ui/Toast';
 
 const MAX_PLAYLIST_ITEMS = 500;
 
@@ -62,14 +63,14 @@ export default function DownloaderView() {
 
   const handleDownload = async () => {
     if (!urlsInput.trim() || !outputDir) {
-      setNotice(!outputDir ? 'Select an output folder before queueing downloads.' : 'Paste at least one media URL.');
+      showToast(!outputDir ? 'Select an output folder before queueing downloads.' : 'Paste at least one media URL.', 'warning');
       return;
     }
 
     const enteredUrls = parseUrls();
     const urls = getUniqueUrls(enteredUrls);
     if (urls.length === 0) {
-      setNotice('Enter at least one valid-looking URL.');
+      showToast('Enter at least one valid-looking URL.', 'warning');
       return;
     }
     setIsInspecting(true);
@@ -84,7 +85,7 @@ export default function DownloaderView() {
       )));
       const totalItems = infos.reduce((total, info) => total + (info.isPlaylist ? info.entries?.length ?? 0 : 1), 0);
       if (totalItems > MAX_PLAYLIST_ITEMS) {
-        setNotice(`This batch contains ${totalItems} items. The maximum supported playlist size is ${MAX_PLAYLIST_ITEMS}.`);
+        showToast(`This batch contains ${totalItems} items.`, 'warning', `The maximum supported playlist size is ${MAX_PLAYLIST_ITEMS}.`);
         return;
       }
       const needsConfirmation = urls.length > 1 || infos.some(info => info.isPlaylist) || totalItems > 10;
@@ -94,7 +95,7 @@ export default function DownloaderView() {
         queueInspectedUrls(urls, infos);
       }
     } catch (error) {
-      setNotice(getUserFacingError(error, 'The links could not be checked. Verify the URLs and try again.').message);
+      showToast('The links could not be checked.', 'error', getUserFacingError(error, 'Verify the URLs and try again.').detail);
     } finally {
       setIsInspecting(false);
     }

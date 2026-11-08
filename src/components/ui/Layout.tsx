@@ -42,7 +42,7 @@ export function Column({
  */
 export function SectionHeader({ 
   title, 
-  icon: Icon,
+  icon: _Icon,
   align = 'left',
   variant = 'primary'
 }: { 
@@ -54,14 +54,13 @@ export function SectionHeader({
   const alignClass = align === 'left' ? 'self-start' : 'self-end';
   
   const boxClass = variant === 'primary' 
-    ? 'text-inkinverse bg-ink border-4 border-gameborder border-l-oshipink'
+    ? 'text-inkinverse bg-ink border-4 border-gameborder'
     : 'bg-panel border-4 text-ink border-gameborder';
 
   return (
     <div className={`${alignClass} inline-block shrink-0`}>
       <div className={`inline-block px-5 py-1.5 rounded-xl shadow-game-thin ${boxClass}`}>
-        <h2 className="flex items-center gap-2 font-mono text-base font-black tracking-widest">
-          {Icon && <Icon className={`w-5 h-5 ${variant === 'primary' ? 'text-oshipink' : 'text-toska'}`} />}
+        <h2 className="font-mono text-base font-black tracking-widest">
           {title.replace(/_/g, ' ')}
         </h2>
       </div>

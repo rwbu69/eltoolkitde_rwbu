@@ -26,12 +26,34 @@ Released: 2026-11-08
 
 - Standardized user-facing language to English across menus, system notifications, statuses, and action labels.
 - Replaced raw browser alerts with inline notices and expandable technical details.
+- Added a shared bottom-right toast notification system for application feedback.
+- Added native OS notifications for successful single downloads and completed
+  Khinsider batches, while keeping partial or failed batches in-app.
 - Added shared status labels for waiting, checking, downloading, analyzing, processing, completed, failed, canceled, skipped, and playlist-expanded states.
 - Added shared empty states, inline notices, and action footers for consistent menu behavior.
+- Simplified section headers by removing decorative icons and left-side color
+  accents for a more consistent application-wide layout.
 - Standardized button icon sizing and reduced excessive arcade-style button movement and border weight.
 - Improved downloader icon semantics for video format, resolution, and audio bitrate.
 - Replaced the downloader's scrolling resolution dropdown with a compact responsive resolution grid.
 - Added download queue filters for active, failed/canceled, and completed items.
+
+### Khinsider browser and downloader
+
+- Added native Khinsider browsing, search, category navigation, album details,
+  track inspection, and album artwork display.
+- Added individual and batch MP3/FLAC downloads with progress reporting,
+  cancellation, retry handling, sanitized filenames, and album subfolders.
+- Added consistent right-aligned track controls for MP3, FLAC, and source-link
+  actions.
+- Added viewport-aware album artwork loading with `IntersectionObserver`,
+  placeholder artwork, a 300px preload margin, and a failure fallback for
+  fast scrolling.
+- Added conservative Khinsider request pacing, five-minute in-memory HTML
+  caching, request deduplication through the cache, `Retry-After` support, and
+  exponential backoff for rate-limited or temporary server errors.
+- Added safeguards that restrict direct audio downloads to HTTPS MP3/FLAC
+  resources hosted by `vgmtreasurechest.com` or its subdomains.
 
 ### Downloader and BPM improvements
 
