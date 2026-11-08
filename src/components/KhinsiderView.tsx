@@ -272,7 +272,7 @@ export default function KhinsiderView() {
                   </div>
                   <div className="min-w-0">
                     <p className="font-mono text-[10px] font-black uppercase text-toska">Album details</p>
-                    <h3 className="mt-1 text-2xl font-black font-zen">{album.title}</h3>
+                    <h3 className="mt-1 text-2xl font-black font-zen text-ink">{album.title}</h3>
                     <p className="mt-1 font-mono text-xs text-muted">{album.tracks.length} track(s)</p>
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default function KhinsiderView() {
                           className="accent-oshipink"
                           aria-label={`Select ${track.title}`}
                         />
-                        <span className="font-mono text-xs truncate"><span className="mr-2 text-muted">{String(index + 1).padStart(2, '0')}</span>{track.title}</span>
+                        <span className="font-mono text-xs text-ink truncate"><span className="mr-2 text-muted">{String(index + 1).padStart(2, '0')}</span>{track.title}</span>
                       </label>
                       <div className="flex items-center justify-end gap-1 shrink-0">
                         {(['mp3', 'flac'] as const).map((format) => {
@@ -336,11 +336,11 @@ export default function KhinsiderView() {
                 </div>
               </PanelScrollArea>
             ) : page ? (
-              <PanelScrollArea>
+              <PanelScrollArea className="text-ink">
                 <div className="flex items-end justify-between gap-3">
                   <div>
                     <p className="font-mono text-[10px] font-black uppercase text-toska">Khinsider</p>
-                    <h3 className="text-xl font-black font-zen">{page.title}</h3>
+                    <h3 className="text-xl font-black font-zen text-ink">{page.title}</h3>
                   </div>
                   <span className="font-mono text-[10px] text-muted">{page.albums.length} soundtracks found</span>
                 </div>
@@ -363,8 +363,8 @@ export default function KhinsiderView() {
                         <div className="flex items-center justify-center w-20 h-20 overflow-hidden rounded-xl bg-panel shrink-0">
                           <CoverImage src={item.cover_url} alt="" className="object-cover w-full h-full" />
                         </div>
-                        <div className="min-w-0">
-                          <span className="block font-bold font-zen line-clamp-2">{item.title}</span>
+                        <div className="min-w-0 text-ink">
+                          <span className="block font-bold font-zen line-clamp-2 text-ink">{item.title}</span>
                           <span className="block mt-1 font-mono text-[10px] text-muted">Open album details</span>
                         </div>
                       </button>

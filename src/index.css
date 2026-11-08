@@ -11,13 +11,13 @@
     --color-gameborder: #4c4f69;
     --color-ink: #4c4f69;
     --color-inkinverse: #ffffff;
-    --color-muted: #8c8fa1;
+    --color-muted: #62657a;
     --color-oshipink: #ea76cb;
-    --color-toska: #179299;
+    --color-toska: #087f82;
     --color-softpink: #faddf1;
     --color-softtoska: #e6f9f9;
     --color-gameshadow: #4c4f69;
-    --color-buttontext: #ffffff;
+    --color-buttontext: #3d2540;
   }
 
   .dark {
