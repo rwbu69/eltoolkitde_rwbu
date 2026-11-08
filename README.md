@@ -42,6 +42,8 @@ and contributors who make these tools available.
     before replacing the bundled binary.
 
 - **Khinsider Browser and Downloader:**
+  - Disabled by default and enabled explicitly from Settings; when disabled,
+    the Khinsider tab is hidden and the app makes no requests to the source.
   - Browse Khinsider categories and soundtrack pages inside the app.
   - Search for games, albums, or artists without opening a separate browser.
   - Open an album to inspect its detected track list.
@@ -50,6 +52,9 @@ and contributors who make these tools available.
   - Track batch progress and provide a summary when the batch is complete.
   - Uses conservative request pacing, short-lived caching, and respectful
     retry backoff when loading Khinsider pages.
+  - Limits active Khinsider audio downloads to two at a time, honors
+    `Retry-After`, and stops after a small bounded number of retries.
+  - Provides a Settings action to clear the in-memory Khinsider page cache.
   - This feature is intended to complement [Khinsider](https://downloads.khinsider.com/)
     and respects the service's availability and access limitations.
 

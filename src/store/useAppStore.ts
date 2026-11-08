@@ -32,6 +32,7 @@ export interface AppSettings {
   maxConcurrentDownloads: number;
   rateLimitSpeed: string;
   theme: 'light' | 'dark';
+  enableKhinsider: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -45,6 +46,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   maxConcurrentDownloads: 3,
   rateLimitSpeed: '',
   theme: 'light',
+  enableKhinsider: false,
 };
 
 export type QueueItemStatus = 'pending' | 'fetching' | 'downloading' | 'expanded' | 'done' | 'error' | 'canceled';
@@ -102,6 +104,12 @@ export const useAppStore = create<AppState>()(
           // Sync with Rust backend for close behavior
           if (updates.closeToTray !== undefined) {
             invoke('set_close_behavior', { closeToTray: nextSettings.closeToTray }).catch(console.error);
+          }
+          if (updates.enableKhinsider !== undefined) {
+            invoke('set_khinsider_enabled', { enabled: nextSettings.enableKhinsider }).catch(console.error);
+            if (!nextSettings.enableKhinsider) {
+              invoke('clear_khinsider_cache').catch(console.error);
+            }
           }
           
           // Re-create the limit pool if concurrency settings changed

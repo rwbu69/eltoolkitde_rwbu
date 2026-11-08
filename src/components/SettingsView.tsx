@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { FolderOpen, Shield, FileBox, Download, Zap, RefreshCcw } from 'lucide-react';
+import { invoke } from '@tauri-apps/api/core';
+import { FolderOpen, Shield, FileBox, Download, Zap, RefreshCcw, Library } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout';
 import { Input } from './ui/Input';
@@ -187,6 +188,37 @@ export default function SettingsView() {
               {isUpdatingYtDlp ? 'Updating yt-dlp...' : 'Check for yt-dlp update'}
             </button>
             {updateNotice && <InlineNotice message={updateNotice} tone={updateNotice.startsWith('Update failed') ? 'error' : 'success'} />}
+          </div>
+
+          <div className="space-y-4 bg-appbg border-4 border-gameborder p-5 rounded-2xl">
+            <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
+              <Library className="w-5 h-5 text-toska" /> Khinsider browser
+            </h3>
+            <p className="text-xs font-mono font-bold text-muted">
+              Enable the Khinsider browser and downloader. Requests are paced and cached to reduce load on the source websites. Please use it reasonably and only download content you have permission to use.
+            </p>
+            <Toggle
+              checked={settings.enableKhinsider}
+              onChange={(checked) => updateSettings({ enableKhinsider: checked })}
+              label="Enable Khinsider features"
+              description="When disabled, the Khinsider tab is hidden and no Khinsider requests are made."
+              variant="checkbox"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                void invoke('clear_khinsider_cache')
+                  .then(() => showToast('Khinsider cache cleared.', 'success'))
+                  .catch((error) => showToast('Could not clear Khinsider cache.', 'error', String(error)));
+              }}
+              className="game-btn-secondary inline-flex items-center gap-2 px-3 py-2 text-xs"
+            >
+              Clear Khinsider cache
+            </button>
+            <p className="text-xs font-mono font-bold text-muted">
+              Source: <a className="text-toska underline" href="https://downloads.khinsider.com" target="_blank" rel="noreferrer">Khinsider</a>
+              {' '}and <a className="text-toska underline" href="https://vgmtreasurechest.com" target="_blank" rel="noreferrer">VGMTreasureChest</a>.
+            </p>
           </div>
 
           {/* AUTHENTICATION SECTION */}

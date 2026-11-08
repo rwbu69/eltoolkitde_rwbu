@@ -31,6 +31,15 @@ function App() {
   }, [settings.theme]);
 
   useEffect(() => {
+    void import('@tauri-apps/api/core').then(({ invoke }) => {
+      invoke('set_khinsider_enabled', { enabled: settings.enableKhinsider }).catch(console.error);
+    });
+    if (!settings.enableKhinsider && activeTab === 'khinsider') {
+      setActiveTab('downloader');
+    }
+  }, [settings.enableKhinsider, activeTab]);
+
+  useEffect(() => {
     const timer = setTimeout(() => {
       invoke('close_splashscreen').catch(console.error);
     }, 1000);
@@ -90,12 +99,14 @@ function App() {
               <span className="hidden text-xs font-bold lg:inline">Downloader</span>
             </button>
           </Tooltip>
-          <Tooltip text="KHINSIDER">
-            <button onClick={() => setActiveTab('khinsider')} className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'khinsider' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}>
-              <Library className="w-4 h-4 shrink-0" />
-              <span className="hidden text-xs font-bold lg:inline">Khinsider</span>
-            </button>
-          </Tooltip>
+          {settings.enableKhinsider && (
+            <Tooltip text="KHINSIDER">
+              <button onClick={() => setActiveTab('khinsider')} className={`flex items-center justify-center h-10 w-10 px-0 lg:w-auto lg:px-4 gap-2 ${activeTab === 'khinsider' ? 'game-btn-primary' : 'game-btn-secondary text-ink'}`}>
+                <Library className="w-4 h-4 shrink-0" />
+                <span className="hidden text-xs font-bold lg:inline">Khinsider</span>
+              </button>
+            </Tooltip>
+          )}
           <Tooltip text="FFMPEG">
             <button 
               onClick={() => setActiveTab('ffmpeg')} 
@@ -151,9 +162,11 @@ function App() {
           <div className={`${activeTab === 'downloader' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <DownloaderView />
           </div>
-          <div className={`${activeTab === 'khinsider' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
-            <KhinsiderView />
-          </div>
+          {settings.enableKhinsider && activeTab === 'khinsider' && (
+            <div className="relative z-10 opacity-100 xl:absolute xl:inset-0 transition-opacity duration-300">
+              <KhinsiderView />
+            </div>
+          )}
           <div className={`${activeTab === 'ffmpeg' ? 'relative opacity-100 z-10' : 'hidden'} xl:absolute xl:inset-0 transition-opacity duration-300`}>
             <FfmpegView isActive={activeTab === 'ffmpeg'} />
           </div>

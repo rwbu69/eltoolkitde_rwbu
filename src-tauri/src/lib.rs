@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Write;
 use std::process::Command as ProcessCommand;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 use tauri::{
     menu::{Menu, MenuItem},
@@ -18,15 +18,32 @@ struct AppState {
     canceled_khinsider_downloads: Mutex<HashSet<String>>,
     khinsider_request_gate: tokio::sync::Mutex<Option<Instant>>,
     khinsider_html_cache: Mutex<HashMap<String, CachedKhinsiderHtml>>,
+    khinsider_enabled: Mutex<bool>,
+    khinsider_download_slots: Arc<tokio::sync::Semaphore>,
 }
 
 const KHINSIDER_BASE_URL: &str = "https://downloads.khinsider.com";
 const KHINSIDER_REQUEST_INTERVAL: Duration = Duration::from_millis(900);
 const KHINSIDER_CACHE_TTL: Duration = Duration::from_secs(300);
+const KHINSIDER_CACHE_MAX_ENTRIES: usize = 100;
 
 struct CachedKhinsiderHtml {
     fetched_at: Instant,
     html: String,
+}
+
+fn ensure_khinsider_enabled(state: &AppState) -> Result<(), String> {
+    state
+        .khinsider_enabled
+        .lock()
+        .map(|enabled| {
+            if *enabled {
+                Ok(())
+            } else {
+                Err("Khinsider is disabled. Enable it in Settings first.".to_string())
+            }
+        })
+        .unwrap_or_else(|_| Err("Khinsider state is unavailable.".to_string()))
 }
 
 #[derive(Debug, Serialize)]
@@ -348,6 +365,17 @@ async fn fetch_khinsider_html(state: &AppState, url: &str) -> Result<String, Str
                         html: html.clone(),
                     },
                 );
+                while cache.len() > KHINSIDER_CACHE_MAX_ENTRIES {
+                    if let Some(oldest_url) = cache
+                        .iter()
+                        .min_by_key(|(_, entry)| entry.fetched_at)
+                        .map(|(url, _)| url.clone())
+                    {
+                        cache.remove(&oldest_url);
+                    } else {
+                        break;
+                    }
+                }
             }
             return Ok(html);
         }
@@ -387,6 +415,7 @@ async fn fetch_khinsider_page(
     state: tauri::State<'_, AppState>,
     url: String,
 ) -> Result<KhinsiderPage, String> {
+    ensure_khinsider_enabled(&state)?;
     let html = fetch_khinsider_html(&state, &url).await?;
     Ok(parse_khinsider_html(&html, &url))
 }
@@ -396,6 +425,7 @@ async fn resolve_khinsider_track(
     state: tauri::State<'_, AppState>,
     url: String,
 ) -> Result<KhinsiderAudioLinks, String> {
+    ensure_khinsider_enabled(&state)?;
     let html = fetch_khinsider_html(&state, &url).await?;
     Ok(parse_audio_links(&html))
 }
@@ -410,9 +440,11 @@ async fn download_khinsider_file(
     download_id: String,
     subfolder: Option<String>,
 ) -> Result<String, String> {
+    ensure_khinsider_enabled(&state)?;
     if !is_allowed_audio_host(&url) || !is_audio_url(&url) {
         return Err("Only MP3 or FLAC files from vgmtreasurechest.com are supported.".to_string());
     }
+
     let base_directory = std::path::Path::new(&output_dir);
     let directory = subfolder
         .filter(|value| !value.trim().is_empty())
@@ -425,18 +457,43 @@ async fn download_khinsider_file(
         return Err("A file with this name already exists.".to_string());
     }
 
+    let _download_slot = state
+        .khinsider_download_slots
+        .clone()
+        .acquire_owned()
+        .await
+        .map_err(|_| "Khinsider download queue is unavailable.".to_string())?;
     let client = reqwest::Client::builder()
-        .user_agent("ElToolkitDeRWBU/0.1")
+        .user_agent("ElToolkitDeRWBU/0.1 (+https://github.com/rwbu69/eltoolkitde_rwbu)")
         .build()
         .map_err(|error| format!("Could not create download client: {error}"))?;
-    let mut response = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|error| format!("Download request failed: {error}"))?;
-    if !response.status().is_success() {
-        return Err(format!("Audio server returned HTTP {}.", response.status()));
-    }
+    let mut response = 'download: loop {
+        for attempt in 0..3 {
+            wait_for_khinsider_request_slot(&state).await;
+            let response = client
+                .get(&url)
+                .header("Accept", "audio/mpeg,audio/flac,*/*;q=0.8")
+                .send()
+                .await
+                .map_err(|error| format!("Download request failed: {error}"))?;
+            if response.status().is_success() {
+                break 'download response;
+            }
+            let status = response.status();
+            if !matches!(status.as_u16(), 429 | 500..=599) {
+                return Err(format!("Audio server returned HTTP {status}."));
+            }
+            if attempt == 2 {
+                return Err(format!(
+                    "Audio server returned HTTP {status} after retries."
+                ));
+            }
+            let delay = retry_after_duration(&response)
+                .unwrap_or_else(|| Duration::from_secs(2u64.pow(attempt + 1)));
+            tokio::time::sleep(delay).await;
+        }
+        return Err("Audio server request could not be completed.".to_string());
+    };
     let total_bytes = response.content_length();
     let mut downloaded_bytes = 0u64;
     let mut file = fs::File::create(&target)
@@ -473,6 +530,26 @@ async fn download_khinsider_file(
     }
 
     Ok(target.to_string_lossy().into_owned())
+}
+
+#[tauri::command]
+fn set_khinsider_enabled(state: tauri::State<'_, AppState>, enabled: bool) -> Result<(), String> {
+    let mut is_enabled = state
+        .khinsider_enabled
+        .lock()
+        .map_err(|_| "Khinsider state is unavailable.".to_string())?;
+    *is_enabled = enabled;
+    Ok(())
+}
+
+#[tauri::command]
+fn clear_khinsider_cache(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    state
+        .khinsider_html_cache
+        .lock()
+        .map_err(|_| "Khinsider cache is unavailable.".to_string())?
+        .clear();
+    Ok(())
 }
 
 #[tauri::command]
@@ -746,6 +823,8 @@ pub fn run() {
                 canceled_khinsider_downloads: Mutex::new(HashSet::new()),
                 khinsider_request_gate: tokio::sync::Mutex::new(None),
                 khinsider_html_cache: Mutex::new(HashMap::new()),
+                khinsider_enabled: Mutex::new(false),
+                khinsider_download_slots: Arc::new(tokio::sync::Semaphore::new(2)),
             });
 
             let quit_i = MenuItem::with_id(app, "quit", "Keluar", true, None::<&str>)?;
@@ -817,6 +896,8 @@ pub fn run() {
             fetch_khinsider_page,
             resolve_khinsider_track,
             download_khinsider_file,
+            set_khinsider_enabled,
+            clear_khinsider_cache,
             cancel_khinsider_download
         ])
         .run(tauri::generate_context!())

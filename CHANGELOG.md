@@ -64,6 +64,11 @@ Released: 2026-11-08
 - Added conservative Khinsider request pacing, five-minute in-memory HTML
   caching, request deduplication through the cache, `Retry-After` support, and
   exponential backoff for rate-limited or temporary server errors.
+- Made Khinsider an explicit opt-in feature, disabled by default, with no
+  source requests while disabled and automatic cache clearing when turned off.
+- Added a visible cache-clear action in Settings, a two-download concurrency
+  limit, honest application identification, and bounded retry handling for
+  audio downloads.
 - Added safeguards that restrict direct audio downloads to HTTPS MP3/FLAC
   resources hosted by `vgmtreasurechest.com` or its subdomains.
 
