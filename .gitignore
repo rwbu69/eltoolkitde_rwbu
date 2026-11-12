@@ -32,6 +32,7 @@ src-tauri/node-*
 *.sln
 *.sw?
 STYLE_GUIDE.md
+DESIGN.md
 
 build/
 *.spec
