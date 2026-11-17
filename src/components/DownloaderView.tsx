@@ -10,7 +10,7 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { ProgressBar } from './ui/ProgressBar';
 import { InlineNotice } from './ui/InlineNotice';
-import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { getStatusLabel, parseYtDlpError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
 import { showToast } from './ui/Toast';
@@ -18,7 +18,22 @@ import { showToast } from './ui/Toast';
 const MAX_PLAYLIST_ITEMS = 500;
 
 export default function DownloaderView() {
-  const { settings, updateSettings, queue, addToQueue, retryItem, retryFailed, cancelItem, cancelAllDownloads, removeFromQueue, clearCompleted } = useAppStore();
+  const {
+    settings,
+    updateSettings,
+    queue,
+    isQueuePaused,
+    pauseReason,
+    resumeQueue,
+    addToQueue,
+    addBatchToQueue,
+    retryItem,
+    retryFailed,
+    cancelItem,
+    cancelAllDownloads,
+    removeFromQueue,
+    clearCompleted
+  } = useAppStore();
   
   const [urlsInput, setUrlsInput] = useState('');
   const [format, setFormat] = useState<'mp4' | 'mp3' | 'video-only'>('mp4');
@@ -53,8 +68,21 @@ export default function DownloaderView() {
   };
 
   const queueInspectedUrls = (urls: string[], infos: VideoInfo[]) => {
-    urls.forEach((url, index) => {
-      addToQueue(url, format, Boolean(infos[index]?.isPlaylist));
+    infos.forEach((info, index) => {
+      const url = urls[index];
+      if (info.isPlaylist && info.entries && info.entries.length > 0) {
+        addBatchToQueue(
+          info.entries.map(e => ({
+            url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id),
+            title: e.title || e.id
+          })),
+          format,
+          undefined,
+          info.title
+        );
+      } else {
+        addToQueue(url, format, false, undefined, info.title);
+      }
     });
     setUrlsInput('');
     setConfirmation(null);
@@ -102,7 +130,11 @@ export default function DownloaderView() {
         queueInspectedUrls(urls, infos);
       }
     } catch (error) {
-      showToast('The links could not be checked.', 'error', getUserFacingError(error, 'Verify the URLs and try again.').detail);
+      const friendly = parseYtDlpError(error, 'The links could not be checked.');
+      showToast(friendly.message, 'error', friendly.detail);
+      if (friendly.isRateLimit) {
+        setNotice(friendly.detail || friendly.message);
+      }
     } finally {
       setIsInspecting(false);
     }
@@ -142,9 +174,20 @@ export default function DownloaderView() {
                 placeholder="Paste a video, playlist, or multiple links. Separate multiple links with spaces or newlines."
                 className="game-input min-h-[120px] py-3 resize-y w-full"
               />
-              <span className="block text-[10px] font-mono text-muted px-1">
-                Playlists and batches will be checked before they are added to the queue.
-              </span>
+              <div className="flex items-center justify-between text-[10px] font-mono px-1">
+                <span className="text-muted">
+                  Playlists and batches will be checked before they are added to the queue.
+                </span>
+                {settings.cookiesFilePath || settings.browserForCookies ? (
+                  <span className="text-toska font-bold flex items-center gap-1" title="Cookies configured in settings">
+                    <CheckCircle2 className="w-3 h-3" /> Authenticated mode
+                  </span>
+                ) : (
+                  <span className="text-muted opacity-70" title="No cookies configured in Settings">
+                    Public mode (No cookies)
+                  </span>
+                )}
+              </div>
             </div>
             
             {/* Format & Quality */}
@@ -373,6 +416,27 @@ export default function DownloaderView() {
           </PanelHeader>
 
           <PanelScrollArea className="flex flex-col gap-2 h-full p-2">
+            {isQueuePaused && (
+              <div className="rounded-xl border-2 border-oshipink bg-softpink p-3 text-ink shadow-game-thin animate-pulse">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-oshipink mt-0.5" />
+                    <div className="text-[11px] font-mono">
+                      <p className="font-bold text-oshipink uppercase tracking-wider">Queue Paused</p>
+                      <p className="mt-0.5 text-ink font-medium">{pauseReason || 'Rate limit detected. Queue paused to protect your IP.'}</p>
+                      <p className="mt-1 text-[10px] text-muted">Wait a few minutes, or attach a cookies file in Settings to continue.</p>
+                    </div>
+                  </div>
+                  <Button
+                    variant="primary"
+                    onClick={resumeQueue}
+                    className="h-8 text-[10px] px-3 shrink-0"
+                  >
+                    Resume
+                  </Button>
+                </div>
+              </div>
+            )}
             {visibleQueue.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink py-10">
                 <span className="font-zen font-bold text-lg">Queue is empty</span>

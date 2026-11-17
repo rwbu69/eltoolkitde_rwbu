@@ -169,7 +169,7 @@ describe('YtDlpService', () => {
     expect(args).toContain('youtube:player_client=android,web');
   });
 
-  it('includes extractor-args in fetchVideoInfo for client fallback', async () => {
+  it('includes extractor-args and flat-playlist in fetchVideoInfo for client fallback and fast manifest extraction', async () => {
     execute.mockResolvedValue({
       code: 0,
       stdout: JSON.stringify({ title: 'Example', formats: [] }),
@@ -182,5 +182,28 @@ describe('YtDlpService', () => {
     const args = calls[0][1];
     expect(args).toContain('--extractor-args');
     expect(args).toContain('youtube:player_client=android,web');
+    expect(args).toContain('--flat-playlist');
+  });
+
+  it('correctly maps playlist items when in flat-playlist mode', async () => {
+    execute.mockResolvedValue({
+      code: 0,
+      stdout: JSON.stringify({
+        title: 'Test Playlist',
+        _type: 'playlist',
+        entries: [
+          { id: 'track123456', title: 'Track One' },
+          { id: 'track789012', title: '', url: 'https://example.com/watch?v=track789012' }
+        ]
+      }),
+      stderr: '',
+    });
+
+    const info = await YtDlpService.fetchVideoInfo('https://example.com/playlist');
+    expect(info.isPlaylist).toBe(true);
+    expect(info.entries?.length).toBe(2);
+    expect(info.entries?.[0].title).toBe('Track One');
+    expect(info.entries?.[0].url).toBe('https://www.youtube.com/watch?v=track123456');
+    expect(info.entries?.[1].url).toBe('https://example.com/watch?v=track789012');
   });
 });

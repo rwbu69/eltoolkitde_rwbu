@@ -77,6 +77,7 @@ export class YtDlpService {
     const fetchArgs = [
       '--encoding', 'utf-8',
       '-J',
+      '--flat-playlist',
       '--extractor-args', 'youtube:player_client=android,web'
     ];
 
@@ -121,9 +122,9 @@ export class YtDlpService {
       formats: data.formats || [],
       isPlaylist,
       entries: isPlaylist && data.entries ? data.entries.map((e: any) => ({
-        title: e.title,
+        title: e.title || e.id || 'Untitled media',
         id: e.id,
-        url: e.url || e.webpage_url,
+        url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id || e.webpage_url),
       })) : []
     };
   }
@@ -307,9 +308,14 @@ export class YtDlpService {
       });
 
       command.stderr.on('data', (line) => {
-        if (line.trim()) {
-          console.warn('[YT-DLP WARN]', line.trim());
-          dispatchLog(`[yt-dlp WARN] ${line.trim()}`);
+        const trimmed = line.trim();
+        if (trimmed) {
+          // Suppress harmless SABR format negotiation warnings from terminal output
+          if (trimmed.includes('SABR-only streaming experiment')) {
+            return;
+          }
+          console.warn('[YT-DLP WARN]', trimmed);
+          dispatchLog(`[yt-dlp WARN] ${trimmed}`);
         }
       });
 

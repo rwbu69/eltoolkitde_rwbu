@@ -83,7 +83,22 @@ interface AppState {
   updateSettings: (updates: Partial<AppSettings>) => void;
   
   queue: QueueItem[];
-  addToQueue: (url: string, format: 'mp4' | 'mp3' | 'video-only', allowPlaylistExpansion?: boolean, options?: QueueDownloadOptions) => void;
+  isQueuePaused: boolean;
+  pauseReason: string;
+  resumeQueue: () => void;
+  addToQueue: (
+    url: string,
+    format: 'mp4' | 'mp3' | 'video-only',
+    allowPlaylistExpansion?: boolean,
+    options?: QueueDownloadOptions,
+    knownTitle?: string
+  ) => void;
+  addBatchToQueue: (
+    items: { url: string; title: string }[],
+    format: 'mp4' | 'mp3' | 'video-only',
+    options?: QueueDownloadOptions,
+    playlistTitle?: string
+  ) => void;
   retryItem: (id: string) => void;
   retryFailed: () => void;
   removeFromQueue: (id: string) => void;
@@ -128,8 +143,14 @@ export const useAppStore = create<AppState>()(
       },
 
       queue: [],
+      isQueuePaused: false,
+      pauseReason: '',
+
+      resumeQueue: () => {
+        set({ isQueuePaused: false, pauseReason: '' });
+      },
       
-      addToQueue: async (url, format, allowPlaylistExpansion = false, providedOptions) => {
+      addToQueue: async (url, format, allowPlaylistExpansion = false, providedOptions, knownTitle) => {
         const generation = downloadGeneration;
         const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const state = get();
@@ -159,16 +180,23 @@ export const useAppStore = create<AppState>()(
         const newItem: QueueItem = {
           id,
           url,
-          title: 'Queued item...',
+          title: knownTitle || 'Queued item...',
           format,
           status: 'pending',
           options: queueOptions,
         };
         
-        set((state) => ({ queue: [...state.queue, newItem] }));
+        set((s) => ({ queue: [...s.queue, newItem] }));
         
         // Push the item to the processing pool
         activeLimit(async () => {
+          while (get().isQueuePaused) {
+            if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+              return;
+            }
+            await new Promise(r => setTimeout(r, 800));
+          }
+
           if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
             set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
             return;
@@ -182,68 +210,76 @@ export const useAppStore = create<AppState>()(
           }
 
           try {
-            // 1. Fetch Info first
-            set((s) => ({
-              queue: s.queue.map(q => q.id === id ? { ...q, status: 'fetching' } : q)
-            }));
-            
-            const info = await YtDlpService.fetchVideoInfo(url, queueOptions.cookiesFilePath, queueOptions.browserForCookies);
+            let finalTitle = knownTitle;
 
-            if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
-              set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
-              return;
-            }
-            
-            // If it's a playlist, we need to extract the items and queue them individually instead!
-            if (info.isPlaylist && info.entries && info.entries.length > 0) {
-              const entries = info.entries;
-              if (entries.length > MAX_PLAYLIST_ITEMS) {
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id ? {
-                    ...q,
-                    title: info.title,
-                    playlistItemCount: entries.length,
-                    status: 'error',
-                    error: `Playlist has ${entries.length} items. The maximum supported size is ${MAX_PLAYLIST_ITEMS}.`,
-                  } : q),
-                }));
-                return;
-              }
-              if (!allowPlaylistExpansion) {
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id ? {
-                    ...q,
-                    title: info.title,
-                    playlistItemCount: entries.length,
-                    status: 'error' as QueueItemStatus,
-                    error: 'Playlist detected. Inspect and confirm it before queueing.'
-                  } : q)
-                }));
-                return;
-              }
+            // Only fetch metadata if title is unknown or if playlist expansion is explicitly requested
+            if (!finalTitle || allowPlaylistExpansion) {
               set((s) => ({
-                queue: s.queue.map(q => q.id === id ? {
-                  ...q,
-                  title: `${info.title} (${entries.length} items)`,
-                  playlistItemCount: entries.length,
-                  status: 'expanded' as QueueItemStatus,
-                  error: 'Playlist added to the queue'
-                } : q)
+                queue: s.queue.map(q => q.id === id ? { ...q, status: 'fetching' } : q)
               }));
               
-              // Queue each entry
-              for (const entry of entries) {
-                if (generation !== downloadGeneration) break;
-                // Construct URL from ID
-                const entryUrl = entry.url || (entry.id.length === 11 ? `https://www.youtube.com/watch?v=${entry.id}` : entry.id);
-                get().addToQueue(entryUrl, format, false, queueOptions);
+              const info = await YtDlpService.fetchVideoInfo(url, queueOptions.cookiesFilePath, queueOptions.browserForCookies);
+
+              if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+                set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
+                return;
               }
-              return;
+              
+              // If it's a playlist, extract items and queue them in batch without double-fetching!
+              if (info.isPlaylist && info.entries && info.entries.length > 0) {
+                const entries = info.entries;
+                if (entries.length > MAX_PLAYLIST_ITEMS) {
+                  set((s) => ({
+                    queue: s.queue.map(q => q.id === id ? {
+                      ...q,
+                      title: info.title,
+                      playlistItemCount: entries.length,
+                      status: 'error',
+                      error: `Playlist has ${entries.length} items. The maximum supported size is ${MAX_PLAYLIST_ITEMS}.`,
+                    } : q),
+                  }));
+                  return;
+                }
+                if (!allowPlaylistExpansion) {
+                  set((s) => ({
+                    queue: s.queue.map(q => q.id === id ? {
+                      ...q,
+                      title: info.title,
+                      playlistItemCount: entries.length,
+                      status: 'error' as QueueItemStatus,
+                      error: 'Playlist detected. Inspect and confirm it before queueing.'
+                    } : q)
+                  }));
+                  return;
+                }
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id ? {
+                    ...q,
+                    title: `${info.title} (${entries.length} items)`,
+                    playlistItemCount: entries.length,
+                    status: 'expanded' as QueueItemStatus,
+                    error: 'Playlist added to the queue'
+                  } : q)
+                }));
+                
+                // Add all entries directly using addBatchToQueue with known titles
+                get().addBatchToQueue(
+                  entries.map(e => ({
+                    url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id),
+                    title: e.title || e.id
+                  })),
+                  format,
+                  queueOptions
+                );
+                return;
+              }
+
+              finalTitle = info.title;
             }
 
-            // Not a playlist, proceed to download
+            // Not a playlist (or known individual track), proceed to download directly
             set((s) => ({
-              queue: s.queue.map(q => q.id === id ? { ...q, title: info.title, status: 'downloading' } : q)
+              queue: s.queue.map(q => q.id === id ? { ...q, title: finalTitle || q.title, status: 'downloading' } : q)
             }));
 
             const downloadOptions: DownloadOptions = {
@@ -272,13 +308,146 @@ export const useAppStore = create<AppState>()(
             await task;
 
           } catch (error: any) {
+            const errMsg = error?.message || String(error);
+            const isRateLimit = /rate-limited|429|This content isn't available, try again later/i.test(errMsg);
+
+            if (isRateLimit) {
+              set({
+                isQueuePaused: true,
+                pauseReason: 'YouTube rate limit detected. Remaining downloads paused to protect your IP.'
+              });
+            }
+
             set((s) => ({
               queue: s.queue.map(q => q.id === id && q.status !== 'canceled'
-                ? { ...q, status: 'error', error: error.message || String(error) }
+                ? { ...q, status: 'error', error: errMsg }
                 : q)
             }));
           }
         });
+      },
+
+      addBatchToQueue: (items, format, providedOptions, playlistTitle) => {
+        const generation = downloadGeneration;
+        const state = get();
+        const queueOptions = providedOptions ?? {
+          outputDir: state.settings.defaultOutputDir,
+          videoQuality: state.settings.defaultVideoQuality,
+          videoCodec: state.settings.defaultVideoCodec,
+          audioBitrate: state.settings.defaultAudioBitrate,
+          cookiesFilePath: state.settings.cookiesFilePath,
+          browserForCookies: state.settings.browserForCookies,
+          rateLimit: state.settings.rateLimitSpeed,
+        };
+
+        const newItems: QueueItem[] = [];
+
+        // If a playlist title is provided, add an "expanded" card representing the playlist container
+        if (playlistTitle) {
+          newItems.push({
+            id: `${Date.now()}-playlist-${Math.random().toString(36).substring(2, 9)}`,
+            url: items[0]?.url || '',
+            title: `${playlistTitle} (${items.length} items)`,
+            format,
+            status: 'expanded',
+            playlistItemCount: items.length,
+            options: queueOptions,
+            error: 'Playlist added to the queue'
+          });
+        }
+
+        const validEntries = items.filter(it => isValidMediaUrl(it.url));
+
+        validEntries.forEach((it) => {
+          const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+          newItems.push({
+            id,
+            url: it.url,
+            title: it.title || 'Queued item...',
+            format,
+            status: 'pending',
+            options: queueOptions,
+          });
+        });
+
+        set((s) => ({ queue: [...s.queue, ...newItems] }));
+
+        // Enqueue each item into activeLimit with knownTitle so it skips redundant fetchVideoInfo
+        newItems
+          .filter(it => it.status === 'pending')
+          .forEach((it) => {
+            const id = it.id;
+            const url = it.url;
+
+            activeLimit(async () => {
+              while (get().isQueuePaused) {
+                if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+                  return;
+                }
+                await new Promise(r => setTimeout(r, 800));
+              }
+
+              if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+                set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
+                return;
+              }
+
+              if (!queueOptions.outputDir) {
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id ? { ...q, status: 'error', error: 'No output directory set in settings.' } : q)
+                }));
+                return;
+              }
+
+              try {
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id ? { ...q, status: 'downloading' } : q)
+                }));
+
+                const downloadOptions: DownloadOptions = {
+                  url,
+                  format,
+                  ...queueOptions
+                };
+
+                const { task, cancel } = await YtDlpService.downloadMedia(downloadOptions, (progress) => {
+                  set((s) => ({
+                    queue: s.queue.map(q => q.id === id ? {
+                      ...q,
+                      progress,
+                      status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled'
+                        ? progress.status
+                        : 'downloading'
+                    } : q)
+                  }));
+                });
+
+                // Store cancel function
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id ? { ...q, cancelFn: cancel } : q)
+                }));
+
+                await task;
+
+              } catch (error: any) {
+                const errMsg = error?.message || String(error);
+                const isRateLimit = /rate-limited|429|This content isn't available, try again later/i.test(errMsg);
+
+                if (isRateLimit) {
+                  set({
+                    isQueuePaused: true,
+                    pauseReason: 'YouTube rate limit detected. Remaining downloads paused to protect your IP.'
+                  });
+                }
+
+                set((s) => ({
+                  queue: s.queue.map(q => q.id === id && q.status !== 'canceled'
+                    ? { ...q, status: 'error', error: errMsg }
+                    : q)
+                }));
+              }
+            });
+          });
       },
 
       removeFromQueue: (id) => {
@@ -335,7 +504,7 @@ export const useAppStore = create<AppState>()(
             }
             return q;
           });
-          return { queue };
+          return { queue, isQueuePaused: false, pauseReason: '' };
         });
       }
     }),
