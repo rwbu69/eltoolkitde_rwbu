@@ -6,7 +6,7 @@ import { PageLayout, Column, SectionHeader, Panel, FormLabel } from './ui/Layout
 import { Input } from './ui/Input';
 import { PathPicker } from './ui/PathPicker';
 import { Toggle } from './ui/Toggle';
-import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
+import { AUDIO_BITRATE_OPTIONS, VIDEO_CODEC_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoCodec, type VideoQuality } from '../config/mediaSettings';
 import { YtDlpService } from '../services/ytdlp';
 import { InlineNotice } from './ui/InlineNotice';
 import { showToast } from './ui/Toast';
@@ -62,7 +62,7 @@ export default function SettingsView() {
               <FileBox className="w-5 h-5 text-toska" /> Media presets
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <FormLabel text="Default video quality" />
                 <select 
@@ -71,6 +71,19 @@ export default function SettingsView() {
                   className="game-select font-bold"
                 >
                   {VIDEO_QUALITY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <FormLabel text="Default video codec" />
+                <select 
+                  value={settings.defaultVideoCodec}
+                  onChange={(e) => updateSettings({ defaultVideoCodec: e.target.value as VideoCodec })}
+                  className="game-select font-bold"
+                >
+                  {VIDEO_CODEC_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
@@ -227,7 +240,7 @@ export default function SettingsView() {
               <Shield className="w-5 h-5 text-oshipink" /> Authentication for premium sites
             </h3>
             <p className="text-xs font-mono font-bold text-muted">
-              Authentication choices are session-only and are cleared when the app is restarted.
+              Authentication settings are saved across sessions.
             </p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -259,6 +272,18 @@ export default function SettingsView() {
                   filters={[{ name: 'Text Files', extensions: ['txt'] }]}
                 />
                 <p className="mt-2 text-xs font-mono font-bold text-muted">Exported Netscape cookies.txt format</p>
+                {settings.cookiesFilePath && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateSettings({ cookiesFilePath: '' });
+                      showToast('Saved cookies file path cleared.', 'info');
+                    }}
+                    className="mt-2 text-xs font-mono font-bold text-oshipink underline hover:opacity-80 block"
+                  >
+                    Clear saved cookies file
+                  </button>
+                )}
               </div>
             </div>
           </div>

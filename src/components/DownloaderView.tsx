@@ -78,11 +78,18 @@ export default function DownloaderView() {
       ? `${enteredUrls.length - urls.length} duplicate URL(s) removed before inspection.`
       : '');
     try {
-      const infos = await Promise.all(urls.map(url => YtDlpService.fetchVideoInfo(
-        url,
-        settings.cookiesFilePath,
-        settings.browserForCookies
-      )));
+      const infos: VideoInfo[] = [];
+      for (let i = 0; i < urls.length; i++) {
+        const info = await YtDlpService.fetchVideoInfo(
+          urls[i],
+          settings.cookiesFilePath,
+          settings.browserForCookies
+        );
+        infos.push(info);
+        if (urls.length > 1 && i < urls.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 800));
+        }
+      }
       const totalItems = infos.reduce((total, info) => total + (info.isPlaylist ? info.entries?.length ?? 0 : 1), 0);
       if (totalItems > MAX_PLAYLIST_ITEMS) {
         showToast(`This batch contains ${totalItems} items.`, 'warning', `The maximum supported playlist size is ${MAX_PLAYLIST_ITEMS}.`);

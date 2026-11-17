@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import pLimit from 'p-limit';
 import { YtDlpService, DownloadProgress, DownloadOptions } from '../services/ytdlp';
 import { invoke } from '@tauri-apps/api/core';
-import type { AudioBitrate, VideoQuality } from '../config/mediaSettings';
+import type { AudioBitrate, VideoCodec, VideoQuality } from '../config/mediaSettings';
 import { isValidMediaUrl, normalizeConcurrency, normalizeRateLimit } from '../utils/validation';
 
 const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => ({
@@ -14,6 +14,8 @@ const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => 
     (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'mid' ? '720p' :
     (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'low' ? '360p' :
     settings.defaultVideoQuality ?? DEFAULT_SETTINGS.defaultVideoQuality,
+  defaultVideoCodec:
+    settings.defaultVideoCodec === 'h264' ? 'h264' : 'h265',
   defaultAudioBitrate:
     (settings as { defaultAudioBitrate?: string }).defaultAudioBitrate === '128k' ? '192k' :
     settings.defaultAudioBitrate ?? DEFAULT_SETTINGS.defaultAudioBitrate,
@@ -24,6 +26,7 @@ const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => 
 export interface AppSettings {
   defaultOutputDir: string;
   defaultVideoQuality: VideoQuality;
+  defaultVideoCodec: VideoCodec;
   defaultAudioBitrate: AudioBitrate;
   cookiesFilePath: string;
   browserForCookies: string;
@@ -38,6 +41,7 @@ export interface AppSettings {
 const DEFAULT_SETTINGS: AppSettings = {
   defaultOutputDir: '',
   defaultVideoQuality: '1080p',
+  defaultVideoCodec: 'h265',
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',
@@ -54,6 +58,7 @@ export type QueueItemStatus = 'pending' | 'fetching' | 'downloading' | 'expanded
 export interface QueueDownloadOptions {
   outputDir: string;
   videoQuality: VideoQuality;
+  videoCodec?: VideoCodec;
   audioBitrate: AudioBitrate;
   cookiesFilePath: string;
   browserForCookies: string;
@@ -131,6 +136,7 @@ export const useAppStore = create<AppState>()(
         const queueOptions = providedOptions ?? {
           outputDir: state.settings.defaultOutputDir,
           videoQuality: state.settings.defaultVideoQuality,
+          videoCodec: state.settings.defaultVideoCodec,
           audioBitrate: state.settings.defaultAudioBitrate,
           cookiesFilePath: state.settings.cookiesFilePath,
           browserForCookies: state.settings.browserForCookies,
@@ -338,17 +344,11 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         settings: {
           ...state.settings,
-          cookiesFilePath: '',
-          browserForCookies: '',
         },
       }),
       merge: (persistedState, currentState) => ({
         ...currentState,
-        settings: normalizeSettings({
-          ...(persistedState as Partial<AppState>)?.settings,
-          cookiesFilePath: '',
-          browserForCookies: '',
-        }),
+        settings: normalizeSettings((persistedState as Partial<AppState>)?.settings),
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

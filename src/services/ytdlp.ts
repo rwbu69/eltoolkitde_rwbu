@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
+import { exists, remove, rename } from '@tauri-apps/plugin-fs';
+import type { VideoCodec } from '../config/mediaSettings';
 
 const dispatchLog = (msg: string) => {
   window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
@@ -34,6 +36,7 @@ export interface DownloadOptions {
   format: 'mp4' | 'mp3' | 'video-only';
   outputDir: string;
   videoQuality?: '4k' | '1440p' | '1080p' | '720p' | '480p' | '360p';
+  videoCodec?: VideoCodec;
   audioBitrate?: '320k' | '256k' | '192k';
   cookiesFilePath?: string;
   browserForCookies?: string;
@@ -50,14 +53,45 @@ export class YtDlpService {
     }
   }
 
+  static async getMediaVideoCodec(filePath: string): Promise<string | null> {
+    try {
+      const ffprobe = Command.sidecar('ffprobe', [
+        '-v', 'error',
+        '-select_streams', 'v:0',
+        '-show_entries', 'stream=codec_name',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        filePath
+      ]);
+      const res = await ffprobe.execute();
+      if (res.code === 0 && res.stdout.trim()) {
+        return res.stdout.trim().toLowerCase();
+      }
+    } catch (e) {
+      console.warn('Failed to probe video codec:', e);
+    }
+    return null;
+  }
+
   static async fetchVideoInfo(url: string, cookiesFilePath?: string, browserForCookies?: string): Promise<VideoInfo> {
     const ffmpegLocation = await this.getFfmpegLocation();
-    const fetchArgs = ['--encoding', 'utf-8', '-J'];
+    const fetchArgs = [
+      '--encoding', 'utf-8',
+      '-J',
+      '--extractor-args', 'youtube:player_client=android,web'
+    ];
 
     if (browserForCookies) {
       fetchArgs.push('--cookies-from-browser', browserForCookies);
     } else if (cookiesFilePath) {
-      fetchArgs.push('--cookies', cookiesFilePath);
+      try {
+        if (await exists(cookiesFilePath)) {
+          fetchArgs.push('--cookies', cookiesFilePath);
+        } else {
+          dispatchLog(`[yt-dlp WARN] Cookies file not found: ${cookiesFilePath}`);
+        }
+      } catch {
+        fetchArgs.push('--cookies', cookiesFilePath);
+      }
     }
 
     if (ffmpegLocation) {
@@ -98,7 +132,17 @@ export class YtDlpService {
     options: DownloadOptions,
     onProgress: (progress: DownloadProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { url, format, outputDir, videoQuality = '1080p', audioBitrate = '320k', cookiesFilePath, browserForCookies, rateLimit } = options;
+    const {
+      url,
+      format,
+      outputDir,
+      videoQuality = '1080p',
+      videoCodec = 'h265',
+      audioBitrate = '320k',
+      cookiesFilePath,
+      browserForCookies,
+      rateLimit
+    } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
 
     let formatArgs: string[] = [];
@@ -113,25 +157,33 @@ export class YtDlpService {
       '360p': 'bestvideo[height<=360]'
     };
     const vidArg = videoMap[videoQuality] || 'bestvideo';
+    const sortCodecs = videoCodec === 'h264' ? 'vcodec:h264,vcodec:h265' : 'vcodec:h265,vcodec:h264';
 
     if (format === 'mp4') {
       formatArgs = [
         '-f', `${vidArg}+bestaudio/best`, 
-        '-S', 'vcodec:h265:h264,acodec:m4a',
+        '-S', `${sortCodecs},res,acodec:m4a`,
         '--merge-output-format', 'mp4'
       ];
     } else if (format === 'video-only') {
       formatArgs = [
         '-f', vidArg, 
-        '-S', 'vcodec:h265:h264',
-        '--merge-output-format', 'mp4'
+        '-S', `${sortCodecs},res`,
+        '--remux-video', 'mp4'
       ];
     } else if (format === 'mp3') {
-      formatArgs = ['-x', '--audio-format', 'mp3', '--audio-quality', audioBitrate];
+      formatArgs = [
+        '-x',
+        '--audio-format', 'mp3',
+        '--audio-quality', audioBitrate,
+        '--embed-metadata'
+      ];
     }
 
-    let template = '%(title)s.%(ext)s'; // Standard template
-    if (format === 'video-only') {
+    let template = '%(title)s.%(ext)s'; // Standard template for video
+    if (format === 'mp3') {
+      template = '%(artist,creator,uploader)s - %(title)s.%(ext)s';
+    } else if (format === 'video-only') {
       template = '%(title)s-VIDEO.%(ext)s';
     }
 
@@ -140,6 +192,12 @@ export class YtDlpService {
       '--newline',
       '--progress-delta', '1',
       '--no-overwrites',
+      '--sleep-requests', '1.5',
+      '--min-sleep-interval', '1',
+      '--max-sleep-interval', '3',
+      '--retry-sleep', 'fragment:exp=1:20',
+      '--extractor-args', 'youtube:player_client=android,web',
+      '--print', 'after_move:[final_path] %(filepath)s',
       ...formatArgs,
       '-o', template,
       '-P', outputDir
@@ -147,15 +205,20 @@ export class YtDlpService {
 
     if (rateLimit) {
       dlArgs.push('--limit-rate', rateLimit);
-      dlArgs.push('--sleep-requests', '1');
-      dlArgs.push('--min-sleep-interval', '1');
-      dlArgs.push('--max-sleep-interval', '3');
     }
 
     if (browserForCookies) {
       dlArgs.push('--cookies-from-browser', browserForCookies);
     } else if (cookiesFilePath) {
-      dlArgs.push('--cookies', cookiesFilePath);
+      try {
+        if (await exists(cookiesFilePath)) {
+          dlArgs.push('--cookies', cookiesFilePath);
+        } else {
+          dispatchLog(`[yt-dlp WARN] Cookies file not found: ${cookiesFilePath}`);
+        }
+      } catch {
+        dlArgs.push('--cookies', cookiesFilePath);
+      }
     }
 
     if (ffmpegLocation) {
@@ -172,6 +235,7 @@ export class YtDlpService {
     let totalPlaylistItems = 0;
     let cancelFn: () => void;
     let cancelled = false;
+    const downloadedFiles: string[] = [];
 
     const task = new Promise<void>((resolve, reject) => {
       onProgress({ percent: 0, speed: '--', eta: '--', status: 'starting' });
@@ -191,36 +255,54 @@ export class YtDlpService {
       // Store the cancel function in an external variable so it can be returned
       cancelFn = killCommand;
       
-      command.stdout.on('data', (line) => {
-        if (!line.trim()) return;
-        
-        // Check for playlist progress
-        const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
-        if (playlistMatch) {
-          currentPlaylistIndex = parseInt(playlistMatch[1]);
-          totalPlaylistItems = parseInt(playlistMatch[2]);
-        }
-        
-        // Robust progress parsing
-        const isProgress = line.includes('[download]') && line.includes('%');
-        if (isProgress) {
-          const percentMatch = line.match(/\[download\]\s+([\d\.]+)%/);
-          const speedMatch = line.match(/at\s+([^\s]+)/);
-          const etaMatch = line.match(/ETA\s+([^\s]+)/);
-
-          if (percentMatch) {
-            onProgress({
-              percent: parseFloat(percentMatch[1]),
-              speed: speedMatch ? speedMatch[1] : '--',
-              eta: etaMatch ? etaMatch[1] : '--',
-              status: 'downloading',
-              playlistCurrent: currentPlaylistIndex,
-              playlistTotal: totalPlaylistItems
-            });
+      command.stdout.on('data', (chunk) => {
+        if (!chunk.trim()) return;
+        const lines = chunk.split(/\r?\n/);
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          
+          // Check for playlist progress
+          const playlistMatch = line.match(/\[download\] Downloading video (\d+) of (\d+)/) || line.match(/\[download\] Downloading item (\d+) of (\d+)/);
+          if (playlistMatch) {
+            currentPlaylistIndex = parseInt(playlistMatch[1], 10);
+            totalPlaylistItems = parseInt(playlistMatch[2], 10);
           }
-        } else {
-          // Only log non-progress lines to prevent terminal spam
-          dispatchLog(`[yt-dlp] ${line.trim()}`);
+
+          // Track final downloaded destination files
+          const finalMatch = line.match(/^\[final_path\]\s*(.+)$/);
+          if (finalMatch) {
+            downloadedFiles.push(finalMatch[1].trim());
+          }
+          const mergerMatch = line.match(/\[Merger\] Merging formats into "([^"]+)"/);
+          if (mergerMatch) {
+            downloadedFiles.push(mergerMatch[1].trim());
+          }
+          const remuxMatch = line.match(/\[VideoRemuxer\] Remuxing video from .*? to "([^"]+)"/);
+          if (remuxMatch) {
+            downloadedFiles.push(remuxMatch[1].trim());
+          }
+          
+          // Robust progress parsing
+          const isProgress = line.includes('[download]') && line.includes('%');
+          if (isProgress) {
+            const percentMatch = line.match(/\[download\]\s+([\d.]+)%/);
+            const speedMatch = line.match(/at\s+([^\s]+)/);
+            const etaMatch = line.match(/ETA\s+([^\s]+)/);
+
+            if (percentMatch) {
+              onProgress({
+                percent: parseFloat(percentMatch[1]),
+                speed: speedMatch ? speedMatch[1] : '--',
+                eta: etaMatch ? etaMatch[1] : '--',
+                status: 'downloading',
+                playlistCurrent: currentPlaylistIndex,
+                playlistTotal: totalPlaylistItems
+              });
+            }
+          } else {
+            // Only log non-progress lines to prevent terminal spam
+            dispatchLog(`[yt-dlp] ${line.trim()}`);
+          }
         }
       });
 
@@ -235,7 +317,63 @@ export class YtDlpService {
         if (cancelled) {
           onProgress({ percent: 0, speed: '--', eta: '--', status: 'canceled' });
           resolve();
-        } else if (data.code === 0) {
+          return;
+        }
+
+        if (data.code === 0) {
+          if (format === 'mp4' || format === 'video-only') {
+            const targetEncoder = videoCodec === 'h264' ? 'libx264' : 'libx265';
+            const expectedCodec = videoCodec === 'h264' ? 'h264' : 'hevc';
+            const uniqueFiles = [...new Set(downloadedFiles)];
+
+            for (const file of uniqueFiles) {
+              if (cancelled) break;
+              try {
+                if (await exists(file)) {
+                  const detectedCodec = await YtDlpService.getMediaVideoCodec(file);
+                  if (detectedCodec) {
+                    dispatchLog(`[codec-check] Probed ${file} -> codec: ${detectedCodec}`);
+                  }
+                  if (detectedCodec && detectedCodec !== expectedCodec) {
+                    onProgress({ percent: 99, speed: '--', eta: '--', status: 'processing' });
+                    dispatchLog(`[codec-optimizer] Target is ${videoCodec.toUpperCase()} (${expectedCodec}), but found ${detectedCodec}. Transcoding with FFmpeg...`);
+                    
+                    const tempFile = `${file}.opt.mp4`;
+                    const ffmpegArgs = [
+                      '-hide_banner',
+                      '-y',
+                      '-i', file,
+                      '-c:v', targetEncoder,
+                      '-crf', '22',
+                      '-preset', 'fast',
+                    ];
+                    if (format === 'video-only') {
+                      ffmpegArgs.push('-an');
+                    } else {
+                      ffmpegArgs.push('-c:a', 'copy');
+                    }
+                    ffmpegArgs.push(tempFile);
+
+                    const ffmpegCommand = Command.sidecar('ffmpeg', ffmpegArgs);
+                    const ffmpegRes = await ffmpegCommand.execute();
+                    if (ffmpegRes.code === 0 && (await exists(tempFile))) {
+                      await remove(file);
+                      await rename(tempFile, file);
+                      dispatchLog(`[codec-optimizer] Successfully transcoded to ${targetEncoder}: ${file}`);
+                    } else {
+                      if (await exists(tempFile)) await remove(tempFile);
+                      dispatchLog(`[codec-optimizer ERROR] Transcoding failed: ${ffmpegRes.stderr}`);
+                    }
+                  } else if (detectedCodec) {
+                    dispatchLog(`[codec-optimizer] Verified native ${detectedCodec} in ${file}. No transcoding needed.`);
+                  }
+                }
+              } catch (probeErr) {
+                console.warn('Post-download codec verification failed:', probeErr);
+              }
+            }
+          }
+
           onProgress({ percent: 100, speed: '--', eta: '--', status: 'done' });
           resolve();
           let permissionGranted = await isPermissionGranted();

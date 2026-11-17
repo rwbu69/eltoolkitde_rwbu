@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Terminal, Play } from 'lucide-react';
+import { Terminal, Trash2, X } from 'lucide-react';
 
 export default function TerminalLogView() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -34,53 +34,66 @@ export default function TerminalLogView() {
 
   return (
     <footer 
-      className="fixed bottom-0 left-1/2 w-full max-w-[1400px] px-6 lg:px-12 z-50 pointer-events-none transition-transform duration-300 ease-in-out"
-      style={{ transform: `translate(-50%, ${isOpen ? '0px' : '250px'})` }}
+      className="fixed bottom-0 left-1/2 w-full max-w-[1400px] px-6 lg:px-12 z-50 pointer-events-none transition-transform duration-250 ease-in-out"
+      style={{ transform: `translate(-50%, ${isOpen ? '0px' : '140px'})` }}
     >
-      <div className="w-full relative pointer-events-auto h-[250px]">
+      <div className="w-full relative pointer-events-auto h-[140px]">
         {/* Toggle Tab (Nameplate) */}
         <button 
           onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-8 lg:left-12 top-[-48px] h-[48px] bg-oshipink border-4 border-b-0 border-gameborder px-8 rounded-t-2xl z-20 flex items-center gap-2 hover:bg-pink-500 transition-colors"
+          className="absolute left-6 lg:left-10 top-[-28px] h-[28px] bg-oshipink border-2 border-b-0 border-gameborder px-3.5 rounded-t-lg z-20 flex items-center gap-1.5 hover:bg-pink-500 transition-colors shadow-sm"
+          title={isOpen ? 'Minimize terminal' : 'Open system logs'}
         >
-          <Terminal className="w-5 h-5 text-buttontext" />
-          <h2 className="text-lg font-black tracking-widest text-buttontext font-zen uppercase">System</h2>
-          {/* Notification dot */}
+          <Terminal className="w-3.5 h-3.5 text-buttontext shrink-0" />
+          <span className="text-xs font-mono font-bold tracking-wider text-buttontext uppercase">System Logs</span>
+          {/* Notification badge when closed */}
           {!isOpen && logs.length > 0 && (
-            <div className="absolute -top-2 -right-2 bg-toska text-ink text-[10px] font-bold px-2 py-0.5 rounded-full border-2 border-gameborder animate-bounce">
+            <span className="ml-1 bg-toska text-ink text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full border border-gameborder">
               {logs.length > 99 ? '99+' : logs.length}
-            </div>
+            </span>
           )}
         </button>
 
-        {/* The Text Box */}
-        <div className="w-full h-full bg-panel/95 backdrop-blur-md border-t-4 border-x-4 border-gameborder rounded-t-3xl shadow-[0_-8px_20px_rgba(58,46,66,0.15)] flex flex-col p-6 pt-8">
+        {/* The Text Box (100% Solid Opaque Panel) */}
+        <div className="w-full h-full bg-panel border-t-2 border-x-2 border-gameborder rounded-t-xl shadow-[0_-6px_16px_rgba(0,0,0,0.15)] flex flex-col px-4 py-2.5 relative">
           
+          {/* Quick Actions (Floating Top-Right) */}
+          <div className="absolute top-2 right-3 flex items-center gap-1.5 z-10">
+            {logs.length > 0 && (
+              <button
+                onClick={() => setLogs([])}
+                className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-gameborder/30 hover:border-oshipink hover:text-oshipink text-muted bg-panel transition-colors"
+                title="Clear in-memory logs"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear</span>
+              </button>
+            )}
+            <button
+              onClick={() => setIsOpen(false)}
+              className="p-1 hover:text-ink text-muted transition-colors rounded hover:bg-gameborder/10"
+              title="Close terminal drawer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
           {/* Dialogue Text (Logs) */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto text-sm leading-relaxed font-inter text-ink custom-scrollbar pr-4">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto text-[11px] leading-snug font-mono text-ink custom-scrollbar pr-16 space-y-0.5">
             {logs.length === 0 ? (
-              <p className="text-muted font-bold italic">No system logs available.</p>
+              <p className="text-muted font-mono italic text-[11px]">No system logs available.</p>
             ) : (
               logs.map((log, i) => {
                 const isError = log.includes('ERROR') || log.includes('error');
                 const isWarn = log.includes('WARN');
                 return (
-                  <p key={i} className={`mb-1 ${isError ? 'text-oshipink font-bold' : isWarn ? 'text-muted font-bold' : 'text-ink font-medium'}`}>
-                    <span className="opacity-50 text-[10px] font-mono mr-2">[{new Date().toLocaleTimeString()}]</span>
+                  <p key={i} className={`break-words ${isError ? 'text-oshipink font-bold' : isWarn ? 'text-toska font-bold' : 'text-ink'}`}>
+                    <span className="opacity-40 text-[10px] mr-1.5 select-none">[{new Date().toLocaleTimeString()}]</span>
                     {log}
                   </p>
                 );
               })
             )}
-          </div>
-
-          {/* Blinking Next Indicator (VN Trope) */}
-          <div 
-            className="absolute bottom-6 right-8 text-oshipink animate-vn-next cursor-pointer"
-            onClick={() => setIsOpen(false)}
-            title="Close logs"
-          >
-            <Play className="w-6 h-6 rotate-90 fill-current" />
           </div>
 
         </div>

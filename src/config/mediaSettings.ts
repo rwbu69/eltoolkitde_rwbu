@@ -13,5 +13,11 @@ export const AUDIO_BITRATE_OPTIONS = [
   { value: '192k', label: '192 kbps (Good)' },
 ] as const;
 
+export const VIDEO_CODEC_OPTIONS = [
+  { value: 'h265', label: 'H.265 / HEVC (High Efficiency - Default)' },
+  { value: 'h264', label: 'H.264 / AVC (Maximum Compatibility)' },
+] as const;
+
 export type VideoQuality = typeof VIDEO_QUALITY_OPTIONS[number]['value'];
 export type AudioBitrate = typeof AUDIO_BITRATE_OPTIONS[number]['value'];
+export type VideoCodec = typeof VIDEO_CODEC_OPTIONS[number]['value'];
