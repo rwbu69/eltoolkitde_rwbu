@@ -79,8 +79,9 @@ export function Panel({
   className?: string;
   noPadding?: boolean;
 }) {
+  const minHeightClass = className.includes('min-h-') ? '' : 'min-h-min xl:min-h-0';
   return (
-    <div className={`bg-panel border-2 border-subtleborder rounded-2xl shadow-game-thin flex flex-col min-h-min xl:min-h-0 ${noPadding ? '' : 'p-4 sm:p-5'} ${className}`}>
+    <div className={`bg-panel border-2 border-subtleborder rounded-2xl shadow-game-thin flex flex-col ${minHeightClass} ${noPadding ? '' : 'p-4 sm:p-5'} ${className}`}>
       {children}
     </div>
   );
@@ -90,8 +91,10 @@ export function Panel({
  * PanelScrollArea: Handles natural vertical flow on mobile, and internal scrolling on desktop.
  */
 export function PanelScrollArea({ children, className = '' }: { children: React.ReactNode, className?: string }) {
+  const minHeightClass = className.includes('min-h-') ? '' : 'min-h-min xl:min-h-0';
+  const overflowClass = className.includes('overflow-') ? '' : 'xl:overflow-y-auto';
   return (
-    <div className={`flex-1 min-h-min xl:min-h-0 xl:overflow-y-auto custom-scrollbar pr-1.5 ${className}`}>
+    <div className={`flex-1 ${minHeightClass} ${overflowClass} custom-scrollbar pr-1.5 ${className}`}>
       {children}
     </div>
   );

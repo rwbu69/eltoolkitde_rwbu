@@ -19,7 +19,7 @@ export default function SettingsView() {
 
   return (
     <div className="flex flex-col w-full h-full min-h-0 overflow-hidden">
-      <Panel className="flex-1 flex flex-col min-w-0 h-full overflow-hidden" noPadding>
+      <Panel className="flex-1 flex flex-col min-w-0 min-h-0 h-full overflow-hidden" noPadding>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-5">
           {/* 1. GENERAL & OUTPUT */}
           <div className="bg-appbg border border-subtleborder rounded-2xl p-4 space-y-4">

@@ -8,7 +8,7 @@ describe('Toast deduplication', () => {
 
   it('suppresses duplicate toasts dispatched within the throttle window', () => {
     let fakeTime = 1000000;
-    vi.spyOn(Date, 'now').mockImplementation(() => fakeTime);
+    const dateSpy = vi.spyOn(Date, 'now').mockImplementation(() => fakeTime);
 
     const dispatched: ToastMessage[] = [];
     const listener = (event: Event) => {
@@ -31,6 +31,7 @@ describe('Toast deduplication', () => {
     expect(dispatched).toHaveLength(2);
 
     window.removeEventListener('toolkit-toast', listener);
+    dateSpy.mockRestore();
   });
 
   it('allows different toasts dispatched concurrently', () => {

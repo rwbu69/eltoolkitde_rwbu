@@ -146,7 +146,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
 
   return (
     <div className="flex flex-col w-full h-full min-h-0">
-      <Panel className="flex-1 flex flex-col min-w-0" noPadding>
+      <Panel className="flex-1 flex flex-col min-w-0 min-h-0" noPadding>
         {/* TOP CONFIGURATION STRIP */}
         <div className="p-3.5 sm:p-4 border-b-2 border-subtleborder bg-appbg rounded-t-2xl shrink-0 flex flex-col gap-3">
           {/* Row 1: Target Folder + Mode Tabs */}
@@ -285,7 +285,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
           </div>
 
           {/* Table Body with Custom Scrollbar */}
-          <PanelScrollArea className="flex-1 p-3">
+          <PanelScrollArea className="flex-1 min-h-0 overflow-y-auto p-3">
             {previews.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center p-8 text-center my-auto">
                 <EmptyState
