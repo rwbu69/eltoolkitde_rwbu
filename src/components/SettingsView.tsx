@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { FolderOpen, Shield, FileBox, Download, Zap, RefreshCcw, Library } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
-import { Panel, PanelScrollArea, FormLabel } from './ui/Layout';
+import { Panel, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { PathPicker } from './ui/PathPicker';
@@ -18,9 +18,9 @@ export default function SettingsView() {
   const [updateNotice, setUpdateNotice] = useState('');
 
   return (
-    <div className="flex flex-col w-full h-full min-h-0">
-      <Panel className="flex-1 flex flex-col min-w-0" noPadding>
-        <PanelScrollArea className="p-4 flex flex-col gap-5">
+    <div className="flex flex-col w-full h-full min-h-0 overflow-hidden">
+      <Panel className="flex-1 flex flex-col min-w-0 h-full overflow-hidden" noPadding>
+        <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-4 flex flex-col gap-5">
           {/* 1. GENERAL & OUTPUT */}
           <div className="bg-appbg border border-subtleborder rounded-2xl p-4 space-y-4">
             <h3 className="flex items-center gap-2 font-zen font-black text-ink text-sm border-b border-subtleborder pb-2">
@@ -262,7 +262,7 @@ export default function SettingsView() {
               </div>
             </div>
           </div>
-        </PanelScrollArea>
+        </div>
       </Panel>
     </div>
   );
