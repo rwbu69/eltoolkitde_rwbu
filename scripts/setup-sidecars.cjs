@@ -13,22 +13,22 @@ const targets = {
     'x86_64-pc-windows-msvc': {
         suffix: '.exe',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe',
-        nodeBinary: 'node.exe',
+        ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz',
     },
     'x86_64-unknown-linux-gnu': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
-        nodeBinary: 'node',
+        ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz',
     },
     'x86_64-apple-darwin': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
-        nodeBinary: 'node',
+        ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz',
     },
     'aarch64-apple-darwin': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
-        nodeBinary: 'node',
+        ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz',
     },
 };
 
@@ -70,6 +70,44 @@ function copyExecutable(source, destination) {
     }
 }
 
+function downloadAndDecompressGz(url, destination) {
+    if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {
+        console.log(`[SKIP] ${path.basename(destination)} already exists`);
+        return;
+    }
+
+    const tempGz = `${destination}.gz.download`;
+    fs.rmSync(tempGz, { force: true });
+    console.log(`[INFO] Downloading and extracting ffmpeg for ${target}...`);
+
+    const result = spawnSync(
+        process.platform === 'win32' ? 'curl.exe' : 'curl',
+        ['--fail', '--location', '--retry', '3', '--output', tempGz, url],
+        { stdio: 'inherit', windowsHide: true }
+    );
+
+    if (result.error) {
+        fs.rmSync(tempGz, { force: true });
+        throw new Error(`Failed to start curl: ${result.error.message}`);
+    }
+    if (result.status !== 0) {
+        fs.rmSync(tempGz, { force: true });
+        throw new Error(`curl failed with exit code ${result.status} while downloading ffmpeg`);
+    }
+
+    const zlib = require('zlib');
+    const compressed = fs.readFileSync(tempGz);
+    fs.rmSync(tempGz, { force: true });
+    const decompressed = zlib.gunzipSync(compressed);
+    fs.writeFileSync(destination, decompressed);
+    try {
+        fs.chmodSync(destination, 0o755);
+    } catch {
+        // ignore chmod errors on Windows
+    }
+    console.log(`[OK] Downloaded and extracted ${path.basename(destination)} (${decompressed.length} bytes)`);
+}
+
 const ffprobeMap = {
     'x86_64-pc-windows-msvc': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'win32', 'x64', 'ffprobe.exe'),
     'x86_64-unknown-linux-gnu': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'linux', 'x64', 'ffprobe'),
@@ -81,7 +119,20 @@ const ffprobeSource = (ffprobeMap[target] && fs.existsSync(ffprobeMap[target]))
     ? ffprobeMap[target]
     : (ffprobeStatic && ffprobeStatic.path ? ffprobeStatic.path : null);
 
-copyExecutable(ffmpegStatic, path.join(binDir, targetName('ffmpeg')));
+const isTargetHostMatch = (
+    (target === 'x86_64-pc-windows-msvc' && platform === 'win32') ||
+    (target === 'x86_64-unknown-linux-gnu' && platform === 'linux' && process.arch === 'x64') ||
+    (target === 'aarch64-apple-darwin' && platform === 'darwin' && process.arch === 'arm64') ||
+    (target === 'x86_64-apple-darwin' && platform === 'darwin' && process.arch === 'x64')
+);
+
+const ffmpegDest = path.join(binDir, targetName('ffmpeg'));
+if (isTargetHostMatch && ffmpegStatic && fs.existsSync(ffmpegStatic)) {
+    copyExecutable(ffmpegStatic, ffmpegDest);
+} else {
+    downloadAndDecompressGz(targetConfig.ffmpegUrl, ffmpegDest);
+}
+
 copyExecutable(ffprobeSource, path.join(binDir, targetName('ffprobe')));
 
 function downloadFile(url, destination) {
