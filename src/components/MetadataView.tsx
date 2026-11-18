@@ -6,9 +6,10 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { EmptyState } from './ui/EmptyState';
+import { BatchProgressItem } from './ui/BatchProgressItem';
 import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
-import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { getUserFacingError } from '../config/uiText';
 import { showToast } from './ui/Toast';
 
 export default function MetadataView({ isActive = false }: { isActive?: boolean }) {
@@ -149,56 +150,38 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
             </div>
           ) : (
             <PanelScrollArea className="flex flex-col gap-3">
-              {progresses.map((p, i) => {
-                let cardClass = 'bg-panel border-muted';
-                let tagClass = 'bg-ink-muted text-buttontext';
-
-                if (p.status === 'done') {
-                  cardClass = 'bg-softtoska border-gameborder';
-                  tagClass = 'bg-toska text-ink';
-                } else if (p.status === 'error') {
-                  cardClass = 'bg-softpink border-oshipink';
-                  tagClass = 'bg-oshipink text-buttontext';
-                } else {
-                  cardClass = 'bg-panel border-gameborder shadow-game-thin';
-                  tagClass = 'bg-ink text-buttontext';
-                }
-
-                return (
-                  <div key={i} className={`flex flex-col gap-2 border-2 p-3 rounded-xl transition-all shrink-0 ${cardClass}`}>
-                    <div className="flex justify-between items-start gap-2">
-                      <span className="text-ink font-mono font-bold text-xs truncate flex-1 leading-tight" title={p.file}>{p.file}</span>
-                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap uppercase ${tagClass}`}>
-                        {getStatusLabel(p.status)}
-                      </span>
-                    </div>
-                    {p.log && <span className="text-[10px] font-mono text-muted line-clamp-2">{p.log}</span>}
-                    {p.status === 'done' && p.backupPath && (
-                      <button
-                        type="button"
-                        disabled={restoringFile === p.file}
-                        onClick={async () => {
-                          setRestoringFile(p.file);
-                          try {
-                            await MetadataService.restoreBackup(
-                              p.inputPath!,
-                              p.backupPath!,
-                            );
-                            showToast(`Restored the original metadata for ${p.file}.`, 'success');
-                          } catch (error) {
-                            showToast('The metadata backup could not be restored.', 'error', getUserFacingError(error, 'Try again.').detail);
-                          } finally {
-                            setRestoringFile(null);
-                          }
-                        }}
-                        className="self-start text-[10px] font-mono font-bold underline disabled:opacity-50"
-                      >
-                        {restoringFile === p.file ? 'Restoring...' : 'Restore original'}
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+              {progresses.map((p, i) => (
+                <BatchProgressItem
+                  key={i}
+                  title={p.file}
+                  status={p.status}
+                  log={p.log}
+                >
+                  {p.status === 'done' && p.backupPath && (
+                    <button
+                      type="button"
+                      disabled={restoringFile === p.file}
+                      onClick={async () => {
+                        setRestoringFile(p.file);
+                        try {
+                          await MetadataService.restoreBackup(
+                            p.inputPath!,
+                            p.backupPath!,
+                          );
+                          showToast(`Restored the original metadata for ${p.file}.`, 'success');
+                        } catch (error) {
+                          showToast('The metadata backup could not be restored.', 'error', getUserFacingError(error, 'Try again.').detail);
+                        } finally {
+                          setRestoringFile(null);
+                        }
+                      }}
+                      className="self-start text-[10px] font-mono font-bold underline disabled:opacity-50"
+                    >
+                      {restoringFile === p.file ? 'Restoring...' : 'Restore original'}
+                    </button>
+                  )}
+                </BatchProgressItem>
+              ))}
             </PanelScrollArea>
           )}
 

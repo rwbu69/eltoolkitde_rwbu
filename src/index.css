@@ -18,6 +18,10 @@
     --color-softtoska: #e6f9f9;
     --color-gameshadow: #4c4f69;
     --color-buttontext: #3d2540;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
     --kh-control-md-height: 40px;
     --kh-control-sm-height: 32px;
     --kh-control-md-font-size: 0.6875rem;

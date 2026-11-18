@@ -1,22 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, mkdir, remove, rename } from '@tauri-apps/plugin-fs';
-import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 import { basename, joinPath } from '../utils/path';
-
-const dispatchLog = (msg: string) => {
-  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
-};
-
-async function notifySuccess(title: string, body: string) {
-  let permissionGranted = await isPermissionGranted();
-  if (!permissionGranted) {
-    const permission = await requestPermission();
-    permissionGranted = permission === 'granted';
-  }
-  if (permissionGranted) {
-    sendNotification({ title, body });
-  }
-}
+import { dispatchLog, notifySuccess } from '../utils/toolkitEvents';
 
 export interface Mp3ConvertOptions {
   inputFiles: string[];

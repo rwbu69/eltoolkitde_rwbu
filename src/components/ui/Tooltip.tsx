@@ -13,7 +13,7 @@ export function Tooltip({ text, children, position = 'bottom', className = '' }:
       case 'top': return 'bottom-full mb-2 left-1/2 -translate-x-1/2';
       case 'bottom': return 'top-full mt-2 left-1/2 -translate-x-1/2';
       case 'left': return 'right-full mr-2 top-1/2 -translate-y-1/2';
-      case 'right': return 'left-full ml-2 top-1/2 -translate-y-1/2';
+      case 'right': return 'left-full ml-3 top-1/2 -translate-y-1/2';
       default: return 'top-full mt-2 left-1/2 -translate-x-1/2';
     }
   };
@@ -22,9 +22,9 @@ export function Tooltip({ text, children, position = 'bottom', className = '' }:
     <div className={`group relative inline-flex justify-center items-center ${className}`}>
       {children}
       <div 
-        className={`absolute z-[999] pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 ${getPositionClasses()}`}
+        className={`absolute z-[999] pointer-events-none opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-150 ${getPositionClasses()}`}
       >
-        <div className="bg-ink text-buttontext border-2 border-buttontext shadow-game-thin rounded-lg px-3 py-1.5 whitespace-nowrap">
+        <div className="bg-panel text-ink border-2 border-gameborder shadow-game-thin rounded-xl px-3 py-1.5 whitespace-nowrap">
           <span className="font-mono text-xs font-bold tracking-wider">{text}</span>
         </div>
       </div>

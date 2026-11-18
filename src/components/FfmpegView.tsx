@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Settings2, Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, CheckCircle2, Circle, Clock, X, FileAudio } from 'lucide-react';
+import { Settings2, Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, X, FileAudio } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
+import { readDir } from '@tauri-apps/plugin-fs';
 import { FfmpegService, FfmpegProgress } from '../services/ffmpeg';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
@@ -8,11 +9,11 @@ import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
-import { ProgressBar } from './ui/ProgressBar';
 import { EmptyState } from './ui/EmptyState';
+import { BatchProgressItem } from './ui/BatchProgressItem';
 import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
-import { getStatusLabel, getUserFacingError } from '../config/uiText';
+import { getUserFacingError } from '../config/uiText';
 import { showToast } from './ui/Toast';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
@@ -78,7 +79,6 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
         multiple: false,
       });
       if (selected && typeof selected === 'string') {
-        const { readDir } = await import('@tauri-apps/plugin-fs');
         const entries = await readDir(selected);
         const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
         const files = entries
@@ -267,49 +267,15 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
             </div>
           ) : (
             <PanelScrollArea className="flex flex-col gap-3">
-              {progresses.map((p, i) => {
-                let statusIcon = <Circle className="w-5 h-5 text-muted" />;
-                let cardClass = 'bg-panel border-muted';
-                let tagClass = 'bg-ink-muted text-buttontext';
-
-                if (p.status === 'done') {
-                  statusIcon = <CheckCircle2 className="w-5 h-5 text-toska" />;
-                  cardClass = 'bg-softtoska border-gameborder';
-                  tagClass = 'bg-toska text-ink';
-                } else if (p.status === 'error') {
-                  statusIcon = <X className="w-5 h-5 text-oshipink" />;
-                  cardClass = 'bg-softpink border-oshipink';
-                  tagClass = 'bg-oshipink text-buttontext';
-                } else if (p.status === 'processing') {
-                  statusIcon = <Clock className="w-5 h-5 text-ink animate-spin-slow" />;
-                  cardClass = 'bg-panel border-gameborder shadow-game-thin';
-                  tagClass = 'bg-ink text-buttontext';
-                } else if (p.status === 'skipped') {
-                  statusIcon = <Circle className="w-5 h-5 text-muted" />;
-                  cardClass = 'bg-appbg border-muted';
-                  tagClass = 'bg-muted text-buttontext';
-                }
-
-                return (
-                  <div key={i} className={`flex flex-col gap-2 border-2 p-3 rounded-xl transition-all ${cardClass}`}>
-                    <div className="flex justify-between items-start gap-2">
-                      <div className="flex gap-2 items-start overflow-hidden">
-                        {statusIcon}
-                        <span className="text-ink font-mono font-bold text-xs truncate leading-tight" title={p.file}>{p.file}</span>
-                      </div>
-                      <span className={`px-2 py-0.5 border-2 border-gameborder rounded-full font-mono text-[10px] font-black tracking-widest whitespace-nowrap ${tagClass}`}>
-                        {getStatusLabel(p.status)}
-                      </span>
-                    </div>
-                    {p.status === 'processing' && p.percent !== undefined && (
-                      <ProgressBar percent={p.percent} status={p.status} />
-                    )}
-                    {p.log && (p.status === 'error' || p.status === 'skipped') && (
-                      <span className="text-[10px] font-mono text-oshipink font-bold line-clamp-2 mt-1">{p.log}</span>
-                    )}
-                  </div>
-                );
-              })}
+              {progresses.map((p, i) => (
+                <BatchProgressItem
+                  key={i}
+                  title={p.file}
+                  status={p.status}
+                  percent={p.percent}
+                  log={(p.status === 'error' || p.status === 'skipped') ? p.log : undefined}
+                />
+              ))}
             </PanelScrollArea>
           )}
 

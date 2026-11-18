@@ -1,10 +1,17 @@
-import { Command } from '@tauri-apps/plugin-shell';
+import { invoke } from '@tauri-apps/api/core';
 import { readDir, exists, rename, remove, copyFile } from '@tauri-apps/plugin-fs';
 import { basename, dirname, joinPath } from '../utils/path';
+import { dispatchLog } from '../utils/toolkitEvents';
 
-const dispatchLog = (msg: string) => {
-  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
-};
+export interface AudioMetadataDto {
+  title?: string;
+  artist?: string;
+  album?: string;
+  year?: number;
+  track?: number;
+  genre?: string;
+  duration_seconds?: number;
+}
 
 export interface MetadataOptions {
   mode: 'file' | 'folder';
@@ -23,7 +30,18 @@ export interface MetadataProgress {
   inputPath?: string;
 }
 
+const SUPPORTED_EXTENSIONS = ['.mp3', '.flac', '.m4a', '.ogg', '.wav', '.opus', '.aac'];
+
+function isSupportedAudioFile(fileName: string): boolean {
+  const lower = fileName.toLowerCase();
+  return SUPPORTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+}
+
 export class MetadataService {
+  static async readMetadata(filePath: string): Promise<AudioMetadataDto> {
+    return await invoke<AudioMetadataDto>('read_audio_tags', { path: filePath });
+  }
+
   static async restoreBackup(inputPath: string, backupPath: string): Promise<void> {
     if (!(await exists(backupPath))) {
       throw new Error('The metadata backup no longer exists.');
@@ -41,8 +59,6 @@ export class MetadataService {
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
     const { mode, inputPath, title, artist, album, year } = options;
     
-    // Polyfills
-
     let filesToProcess: string[] = [];
     
     if (mode === 'file') {
@@ -51,7 +67,7 @@ export class MetadataService {
       if (await exists(inputPath)) {
         const entries = await readDir(inputPath);
         for (const entry of entries) {
-          if (entry.isFile && entry.name.toLowerCase().endsWith('.mp3')) {
+          if (entry.isFile && isSupportedAudioFile(entry.name)) {
             filesToProcess.push(joinPath(inputPath, entry.name));
           }
         }
@@ -59,78 +75,51 @@ export class MetadataService {
     }
     
     if (filesToProcess.length === 0) {
-      throw new Error("No MP3 files found.");
+      throw new Error("No supported audio files found.");
     }
     
-    let metaArgs: string[] = [];
-    if (title) metaArgs.push('-metadata', `title=${title}`);
-    if (artist) metaArgs.push('-metadata', `artist=${artist}`);
-    if (album) metaArgs.push('-metadata', `album=${album}`);
-    if (year) metaArgs.push('-metadata', `date=${year}`);
-    
-    let childProcess: any = null;
     let cancelled = false;
 
     const cancelFn = () => {
       cancelled = true;
-      if (childProcess) {
-        childProcess.kill().catch(() => {});
-      }
+    };
+
+    const parsedYear = year ? parseInt(year, 10) : undefined;
+    const tagPayload: AudioMetadataDto = {
+      title: title || undefined,
+      artist: artist || undefined,
+      album: album || undefined,
+      year: Number.isFinite(parsedYear) ? parsedYear : undefined,
     };
 
     const task = (async () => {
       for (const inputFile of filesToProcess) {
         if (cancelled) break;
         
-        const baseName = basename(inputFile).replace(/\.[^.]+$/, '');
+        const fileName = basename(inputFile);
+        const baseName = fileName.replace(/\.[^.]+$/, '');
         const dir = dirname(inputFile);
-        const tempFile = joinPath(dir, `${baseName}_temp.mp3`);
         const backupPath = joinPath(dir, `${baseName}.metadata-backup.mp3`);
         
-        onProgress({ file: basename(inputFile), status: 'processing' });
+        onProgress({ file: fileName, status: 'processing', inputPath: inputFile });
         
-        await new Promise<void>((resolve) => {
-          const command = Command.sidecar('ffmpeg', [
-            '-hide_banner', '-y', 
-            '-i', inputFile, 
-            '-map', '0:a', '-c', 'copy', 
-            '-id3v2_version', '3', '-write_id3v1', '1', 
-            ...metaArgs, tempFile
-          ]);
-          
-          command.stdout.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
-          command.stderr.on('data', (line) => line.trim() && dispatchLog(`[ffmpeg metadata] ${line.trim()}`));
-          
-          command.on('close', async (data) => {
-            if (cancelled) {
-              onProgress({ file: basename(inputFile), status: 'error', log: 'Cancelled' });
-              if (await exists(tempFile)) await remove(tempFile);
-            } else if (data.code !== 0) {
-              onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to write metadata' });
-              if (await exists(tempFile)) await remove(tempFile);
-            } else {
-              if (!(await exists(backupPath))) {
-                await copyFile(inputFile, backupPath);
-              }
-              await rename(tempFile, inputFile);
-              onProgress({ file: basename(inputFile), status: 'done', backupPath, inputPath });
-            }
-            resolve();
+        try {
+          if (!(await exists(backupPath))) {
+            await copyFile(inputFile, backupPath);
+          }
+
+          await invoke('write_audio_tags', {
+            path: inputFile,
+            tags: tagPayload
           });
-          
-          command.on('error', (err) => {
-            if (!cancelled) onProgress({ file: basename(inputFile), status: 'error', log: String(err) });
-            resolve();
-          });
-          
-          command.spawn().then((child) => {
-            childProcess = child;
-            if (cancelled) child.kill().catch(() => {});
-          }).catch(() => {
-            if (!cancelled) onProgress({ file: basename(inputFile), status: 'error', log: 'Failed to spawn ffmpeg' });
-            resolve();
-          });
-        });
+
+          dispatchLog(`[metadata] Successfully updated tags for ${fileName} via native Rust lofty`);
+          onProgress({ file: fileName, status: 'done', backupPath, inputPath: inputFile });
+        } catch (err: any) {
+          const errMsg = err?.message || String(err);
+          dispatchLog(`[metadata ERROR] Failed to update tags for ${fileName}: ${errMsg}`);
+          onProgress({ file: fileName, status: 'error', log: errMsg, inputPath: inputFile });
+        }
       }
     })();
 

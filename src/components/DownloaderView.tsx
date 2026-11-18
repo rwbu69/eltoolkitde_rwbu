@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, FolderOpen, CheckCircle2, Circle, Clock, X, Target, FileVideo, Gauge, Trash2, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Download, FolderOpen, Target, Gauge, CheckCircle2, FileVideo, AlertTriangle } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { YtDlpService, type VideoInfo } from '../services/ytdlp';
 import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
@@ -10,30 +10,30 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { ProgressBar } from './ui/ProgressBar';
 import { InlineNotice } from './ui/InlineNotice';
-import { getStatusLabel, parseYtDlpError } from '../config/uiText';
+import { parseYtDlpError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
 import { showToast } from './ui/Toast';
+import { SegmentedDeck } from './ui/SegmentedDeck';
+import { QueueItemCard } from './downloader/QueueItemCard';
 
 const MAX_PLAYLIST_ITEMS = 500;
 
 export default function DownloaderView() {
-  const {
-    settings,
-    updateSettings,
-    queue,
-    isQueuePaused,
-    pauseReason,
-    resumeQueue,
-    addToQueue,
-    addBatchToQueue,
-    retryItem,
-    retryFailed,
-    cancelItem,
-    cancelAllDownloads,
-    removeFromQueue,
-    clearCompleted
-  } = useAppStore();
+  const settings = useAppStore(s => s.settings);
+  const updateSettings = useAppStore(s => s.updateSettings);
+  const queue = useAppStore(s => s.queue);
+  const isQueuePaused = useAppStore(s => s.isQueuePaused);
+  const pauseReason = useAppStore(s => s.pauseReason);
+  const resumeQueue = useAppStore(s => s.resumeQueue);
+  const addToQueue = useAppStore(s => s.addToQueue);
+  const addBatchToQueue = useAppStore(s => s.addBatchToQueue);
+  const retryItem = useAppStore(s => s.retryItem);
+  const retryFailed = useAppStore(s => s.retryFailed);
+  const cancelItem = useAppStore(s => s.cancelItem);
+  const cancelAllDownloads = useAppStore(s => s.cancelAllDownloads);
+  const removeFromQueue = useAppStore(s => s.removeFromQueue);
+  const clearCompleted = useAppStore(s => s.clearCompleted);
   
   const [urlsInput, setUrlsInput] = useState('');
   const [format, setFormat] = useState<'mp4' | 'mp3' | 'video-only'>('mp4');
@@ -43,12 +43,13 @@ export default function DownloaderView() {
   const [confirmation, setConfirmation] = useState<{ urls: string[]; infos: VideoInfo[]; totalItems: number } | null>(null);
   const [notice, setNotice] = useState<string>('');
   const [queueFilter, setQueueFilter] = useState<'all' | 'active' | 'failed' | 'completed'>('all');
+  const [mobileDeck, setMobileDeck] = useState<'setup' | 'queue'>('setup');
 
   useEffect(() => {
     if (!outputDir && settings.defaultOutputDir) {
       setOutputDir(settings.defaultOutputDir);
     }
-  }, [settings.defaultOutputDir]);
+  }, [outputDir, settings.defaultOutputDir]);
 
   const parseUrls = () => urlsInput
     .split(/[\n\s]+/)
@@ -87,6 +88,7 @@ export default function DownloaderView() {
     setUrlsInput('');
     setConfirmation(null);
     setNotice('');
+    setMobileDeck('queue');
   };
 
   const handleDownload = async () => {
@@ -158,10 +160,24 @@ export default function DownloaderView() {
   const urlsCount = parseUrls().length;
 
   return (
-    <PageLayout>
-      {/* LEFT COLUMN: Input & Config */}
-      <Column>
-        <SectionHeader title="Download queue" />
+    <div className="flex flex-col w-full h-full min-h-0">
+      {/* Mobile-only Segmented Deck Switcher */}
+      <div className="xl:hidden mb-3 flex-none">
+        <SegmentedDeck<'setup' | 'queue'>
+          options={[
+            { id: 'setup', label: 'Add Links', icon: Download },
+            { id: 'queue', label: 'Queue', icon: Target, count: queue.length },
+          ]}
+          activeId={mobileDeck}
+          onChange={setMobileDeck}
+        />
+      </div>
+
+      <div className="flex-1 min-h-0 w-full">
+        <PageLayout>
+          {/* LEFT COLUMN: Input & Config */}
+          <Column className={mobileDeck === 'setup' ? 'flex' : 'hidden xl:flex'}>
+            <SectionHeader title="Download setup" />
 
         <Panel className="flex-1 flex flex-col min-w-0">
           <PanelScrollArea className="flex flex-col gap-5 pr-2">
@@ -313,7 +329,7 @@ export default function DownloaderView() {
       </Column>
 
       {/* RIGHT COLUMN: Global Queue Status */}
-      <Column isSidebar>
+      <Column isSidebar className={mobileDeck === 'queue' ? 'flex' : 'hidden xl:flex'}>
         <SectionHeader title="Active queue" align="right" variant="secondary" />
 
         <Panel className="gap-3 bg-appbg h-[520px] xl:h-auto xl:min-h-0" noPadding>
@@ -445,113 +461,21 @@ export default function DownloaderView() {
                 </span>
               </div>
             ) : (
-              [...visibleQueue].reverse().map((item) => {
-                let statusIcon = <Circle className="w-4 h-4 text-muted" />;
-                let statusText = getStatusLabel('pending');
-                let cardClass = 'bg-panel border-muted opacity-60';
-                let textClass = 'text-muted';
-                
-                if (item.status === 'done') {
-                  statusIcon = <CheckCircle2 className="w-4 h-4 text-buttontext" />;
-                  statusText = getStatusLabel('done');
-                  cardClass = 'bg-toska border-gameborder text-buttontext opacity-100';
-                  textClass = 'text-buttontext';
-                } else if (item.status === 'expanded') {
-                  statusIcon = <CheckCircle2 className="w-4 h-4 text-buttontext" />;
-                  statusText = getStatusLabel('expanded');
-                  cardClass = 'bg-toska border-gameborder text-buttontext opacity-100';
-                  textClass = 'text-buttontext';
-                } else if (item.status === 'downloading' || item.status === 'fetching') {
-                  statusIcon = <Clock className="w-4 h-4 text-ink" />;
-                  statusText = getStatusLabel(item.status);
-                  cardClass = 'bg-softtoska border-gameborder opacity-100 shadow-game-thin';
-                  textClass = 'text-ink';
-                } else if (item.status === 'error') {
-                  statusIcon = <X className="w-4 h-4 text-buttontext" />;
-                  statusText = getStatusLabel('error');
-                  cardClass = 'bg-oshipink border-gameborder text-buttontext opacity-100';
-                  textClass = 'text-buttontext';
-                } else if (item.status === 'canceled') {
-                  statusIcon = <X className="w-4 h-4 text-muted" />;
-                  statusText = getStatusLabel('canceled');
-                  cardClass = 'bg-panel border-muted opacity-100';
-                  textClass = 'text-muted';
-                }
-
-                return (
-                  <div key={item.id} className={`flex flex-col p-3 border-2 rounded-xl transition-all ${cardClass}`}>
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 flex-1 min-w-0">
-                        <div className="shrink-0 mt-0.5">{statusIcon}</div>
-                        <div className="flex-1 min-w-0">
-                          <span className={`block font-mono font-black text-[9px] tracking-widest mb-0.5 ${textClass}`}>
-                            {statusText} • {item.format.toUpperCase()}
-                          </span>
-                          <span className={`block text-xs font-bold truncate ${textClass}`} title={item.title || item.url}>
-                            {item.title || item.url}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      <button 
-                        onClick={() => item.status === 'downloading' || item.status === 'fetching' || item.status === 'pending'
-                          ? cancelItem(item.id)
-                          : item.status === 'error' || item.status === 'canceled'
-                            ? retryItem(item.id)
-                            : removeFromQueue(item.id)}
-                        className={`shrink-0 p-1 rounded-md opacity-50 hover:opacity-100 transition-opacity ${item.status === 'done' || item.status === 'error' || item.status === 'canceled' ? 'hover:bg-black/20' : 'hover:bg-panel/50 text-ink'}`}
-                        aria-label={item.status === 'downloading' || item.status === 'fetching' || item.status === 'pending'
-                          ? 'Cancel download'
-                          : item.status === 'error' || item.status === 'canceled' ? 'Retry download' : 'Remove from queue'}
-                        title={item.status === 'downloading' || item.status === 'fetching' || item.status === 'pending'
-                          ? "Cancel download"
-                          : item.status === 'error' || item.status === 'canceled' ? "Retry download" : "Remove from queue"}
-                      >
-                        {item.status === 'downloading' || item.status === 'fetching' || item.status === 'pending' ? (
-                          <X className="w-4 h-4" />
-                        ) : item.status === 'error' || item.status === 'canceled' ? (
-                          <RotateCcw className="w-4 h-4" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-
-                    {item.status === 'downloading' && item.progress && (
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="font-mono text-xs font-bold">{item.progress.speed || '--'}</span>
-                          <span className="font-mono text-xs font-black">{item.progress.percent}%</span>
-                        </div>
-                        <ProgressBar percent={item.progress.percent} status={item.status} />
-                        <div className="text-right mt-1">
-                          <span className="font-mono text-[10px] font-bold opacity-70">ETA: {item.progress.eta || '--'}</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {item.status === 'error' && item.error && (
-                      <div className="mt-2 text-[10px] font-mono font-bold bg-black/20 p-1.5 rounded-lg break-words max-h-[60px] overflow-y-auto">
-                        {item.error}
-                      </div>
-                    )}
-                    {item.status === 'expanded' && item.playlistItemCount && (
-                      <div className="mt-2 text-[10px] font-mono font-bold opacity-75">
-                        {item.playlistItemCount} child downloads added
-                      </div>
-                    )}
-                    <details className="mt-2 text-[10px] font-mono">
-                      <summary className="cursor-pointer font-bold opacity-70">Details</summary>
-                      <div className="mt-1 break-all opacity-70">{item.url}</div>
-                      <div className="mt-1 opacity-70">Format: {item.format.toUpperCase()}</div>
-                    </details>
-                  </div>
-                );
-              })
+              [...visibleQueue].reverse().map((item) => (
+                <QueueItemCard
+                  key={item.id}
+                  item={item}
+                  onCancel={cancelItem}
+                  onRetry={retryItem}
+                  onRemove={removeFromQueue}
+                />
+              ))
             )}
           </PanelScrollArea>
         </Panel>
       </Column>
     </PageLayout>
+      </div>
+    </div>
   );
 }

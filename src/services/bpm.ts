@@ -1,11 +1,9 @@
+import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, remove, rename } from '@tauri-apps/plugin-fs';
+import { dispatchLog } from '../utils/toolkitEvents';
 
 export type BpmOutputFormat = 'wav' | 'mp3';
-
-const dispatchLog = (msg: string) => {
-  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
-};
 
 export interface BpmProgress {
   file: string;
@@ -21,50 +19,53 @@ export interface BpmDetectionResult {
   candidates: number[];
 }
 
+export function buildAtempoFilter(tempoRatio: number): string {
+  if (!Number.isFinite(tempoRatio) || tempoRatio <= 0) {
+    throw new Error(`Invalid tempo ratio: ${tempoRatio}. Ratio must be a positive number.`);
+  }
+
+  let r = tempoRatio;
+  const filters: string[] = [];
+  while (r > 2.0) {
+    filters.push('atempo=2.0');
+    r /= 2.0;
+  }
+  while (r < 0.5) {
+    filters.push('atempo=0.5');
+    r /= 0.5;
+  }
+  filters.push(`atempo=${Number(r.toFixed(4))}`);
+  return filters.join(',');
+}
+
 export class BpmService {
   static async detectBPM(filePath: string, minBpm?: number, maxBpm?: number): Promise<BpmDetectionResult> {
-    dispatchLog(`[bpm_detector] Analyzing ${filePath}...`);
-    
-    let args = [filePath];
-    if (minBpm !== undefined && maxBpm !== undefined && minBpm > 0 && maxBpm > minBpm) {
-      args.push('--min', minBpm.toString(), '--max', maxBpm.toString());
-      dispatchLog(`[bpm_detector] Constraining BPM between ${minBpm} and ${maxBpm}`);
-    }
+    dispatchLog(`[bpm_detector] Analyzing ${filePath} via native Rust audio analyzer...`);
 
-    const command = Command.sidecar('bpm_detector', args);
-    const output = await command.execute();
-    
-    if (output.code !== 0) {
-      dispatchLog(`[bpm_detector ERROR] ${output.stderr}`);
-      throw new Error(`Failed to detect BPM: ${output.stderr}`);
-    }
-    
-    // Stdout should be JSON
-    let result;
     try {
-      result = JSON.parse(output.stdout.trim());
-    } catch (e) {
-      dispatchLog(`[bpm_detector ERROR] Failed to parse JSON output: ${output.stdout}`);
-      throw new Error(`Failed to parse BPM output: ${output.stdout}`);
-    }
+      const result = await invoke<{ bpm: number; confidence: 'high' | 'medium' | 'low'; candidates: number[] }>('detect_audio_bpm', {
+        path: filePath,
+        minBpm: minBpm && minBpm > 0 ? minBpm : undefined,
+        maxBpm: maxBpm && maxBpm > 0 ? maxBpm : undefined,
+      });
 
-    if (result.error) {
-      dispatchLog(`[bpm_detector ERROR] Python Error: ${result.error}`);
-      throw new Error(`Python Error: ${result.error}`);
-    }
+      const bpm = result.bpm;
+      const confidence = result.confidence || 'medium';
+      const candidates = Array.isArray(result.candidates)
+        ? result.candidates.filter((value: unknown): value is number => typeof value === 'number' && Number.isFinite(value))
+        : [bpm];
 
-    const bpm = result.bpm;
-    const confidence = result.confidence || 'medium';
-    const candidates = Array.isArray(result.candidates)
-      ? result.candidates.filter((value: unknown): value is number => typeof value === 'number' && Number.isFinite(value))
-      : [bpm];
+      if (typeof bpm !== 'number' || isNaN(bpm)) {
+        throw new Error(`Invalid BPM result received: ${bpm}`);
+      }
 
-    if (typeof bpm !== 'number' || isNaN(bpm)) {
-      dispatchLog(`[bpm_detector ERROR] Invalid BPM output: ${output.stdout}`);
-      throw new Error(`Invalid BPM output: ${output.stdout}`);
+      dispatchLog(`[bpm_detector] Detected BPM: ${bpm} (Confidence: ${confidence})`);
+      return { bpm, confidence, candidates };
+    } catch (err: any) {
+      const msg = err?.message || String(err);
+      dispatchLog(`[bpm_detector ERROR] ${msg}`);
+      throw new Error(`Failed to detect BPM: ${msg}`);
     }
-    dispatchLog(`[bpm_detector] Detected BPM: ${bpm} (Confidence: ${confidence})`);
-    return { bpm, confidence, candidates };
   }
 
   static async batchDetectBPM(
@@ -101,45 +102,44 @@ export class BpmService {
     targetBPM: number,
     format: BpmOutputFormat
   ): Promise<void> {
-    dispatchLog(`[bpm_modifier] Changing tempo to ${targetBPM} BPM as ${format.toUpperCase()}...`);
-    const wavPath = format === 'wav' ? outputPath : `${outputPath}.wav.part`;
-
-    const command = Command.sidecar('bpm_modifier', [
-      '--input', inputPath,
-      '--output', wavPath,
-      '--original-bpm', originalBPM.toString(),
-      '--target-bpm', targetBPM.toString()
-    ]);
-
-    const output = await command.execute();
-    
-    if (output.code !== 0) {
-      dispatchLog(`[bpm_modifier ERROR] ${output.stderr}`);
-      throw new Error(`BPM Modification error: ${output.stderr}`);
+    if (!originalBPM || originalBPM <= 0) {
+      throw new Error(`Invalid original BPM: ${originalBPM}`);
     }
+    if (!targetBPM || targetBPM <= 0) {
+      throw new Error(`Invalid target BPM: ${targetBPM}`);
+    }
+
+    const tempoRatio = targetBPM / originalBPM;
+    const filterString = buildAtempoFilter(tempoRatio);
+    dispatchLog(`[bpm_tempo] Adjusting tempo (${originalBPM} -> ${targetBPM} BPM, ratio: ${tempoRatio.toFixed(3)}) as ${format.toUpperCase()}...`);
+
+    const tempOutput = `${outputPath}.part`;
+    const ffmpegArgs = [
+      '-hide_banner',
+      '-y',
+      '-i', inputPath,
+      '-filter:a', filterString,
+    ];
 
     if (format === 'mp3') {
-      const encodedPart = `${outputPath}.part`;
-      const encodeCommand = Command.sidecar('ffmpeg', [
-        '-hide_banner', '-y',
-        '-i', wavPath,
-        '-codec:a', 'libmp3lame',
-        '-q:a', '2',
-        '-f', 'mp3',
-        encodedPart
-      ]);
-      const encoded = await encodeCommand.execute();
-      if (encoded.code !== 0) {
-        if (await exists(wavPath)) await remove(wavPath);
-        if (await exists(encodedPart)) await remove(encodedPart);
-        throw new Error(`MP3 encoding error: ${encoded.stderr}`);
-      }
-      if (await exists(outputPath)) await remove(outputPath);
-      await rename(encodedPart, outputPath);
-      if (await exists(wavPath)) await remove(wavPath);
+      ffmpegArgs.push('-codec:a', 'libmp3lame', '-q:a', '2', '-f', 'mp3');
+    } else {
+      ffmpegArgs.push('-codec:a', 'pcm_s16le', '-f', 'wav');
     }
-    
-    dispatchLog(`[bpm_modifier] Successfully saved quantized audio to ${outputPath}`);
+    ffmpegArgs.push(tempOutput);
+
+    const command = Command.sidecar('ffmpeg', ffmpegArgs);
+    const output = await command.execute();
+
+    if (output.code !== 0) {
+      if (await exists(tempOutput)) await remove(tempOutput);
+      dispatchLog(`[bpm_tempo ERROR] ${output.stderr}`);
+      throw new Error(`BPM modification error: ${output.stderr}`);
+    }
+
+    if (await exists(outputPath)) await remove(outputPath);
+    await rename(tempOutput, outputPath);
+    dispatchLog(`[bpm_tempo] Successfully saved tempo-adjusted audio to ${outputPath}`);
   }
 
   static async batchChangeTempo(

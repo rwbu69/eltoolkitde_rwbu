@@ -206,4 +206,31 @@ describe('YtDlpService', () => {
     expect(info.entries?.[0].url).toBe('https://www.youtube.com/watch?v=track123456');
     expect(info.entries?.[1].url).toBe('https://example.com/watch?v=track789012');
   });
+
+  it('downloads companion thumbnail and embeds cover art across mp4, mp3, and video-only', async () => {
+    execute.mockResolvedValue({
+      code: 0,
+      stdout: '',
+      stderr: '',
+    });
+
+    for (const format of ['mp4', 'mp3', 'video-only'] as const) {
+      sidecar.mockClear();
+      await YtDlpService.downloadMedia({
+        url: 'https://example.com/media',
+        format,
+        outputDir: 'C:\\Media',
+      }, vi.fn());
+
+      const calls = sidecar.mock.calls as unknown as [string, string[]][];
+      const args = calls[0][1];
+
+      expect(args).toContain('--embed-thumbnail');
+      expect(args).toContain('--write-thumbnail');
+      expect(args).toContain('--convert-thumbnails');
+      const convIdx = args.indexOf('--convert-thumbnails');
+      expect(args[convIdx + 1]).toBe('jpg');
+      expect(args).toContain('--embed-metadata');
+    }
+  });
 });

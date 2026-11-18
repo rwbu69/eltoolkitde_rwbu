@@ -10,7 +10,18 @@ export interface ToastMessage {
 }
 
 let nextToastId = 0;
+let lastToastKey = '';
+let lastToastTime = 0;
+
 export function showToast(message: string, tone: ToastTone = 'info', detail?: string) {
+  const now = Date.now();
+  const key = `${tone}:${message}:${detail ?? ''}`;
+  if (key === lastToastKey && now - lastToastTime < 1500) {
+    return;
+  }
+  lastToastKey = key;
+  lastToastTime = now;
+
   window.dispatchEvent(new CustomEvent<ToastMessage>('toolkit-toast', {
     detail: { id: ++nextToastId, message, detail, tone },
   }));
@@ -29,7 +40,13 @@ export function ToastHost() {
   useEffect(() => {
     const handleToast = (event: Event) => {
       const toast = (event as CustomEvent<ToastMessage>).detail;
-      setToasts((current) => [...current, toast].slice(-4));
+      setToasts((current) => {
+        const isDuplicate = current.some(
+          (t) => t.message === toast.message && t.detail === toast.detail && t.tone === toast.tone
+        );
+        if (isDuplicate) return current;
+        return [...current, toast].slice(-4);
+      });
       window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== toast.id)), 5000);
     };
     window.addEventListener('toolkit-toast', handleToast);

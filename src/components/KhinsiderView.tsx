@@ -114,8 +114,9 @@ export default function KhinsiderView() {
   };
 
   useEffect(() => {
+    if (!settings.enableKhinsider) return;
     void loadPage(() => KhinsiderService.fetchPage(KHINSIDER_HOME));
-  }, []);
+  }, [settings.enableKhinsider]);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;

@@ -1,12 +1,8 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
-import { sendNotification, isPermissionGranted, requestPermission } from '@tauri-apps/plugin-notification';
 import { exists, remove, rename } from '@tauri-apps/plugin-fs';
 import type { VideoCodec } from '../config/mediaSettings';
-
-const dispatchLog = (msg: string) => {
-  window.dispatchEvent(new CustomEvent('toolkit-log', { detail: msg }));
-};
+import { dispatchLog, notifySuccess } from '../utils/toolkitEvents';
 
 export interface PlaylistItem {
   title: string;
@@ -97,10 +93,6 @@ export class YtDlpService {
 
     if (ffmpegLocation) {
       fetchArgs.push('--ffmpeg-location', ffmpegLocation);
-      const isWin = navigator.userAgent.toLowerCase().includes('windows');
-      const nodeBinary = isWin ? 'node.exe' : 'node';
-      const sep = isWin ? '\\' : '/';
-      fetchArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
     }
 
     fetchArgs.push('--');
@@ -176,8 +168,7 @@ export class YtDlpService {
       formatArgs = [
         '-x',
         '--audio-format', 'mp3',
-        '--audio-quality', audioBitrate,
-        '--embed-metadata'
+        '--audio-quality', audioBitrate
       ];
     }
 
@@ -199,6 +190,10 @@ export class YtDlpService {
       '--retry-sleep', 'fragment:exp=1:20',
       '--extractor-args', 'youtube:player_client=android,web',
       '--print', 'after_move:[final_path] %(filepath)s',
+      '--embed-thumbnail',
+      '--write-thumbnail',
+      '--convert-thumbnails', 'jpg',
+      '--embed-metadata',
       ...formatArgs,
       '-o', template,
       '-P', outputDir
@@ -224,10 +219,6 @@ export class YtDlpService {
 
     if (ffmpegLocation) {
       dlArgs.push('--ffmpeg-location', ffmpegLocation);
-      const isWin = navigator.userAgent.toLowerCase().includes('windows');
-      const nodeBinary = isWin ? 'node.exe' : 'node';
-      const sep = isWin ? '\\' : '/';
-      dlArgs.push('--js-runtimes', `node:${ffmpegLocation}${sep}${nodeBinary}`);
     }
 
     dlArgs.push('--', url);
@@ -382,14 +373,7 @@ export class YtDlpService {
 
           onProgress({ percent: 100, speed: '--', eta: '--', status: 'done' });
           resolve();
-          let permissionGranted = await isPermissionGranted();
-          if (!permissionGranted) {
-            const permission = await requestPermission();
-            permissionGranted = permission === 'granted';
-          }
-          if (permissionGranted) {
-            sendNotification({ title: 'Download complete', body: `Task complete: ${options.url}` });
-          }
+          await notifySuccess('Download complete', `Task complete: ${options.url}`);
         } else {
           onProgress({ percent: 0, speed: '--', eta: '--', status: 'error' });
           reject(new Error(`Process exited with code ${data.code}`));

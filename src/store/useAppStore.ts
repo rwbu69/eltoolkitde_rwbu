@@ -107,10 +107,92 @@ interface AppState {
   cancelAllDownloads: () => void;
 }
 
-// Create a singleton limit outside the store to easily recreate it if limit changes
 let activeLimit = pLimit(DEFAULT_SETTINGS.maxConcurrentDownloads);
 let downloadGeneration = 0;
 const MAX_PLAYLIST_ITEMS = 500;
+
+/**
+ * Reusable execution worker for active downloads (both single & batch).
+ */
+async function executeDownloadJob(
+  id: string,
+  url: string,
+  format: 'mp4' | 'mp3' | 'video-only',
+  options: QueueDownloadOptions,
+  generation: number,
+  set: (fn: (s: AppState) => Partial<AppState>) => void,
+  get: () => AppState,
+  titleOverride?: string
+) {
+  // Wait if queue is paused
+  while (get().isQueuePaused) {
+    if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+      return;
+    }
+    await new Promise(r => setTimeout(r, 800));
+  }
+
+  if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
+    set(s => ({
+      queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled', error: 'Canceled by user' } : q)
+    }));
+    return;
+  }
+
+  if (!options.outputDir) {
+    set(s => ({
+      queue: s.queue.map(q => q.id === id ? { ...q, status: 'error', error: 'No output directory set in settings.' } : q)
+    }));
+    return;
+  }
+
+  try {
+    set(s => ({
+      queue: s.queue.map(q => q.id === id ? { ...q, title: titleOverride || q.title, status: 'downloading' } : q)
+    }));
+
+    const downloadOptions: DownloadOptions = {
+      url,
+      format,
+      ...options
+    };
+
+    const { task, cancel } = await YtDlpService.downloadMedia(downloadOptions, (progress) => {
+      set(s => ({
+        queue: s.queue.map(q => q.id === id ? {
+          ...q,
+          progress,
+          status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled'
+            ? progress.status
+            : 'downloading'
+        } : q)
+      }));
+    });
+
+    set(s => ({
+      queue: s.queue.map(q => q.id === id ? { ...q, cancelFn: cancel } : q)
+    }));
+
+    await task;
+
+  } catch (error: any) {
+    const errMsg = error?.message || String(error);
+    const isRateLimit = /rate-limited|429|This content isn't available, try again later/i.test(errMsg);
+
+    if (isRateLimit) {
+      set(() => ({
+        isQueuePaused: true,
+        pauseReason: 'YouTube rate limit detected. Remaining downloads paused to protect your IP.'
+      }));
+    }
+
+    set(s => ({
+      queue: s.queue.map(q => q.id === id && q.status !== 'canceled'
+        ? { ...q, status: 'error', error: errMsg }
+        : q)
+    }));
+  }
+}
 
 export const useAppStore = create<AppState>()(
   persist(
@@ -121,7 +203,6 @@ export const useAppStore = create<AppState>()(
         set((state) => {
           const nextSettings = normalizeSettings({ ...state.settings, ...updates });
           
-          // Sync with Rust backend for close behavior
           if (updates.closeToTray !== undefined) {
             invoke('set_close_behavior', { closeToTray: nextSettings.closeToTray }).catch(console.error);
           }
@@ -132,7 +213,6 @@ export const useAppStore = create<AppState>()(
             }
           }
           
-          // Re-create the limit pool if concurrency settings changed
           if (updates.maxConcurrentDownloads !== undefined || updates.enableConcurrentDownloads !== undefined) {
             const newLimit = nextSettings.enableConcurrentDownloads ? Math.max(1, nextSettings.maxConcurrentDownloads) : 1;
             activeLimit = pLimit(newLimit);
@@ -163,9 +243,10 @@ export const useAppStore = create<AppState>()(
           browserForCookies: state.settings.browserForCookies,
           rateLimit: state.settings.rateLimitSpeed,
         };
+
         if (!isValidMediaUrl(url)) {
-          set((currentState) => ({
-            queue: [...currentState.queue, {
+          set(s => ({
+            queue: [...s.queue, {
               id,
               url,
               title: 'Invalid URL',
@@ -177,6 +258,7 @@ export const useAppStore = create<AppState>()(
           }));
           return;
         }
+
         const newItem: QueueItem = {
           id,
           url,
@@ -186,9 +268,8 @@ export const useAppStore = create<AppState>()(
           options: queueOptions,
         };
         
-        set((s) => ({ queue: [...s.queue, newItem] }));
+        set(s => ({ queue: [...s.queue, newItem] }));
         
-        // Push the item to the processing pool
         activeLimit(async () => {
           while (get().isQueuePaused) {
             if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
@@ -198,12 +279,12 @@ export const useAppStore = create<AppState>()(
           }
 
           if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
-            set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
+            set(s => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled', error: 'Canceled by user' } : q) }));
             return;
           }
 
           if (!queueOptions.outputDir) {
-            set((s) => ({
+            set(s => ({
               queue: s.queue.map(q => q.id === id ? { ...q, status: 'error', error: 'No output directory set in settings.' } : q)
             }));
             return;
@@ -212,24 +293,22 @@ export const useAppStore = create<AppState>()(
           try {
             let finalTitle = knownTitle;
 
-            // Only fetch metadata if title is unknown or if playlist expansion is explicitly requested
             if (!finalTitle || allowPlaylistExpansion) {
-              set((s) => ({
+              set(s => ({
                 queue: s.queue.map(q => q.id === id ? { ...q, status: 'fetching' } : q)
               }));
               
               const info = await YtDlpService.fetchVideoInfo(url, queueOptions.cookiesFilePath, queueOptions.browserForCookies);
 
               if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
-                set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
+                set(s => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled', error: 'Canceled by user' } : q) }));
                 return;
               }
               
-              // If it's a playlist, extract items and queue them in batch without double-fetching!
               if (info.isPlaylist && info.entries && info.entries.length > 0) {
                 const entries = info.entries;
                 if (entries.length > MAX_PLAYLIST_ITEMS) {
-                  set((s) => ({
+                  set(s => ({
                     queue: s.queue.map(q => q.id === id ? {
                       ...q,
                       title: info.title,
@@ -241,28 +320,27 @@ export const useAppStore = create<AppState>()(
                   return;
                 }
                 if (!allowPlaylistExpansion) {
-                  set((s) => ({
+                  set(s => ({
                     queue: s.queue.map(q => q.id === id ? {
                       ...q,
                       title: info.title,
                       playlistItemCount: entries.length,
-                      status: 'error' as QueueItemStatus,
+                      status: 'error',
                       error: 'Playlist detected. Inspect and confirm it before queueing.'
                     } : q)
                   }));
                   return;
                 }
-                set((s) => ({
+                set(s => ({
                   queue: s.queue.map(q => q.id === id ? {
                     ...q,
                     title: `${info.title} (${entries.length} items)`,
                     playlistItemCount: entries.length,
-                    status: 'expanded' as QueueItemStatus,
+                    status: 'expanded',
                     error: 'Playlist added to the queue'
                   } : q)
                 }));
                 
-                // Add all entries directly using addBatchToQueue with known titles
                 get().addBatchToQueue(
                   entries.map(e => ({
                     url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id),
@@ -277,48 +355,20 @@ export const useAppStore = create<AppState>()(
               finalTitle = info.title;
             }
 
-            // Not a playlist (or known individual track), proceed to download directly
-            set((s) => ({
-              queue: s.queue.map(q => q.id === id ? { ...q, title: finalTitle || q.title, status: 'downloading' } : q)
-            }));
-
-            const downloadOptions: DownloadOptions = {
-              url,
-              format,
-              ...queueOptions
-            };
-
-            const { task, cancel } = await YtDlpService.downloadMedia(downloadOptions, (progress) => {
-              set((s) => ({
-                queue: s.queue.map(q => q.id === id ? {
-                  ...q,
-                  progress,
-                  status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled'
-                    ? progress.status
-                    : 'downloading'
-                } : q)
-              }));
-            });
-
-            // Store cancel function
-            set((s) => ({
-              queue: s.queue.map(q => q.id === id ? { ...q, cancelFn: cancel } : q)
-            }));
-
-            await task;
+            await executeDownloadJob(id, url, format, queueOptions, generation, set, get, finalTitle);
 
           } catch (error: any) {
             const errMsg = error?.message || String(error);
             const isRateLimit = /rate-limited|429|This content isn't available, try again later/i.test(errMsg);
 
             if (isRateLimit) {
-              set({
+              set(() => ({
                 isQueuePaused: true,
                 pauseReason: 'YouTube rate limit detected. Remaining downloads paused to protect your IP.'
-              });
+              }));
             }
 
-            set((s) => ({
+            set(s => ({
               queue: s.queue.map(q => q.id === id && q.status !== 'canceled'
                 ? { ...q, status: 'error', error: errMsg }
                 : q)
@@ -342,7 +392,6 @@ export const useAppStore = create<AppState>()(
 
         const newItems: QueueItem[] = [];
 
-        // If a playlist title is provided, add an "expanded" card representing the playlist container
         if (playlistTitle) {
           newItems.push({
             id: `${Date.now()}-playlist-${Math.random().toString(36).substring(2, 9)}`,
@@ -370,94 +419,17 @@ export const useAppStore = create<AppState>()(
           });
         });
 
-        set((s) => ({ queue: [...s.queue, ...newItems] }));
+        set(s => ({ queue: [...s.queue, ...newItems] }));
 
-        // Enqueue each item into activeLimit with knownTitle so it skips redundant fetchVideoInfo
         newItems
           .filter(it => it.status === 'pending')
           .forEach((it) => {
-            const id = it.id;
-            const url = it.url;
-
-            activeLimit(async () => {
-              while (get().isQueuePaused) {
-                if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
-                  return;
-                }
-                await new Promise(r => setTimeout(r, 800));
-              }
-
-              if (generation !== downloadGeneration || get().queue.find(q => q.id === id)?.status === 'canceled') {
-                set((s) => ({ queue: s.queue.map(q => q.id === id ? { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' } : q) }));
-                return;
-              }
-
-              if (!queueOptions.outputDir) {
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id ? { ...q, status: 'error', error: 'No output directory set in settings.' } : q)
-                }));
-                return;
-              }
-
-              try {
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id ? { ...q, status: 'downloading' } : q)
-                }));
-
-                const downloadOptions: DownloadOptions = {
-                  url,
-                  format,
-                  ...queueOptions
-                };
-
-                const { task, cancel } = await YtDlpService.downloadMedia(downloadOptions, (progress) => {
-                  set((s) => ({
-                    queue: s.queue.map(q => q.id === id ? {
-                      ...q,
-                      progress,
-                      status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled'
-                        ? progress.status
-                        : 'downloading'
-                    } : q)
-                  }));
-                });
-
-                // Store cancel function
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id ? { ...q, cancelFn: cancel } : q)
-                }));
-
-                await task;
-
-              } catch (error: any) {
-                const errMsg = error?.message || String(error);
-                const isRateLimit = /rate-limited|429|This content isn't available, try again later/i.test(errMsg);
-
-                if (isRateLimit) {
-                  set({
-                    isQueuePaused: true,
-                    pauseReason: 'YouTube rate limit detected. Remaining downloads paused to protect your IP.'
-                  });
-                }
-
-                set((s) => ({
-                  queue: s.queue.map(q => q.id === id && q.status !== 'canceled'
-                    ? { ...q, status: 'error', error: errMsg }
-                    : q)
-                }));
-              }
-            });
+            activeLimit(() => executeDownloadJob(it.id, it.url, format, queueOptions, generation, set, get, it.title));
           });
       },
 
       removeFromQueue: (id) => {
-        set((state) => {
-          const item = state.queue.find(q => q.id === id);
-          if (item?.cancelFn) {
-            item.cancelFn();
-          }
-          return { queue: state.queue.filter(q => q.id !== id) };
-        });
+        set(s => ({ queue: s.queue.filter(q => q.id !== id) }));
       },
 
       retryItem: (id) => {
@@ -474,38 +446,34 @@ export const useAppStore = create<AppState>()(
       },
 
       clearCompleted: (statuses = ['done', 'error', 'canceled', 'expanded']) => {
-        set((state) => ({
-          queue: state.queue.filter(q => !statuses.includes(q.status))
-        }));
+        set(s => ({ queue: s.queue.filter(q => !statuses.includes(q.status)) }));
       },
 
       cancelItem: (id) => {
-        set((state) => {
-          const queue = state.queue.map(q => {
+        set(s => ({
+          queue: s.queue.map(q => {
             if (q.id === id) {
-              if (q.cancelFn) {
-                q.cancelFn();
-              }
-              return { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' };
+              q.cancelFn?.();
+              return { ...q, status: 'canceled', error: 'Canceled by user' };
             }
             return q;
-          });
-          return { queue };
-        });
+          })
+        }));
       },
 
       cancelAllDownloads: () => {
         downloadGeneration += 1;
-        set((state) => {
-          const queue = state.queue.map(q => {
+        set(s => ({
+          queue: s.queue.map(q => {
             if (q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading') {
               q.cancelFn?.();
-              return { ...q, status: 'canceled' as QueueItemStatus, error: 'Canceled by user' };
+              return { ...q, status: 'canceled', error: 'Canceled by user' };
             }
             return q;
-          });
-          return { queue, isQueuePaused: false, pauseReason: '' };
-        });
+          }),
+          isQueuePaused: false,
+          pauseReason: ''
+        }));
       }
     }),
     {
@@ -521,7 +489,6 @@ export const useAppStore = create<AppState>()(
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Initialize limit on app load
           const { enableConcurrentDownloads, maxConcurrentDownloads } = state.settings;
           const newLimit = enableConcurrentDownloads ? Math.max(1, maxConcurrentDownloads) : 1;
           activeLimit = pLimit(newLimit);

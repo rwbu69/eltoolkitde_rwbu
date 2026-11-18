@@ -65,12 +65,6 @@ function copyExecutable(source, destination) {
 copyExecutable(ffmpegStatic, path.join(binDir, targetName('ffmpeg')));
 copyExecutable(ffprobeStatic.path, path.join(binDir, targetName('ffprobe')));
 
-const nodeSource = path.join(__dirname, '..', 'node_modules', 'node', 'bin', targetConfig.nodeBinary);
-if (!fs.existsSync(nodeSource)) {
-    throw new Error(`Node sidecar binary was not found at ${nodeSource}`);
-}
-copyExecutable(nodeSource, path.join(binDir, targetName('node')));
-
 function downloadFile(url, destination) {
     if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {
         const canValidate = target === getDefaultTarget();

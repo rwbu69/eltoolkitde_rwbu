@@ -51,10 +51,7 @@
     "externalBin": [
       "yt-dlp",
       "ffmpeg",
-      "ffprobe",
-      "node",
-      "bpm_detector",
-      "bpm_modifier"
+      "ffprobe"
     ]
   }
 }
