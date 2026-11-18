@@ -113,6 +113,7 @@ pub fn run() {
             commands::audio::read_audio_tags,
             commands::audio::write_audio_tags,
             commands::audio::detect_audio_bpm,
+            commands::audio::get_audio_waveform,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

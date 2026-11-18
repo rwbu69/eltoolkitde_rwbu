@@ -38,8 +38,3 @@ build/
 *.spec
 *.tsbuildinfo
 
-# Local test files
-*.test.ts
-*.test.tsx
-*.spec.ts
-*.spec.tsx

@@ -113,7 +113,7 @@ export class MetadataService {
             tags: tagPayload
           });
 
-          dispatchLog(`[metadata] Successfully updated tags for ${fileName} via native Rust lofty`);
+          dispatchLog(`[metadata] Successfully updated tags for ${fileName}`);
           onProgress({ file: fileName, status: 'done', backupPath, inputPath: inputFile });
         } catch (err: any) {
           const errMsg = err?.message || String(err);

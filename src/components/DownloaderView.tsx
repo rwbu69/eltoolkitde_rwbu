@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Download, FolderOpen, Target, Gauge, CheckCircle2, FileVideo, AlertTriangle } from 'lucide-react';
+import { Download, FolderOpen, Target, Gauge, FileVideo, AlertTriangle, RotateCw, XCircle, Check, Trash2, Globe, ShieldCheck } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { YtDlpService, type VideoInfo } from '../services/ytdlp';
-import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
+import { PageLayout, Column, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
 import { CustomSelect } from './ui/CustomSelect';
-import { OptionGrid } from './ui/OptionGrid';
 import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
@@ -14,7 +13,6 @@ import { parseYtDlpError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
 import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
 import { showToast } from './ui/Toast';
-import { SegmentedDeck } from './ui/SegmentedDeck';
 import { QueueItemCard } from './downloader/QueueItemCard';
 
 const MAX_PLAYLIST_ITEMS = 500;
@@ -43,7 +41,6 @@ export default function DownloaderView() {
   const [confirmation, setConfirmation] = useState<{ urls: string[]; infos: VideoInfo[]; totalItems: number } | null>(null);
   const [notice, setNotice] = useState<string>('');
   const [queueFilter, setQueueFilter] = useState<'all' | 'active' | 'failed' | 'completed'>('all');
-  const [mobileDeck, setMobileDeck] = useState<'setup' | 'queue'>('setup');
 
   useEffect(() => {
     if (!outputDir && settings.defaultOutputDir) {
@@ -88,7 +85,6 @@ export default function DownloaderView() {
     setUrlsInput('');
     setConfirmation(null);
     setNotice('');
-    setMobileDeck('queue');
   };
 
   const handleDownload = async () => {
@@ -161,320 +157,357 @@ export default function DownloaderView() {
 
   return (
     <div className="flex flex-col w-full h-full min-h-0">
-      {/* Mobile-only Segmented Deck Switcher */}
-      <div className="xl:hidden mb-3 flex-none">
-        <SegmentedDeck<'setup' | 'queue'>
-          options={[
-            { id: 'setup', label: 'Add Links', icon: Download },
-            { id: 'queue', label: 'Queue', icon: Target, count: queue.length },
-          ]}
-          activeId={mobileDeck}
-          onChange={setMobileDeck}
-        />
-      </div>
-
       <div className="flex-1 min-h-0 w-full">
         <PageLayout>
           {/* LEFT COLUMN: Input & Config */}
-          <Column className={mobileDeck === 'setup' ? 'flex' : 'hidden xl:flex'}>
-            <SectionHeader title="Download setup" />
-
-        <Panel className="flex-1 flex flex-col min-w-0">
-          <PanelScrollArea className="flex flex-col gap-5 pr-2">
-            {/* Target URL */}
-            <div className="space-y-2">
-              <FormLabel text="Media URL(s)" icon={Target} />
-              <textarea
-                value={urlsInput}
-                onChange={(e) => setUrlsInput(e.target.value)}
-                placeholder="Paste a video, playlist, or multiple links. Separate multiple links with spaces or newlines."
-                className="game-input min-h-[120px] py-3 resize-y w-full"
-              />
-              <div className="flex items-center justify-between text-[10px] font-mono px-1">
-                <span className="text-muted">
-                  Playlists and batches will be checked before they are added to the queue.
-                </span>
-                {settings.cookiesFilePath || settings.browserForCookies ? (
-                  <span className="text-toska font-bold flex items-center gap-1" title="Cookies configured in settings">
-                    <CheckCircle2 className="w-3 h-3" /> Authenticated mode
-                  </span>
-                ) : (
-                  <span className="text-muted opacity-70" title="No cookies configured in Settings">
-                    Public mode (No cookies)
-                  </span>
-                )}
+          <Column>
+            <div className="flex items-center justify-between px-1 select-none">
+              <div className="flex items-center gap-1.5">
+                <Download className="w-4 h-4 text-oshipink" />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-ink">Download Setup</span>
               </div>
             </div>
-            
-            {/* Format & Quality */}
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] gap-5">
-              <div className="min-w-0 flex flex-col">
-                <FormLabel text="Format" icon={FileVideo} iconColor="text-toska" />
-                <Tabs 
-                  options={[
-                    { value: 'mp4', label: 'MP4' },
-                    { value: 'mp3', label: 'MP3' },
-                    { value: 'video-only', label: 'Video only' }
-                  ]}
-                  value={format}
-                  onChange={(val) => { setPreset('custom'); setFormat(val as any); }}
-                />
-              </div>
 
-              <div className="min-w-0 flex flex-col">
-                {format !== 'mp3' ? (
-                  <>
-                    <FormLabel text="Video resolution" icon={FileVideo} iconColor="text-toska" />
-                    <OptionGrid
-                      options={VIDEO_QUALITY_OPTIONS}
-                      value={settings.defaultVideoQuality}
-                      onChange={(val) => { setPreset('custom'); updateSettings({ defaultVideoQuality: val as VideoQuality }); }}
-                      ariaLabel="Video resolution"
+            <Panel className="flex-1 flex flex-col min-w-0">
+              <PanelScrollArea className="flex flex-col gap-4">
+                {/* Target URL */}
+                <div className="space-y-1.5">
+                  <FormLabel text="Media URL(s)" icon={Target} />
+                  <textarea
+                    value={urlsInput}
+                    onChange={(e) => setUrlsInput(e.target.value)}
+                    placeholder="Paste YouTube, TikTok, X, Twitch, or media links (separated by spaces or newlines)..."
+                    className="game-input !h-auto min-h-[110px] py-2.5 resize-y w-full text-xs font-mono"
+                  />
+                </div>
+                
+                {/* 2x2 Unified Media Controls Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Row 1, Col 1: Format */}
+                  <div className="min-w-0 flex flex-col">
+                    <FormLabel text="Format" icon={FileVideo} iconColor="text-toska" />
+                    <Tabs 
+                      options={[
+                        { value: 'mp4', label: 'MP4' },
+                        { value: 'mp3', label: 'MP3' },
+                        { value: 'video-only', label: 'Video only' }
+                      ]}
+                      value={format}
+                      onChange={(val) => { setPreset('custom'); setFormat(val as any); }}
                     />
-                    <span className="text-[10px] font-mono text-muted mt-1 px-1">
-                      (Falls back to next best if unavailable)
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <FormLabel text="Audio bitrate" icon={Gauge} iconColor="text-toska" />
-                    <CustomSelect 
-                      options={[...AUDIO_BITRATE_OPTIONS]}
-                      value={settings.defaultAudioBitrate}
-                      onChange={(val) => { setPreset('custom'); updateSettings({ defaultAudioBitrate: val as AudioBitrate }); }}
-                      className="shrink-0"
-                    />
-                  </>
-                )}
-              </div>
-            </div>
+                  </div>
 
-            {/* Output Dir */}
-            <div className="space-y-2">
-              <FormLabel text="Quick preset" icon={Gauge} iconColor="text-toska" />
-              <select
-                value={preset}
-                onChange={(event) => applyPreset(event.target.value as DownloadPresetId | 'custom')}
-                className="game-select font-bold"
-                aria-label="Download preset"
-              >
-                <option value="custom">Custom</option>
-                {DOWNLOAD_PRESETS.map(option => (
-                  <option key={option.id} value={option.id}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-muted" />
-              <PathPicker 
-                value={outputDir} 
-                onChange={(path) => { setOutputDir(path); updateSettings({ defaultOutputDir: path }); }} 
-                placeholder="Select output folder..." 
-                directory={true}
-              />
-            </div>
-          </PanelScrollArea>
-            
-          {/* Action Buttons */}
-          <div className="pt-4 mt-4 border-t-4 border-appbg shrink-0">
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleDownload}
-              disabled={!urlsInput.trim() || !outputDir || isInspecting}
-              icon={Download}
-            >
-              {isInspecting ? 'Checking links...' : `Check links${urlsCount ? ` (${urlsCount})` : ''}`}
-            </Button>
-            {notice && (
-              <InlineNotice message={notice} tone="error" />
-            )}
-            {confirmation && (
-              <div className="mt-3 rounded-xl border-2 border-toska bg-softtoska p-3 text-ink">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="w-4 h-4 shrink-0 text-toska" />
-                  <div className="text-[11px] font-mono">
-                    <p className="font-black">Review download job</p>
-                    <p className="mt-1">
-                      This will add approximately {confirmation.totalItems} item(s) from {confirmation.urls.length} link(s).
-                    </p>
-                    {confirmation.infos.some(info => info.isPlaylist) && (
-                      <p className="mt-1 font-bold">
-                        Playlist detected. Its entries will be added individually.
-                      </p>
+                  {/* Row 1, Col 2: Resolution / Bitrate */}
+                  <div className="min-w-0 flex flex-col">
+                    {format !== 'mp3' ? (
+                      <>
+                        <FormLabel text="Video resolution" icon={Gauge} iconColor="text-toska" />
+                        <CustomSelect
+                          options={[...VIDEO_QUALITY_OPTIONS]}
+                          value={settings.defaultVideoQuality}
+                          onChange={(val) => { setPreset('custom'); updateSettings({ defaultVideoQuality: val as VideoQuality }); }}
+                          className="w-full shrink-0"
+                        />
+                      </>
+                    ) : (
+                      <>
+                        <FormLabel text="Audio bitrate" icon={Gauge} iconColor="text-toska" />
+                        <CustomSelect 
+                          options={[...AUDIO_BITRATE_OPTIONS]}
+                          value={settings.defaultAudioBitrate}
+                          onChange={(val) => { setPreset('custom'); updateSettings({ defaultAudioBitrate: val as AudioBitrate }); }}
+                          className="w-full shrink-0"
+                        />
+                      </>
                     )}
                   </div>
-                </div>
-                <div className="flex gap-2 mt-3">
-                  <Button
-                    variant="secondary"
-                    onClick={() => setConfirmation(null)}
-                    className="flex-1 h-9 text-[10px]"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => queueInspectedUrls(confirmation.urls, confirmation.infos)}
-                    className="flex-1 h-9 text-[10px]"
-                  >
-                    Queue downloads
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </Panel>
-      </Column>
 
-      {/* RIGHT COLUMN: Global Queue Status */}
-      <Column isSidebar className={mobileDeck === 'queue' ? 'flex' : 'hidden xl:flex'}>
-        <SectionHeader title="Active queue" align="right" variant="secondary" />
-
-        <Panel className="gap-3 bg-appbg h-[520px] xl:h-auto xl:min-h-0" noPadding>
-          <PanelHeader className="flex-col items-stretch gap-3">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-[10px] font-mono font-bold text-muted uppercase">Show queue</span>
-              <select
-                value={queueFilter}
-                onChange={(event) => setQueueFilter(event.target.value as typeof queueFilter)}
-                className="game-select h-8 py-1 text-[10px] font-bold"
-                aria-label="Filter download queue"
-              >
-                <option value="all">All</option>
-                <option value="active">Active</option>
-                <option value="failed">Failed / canceled</option>
-                <option value="completed">Completed</option>
-              </select>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-ink leading-none">{downloadingCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Active</span>
-              </div>
-              {totalCount > 0 && (
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[9px] font-mono font-bold text-muted uppercase">
-                    <span>Batch progress</span>
-                    <span>{finishedCount}/{totalCount} · {overallProgress}%</span>
+                  {/* Row 2, Col 1: Download preset */}
+                  <div className="min-w-0 flex flex-col">
+                    <FormLabel text="Download preset" icon={Gauge} iconColor="text-toska" />
+                    <CustomSelect
+                      options={[
+                        { value: 'custom', label: 'Custom settings' },
+                        ...DOWNLOAD_PRESETS.map((option) => ({ value: option.id, label: option.label }))
+                      ]}
+                      value={preset}
+                      onChange={(val) => applyPreset(val as DownloadPresetId | 'custom')}
+                      className="w-full shrink-0"
+                    />
                   </div>
-                  <ProgressBar percent={overallProgress} status={overallProgress === 100 ? 'done' : 'downloading'} />
-                </div>
-              )}
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-ink leading-none">{pendingCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Pending</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-toska leading-none">{completedCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Done</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-oshipink leading-none">{failedCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Failed</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-muted leading-none">{canceledCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Canceled</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <span className="text-xl font-black font-zen text-ink leading-none">{totalCount}</span>
-                <span className="text-[9px] font-mono font-bold text-muted uppercase tracking-widest mt-1">Total</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button
-                variant="danger"
-                onClick={cancelAllDownloads}
-                disabled={!hasActiveDownloads}
-                className="w-full px-3 py-1.5 h-auto text-xs font-zen font-black !rounded-xl"
-                aria-label="Cancel active and pending downloads"
-                title="Stops active downloads and prevents pending downloads from starting"
-              >
-                Cancel active
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={retryFailed}
-                disabled={failedCount === 0}
-                className="w-full px-3 py-1.5 h-auto text-xs font-zen font-black !rounded-xl"
-                aria-label={`Retry ${failedCount} failed downloads`}
-                title="Adds every failed item back to the queue using its original settings"
-              >
-                Retry failed
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => clearCompleted(['done', 'expanded'])}
-                disabled={!queue.some(q => q.status === 'done' || q.status === 'expanded')}
-                className="w-full px-3 py-1.5 h-auto text-xs font-zen font-black !rounded-xl"
-                aria-label="Clear completed downloads"
-                title="Removes completed downloads and playlist expansion records"
-              >
-                Clear completed
-              </Button>
-              <Button
-                variant="secondary"
-                onClick={() => clearCompleted(['error', 'canceled'])}
-                disabled={failedCount === 0 && canceledCount === 0}
-                className="w-full px-3 py-1.5 h-auto text-xs font-zen font-black !rounded-xl"
-                aria-label="Clear failed and canceled downloads"
-                title="Removes failed and canceled queue records"
-              >
-                Clear issues
-              </Button>
-            </div>
-            <span className="text-center text-[9px] font-mono text-muted">
-              Cancel stops active work and prevents pending items from starting.
-            </span>
-          </PanelHeader>
 
-          <PanelScrollArea className="flex flex-col gap-2 h-full p-2">
-            {isQueuePaused && (
-              <div className="rounded-xl border-2 border-oshipink bg-softpink p-3 text-ink shadow-game-thin animate-pulse">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 text-oshipink mt-0.5" />
-                    <div className="text-[11px] font-mono">
-                      <p className="font-bold text-oshipink uppercase tracking-wider">Queue Paused</p>
-                      <p className="mt-0.5 text-ink font-medium">{pauseReason || 'Rate limit detected. Queue paused to protect your IP.'}</p>
-                      <p className="mt-1 text-[10px] text-muted">Wait a few minutes, or attach a cookies file in Settings to continue.</p>
+                  {/* Row 2, Col 2: Output folder */}
+                  <div className="min-w-0 flex flex-col">
+                    <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-toska" />
+                    <PathPicker 
+                      value={outputDir} 
+                      onChange={(path) => { setOutputDir(path); updateSettings({ defaultOutputDir: path }); }} 
+                      placeholder="Select output folder..." 
+                      directory={true}
+                    />
+                  </div>
+                </div>
+              </PanelScrollArea>
+                
+              {/* Action Buttons */}
+              <div className="pt-3 mt-3 border-t-2 border-subtleborder shrink-0">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  onClick={handleDownload}
+                  disabled={!urlsInput.trim() || !outputDir || isInspecting}
+                  icon={Download}
+                >
+                  {isInspecting ? 'Inspecting links...' : `Check links${urlsCount ? ` (${urlsCount})` : ''}`}
+                </Button>
+                {notice && (
+                  <InlineNotice message={notice} tone="error" />
+                )}
+                {confirmation && (
+                  <div className="mt-3 rounded-xl border-2 border-toska bg-softtoska p-3 text-ink">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-toska" />
+                      <div className="text-[11px] font-mono">
+                        <p className="font-black">Review download job</p>
+                        <p className="mt-1">
+                          This will add approximately {confirmation.totalItems} item(s) from {confirmation.urls.length} link(s).
+                        </p>
+                        {confirmation.infos.some(info => info.isPlaylist) && (
+                          <p className="mt-1 font-bold">
+                            Playlist detected. Entries will be queued individually.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setConfirmation(null)}
+                        className="flex-1"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => queueInspectedUrls(confirmation.urls, confirmation.infos)}
+                        className="flex-1"
+                      >
+                        Queue downloads
+                      </Button>
                     </div>
                   </div>
-                  <Button
-                    variant="primary"
-                    onClick={resumeQueue}
-                    className="h-8 text-[10px] px-3 shrink-0"
-                  >
-                    Resume
-                  </Button>
-                </div>
+                )}
               </div>
-            )}
-            {visibleQueue.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center opacity-30 text-ink py-10">
-                <span className="font-zen font-bold text-lg">Queue is empty</span>
-                <span className="font-mono text-xs mt-1 text-center">
-                  {queue.length === 0 ? 'Add URLs to start downloading' : 'No items match this filter'}
+            </Panel>
+          </Column>
+
+          {/* RIGHT COLUMN: Global Queue Status */}
+          <Column isSidebar>
+            <div className="flex items-center justify-between px-1 select-none">
+              <div className="flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-toska" />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider text-ink">Active Queue</span>
+              </div>
+              {totalCount > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-panel border-2 border-subtleborder text-oshipink">
+                  {finishedCount}/{totalCount} done
                 </span>
-              </div>
-            ) : (
-              [...visibleQueue].reverse().map((item) => (
-                <QueueItemCard
-                  key={item.id}
-                  item={item}
-                  onCancel={cancelItem}
-                  onRetry={retryItem}
-                  onRemove={removeFromQueue}
-                />
-              ))
-            )}
-          </PanelScrollArea>
-        </Panel>
-      </Column>
-    </PageLayout>
+              )}
+            </div>
+
+            <Panel className="gap-3 bg-appbg flex-1 min-h-min xl:min-h-0" noPadding>
+              {totalCount > 0 ? (
+                <>
+                  <PanelHeader className="flex-col items-stretch gap-3">
+                    {/* Top Queue Filter and Counts */}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono font-bold text-muted uppercase">Filter:</span>
+                        <select
+                          value={queueFilter}
+                          onChange={(event) => setQueueFilter(event.target.value as typeof queueFilter)}
+                          className="game-select h-7 py-0.5 px-2 text-[10px] font-bold"
+                          aria-label="Filter download queue"
+                        >
+                          <option value="all">All items ({totalCount})</option>
+                          <option value="active">Active ({downloadingCount + pendingCount})</option>
+                          <option value="completed">Completed ({completedCount})</option>
+                          <option value="failed">Failed ({failedCount + canceledCount})</option>
+                        </select>
+                      </div>
+
+                      {/* Compact Metrics Row */}
+                      <div className="flex items-center gap-2 font-mono text-[10px] font-bold">
+                        {downloadingCount > 0 && (
+                          <span className="text-toska">{downloadingCount} act</span>
+                        )}
+                        {pendingCount > 0 && (
+                          <span className="text-ink">{pendingCount} pen</span>
+                        )}
+                        {completedCount > 0 && (
+                          <span className="text-toska">{completedCount} ok</span>
+                        )}
+                        {failedCount > 0 && (
+                          <span className="text-oshipink">{failedCount} err</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Batch Progress */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[9px] font-mono font-bold text-muted uppercase">
+                        <span>Batch progress</span>
+                        <span>{finishedCount}/{totalCount} · {overallProgress}%</span>
+                      </div>
+                      <ProgressBar percent={overallProgress} status={overallProgress === 100 ? 'done' : 'downloading'} />
+                    </div>
+
+                    {/* Batch Controls */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={cancelAllDownloads}
+                        disabled={!hasActiveDownloads}
+                        className="w-full"
+                        icon={XCircle}
+                        title="Stops active downloads and prevents pending downloads from starting"
+                      >
+                        Cancel active
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={retryFailed}
+                        disabled={failedCount === 0}
+                        className="w-full"
+                        icon={RotateCw}
+                        title="Retries failed items"
+                      >
+                        Retry failed
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => clearCompleted(['done', 'expanded'])}
+                        disabled={!queue.some(q => q.status === 'done' || q.status === 'expanded')}
+                        className="w-full"
+                        icon={Check}
+                        title="Removes completed downloads"
+                      >
+                        Clear finished
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => clearCompleted(['error', 'canceled'])}
+                        disabled={failedCount === 0 && canceledCount === 0}
+                        className="w-full"
+                        icon={Trash2}
+                        title="Removes failed and canceled queue records"
+                      >
+                        Clear issues
+                      </Button>
+                    </div>
+                  </PanelHeader>
+
+                  <PanelScrollArea className="flex flex-col gap-2 h-full p-2.5">
+                    {isQueuePaused && (
+                      <div className="rounded-xl border-2 border-oshipink bg-softpink p-3 text-ink shadow-game-thin animate-pulse">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 shrink-0 text-oshipink mt-0.5" />
+                            <div className="text-[11px] font-mono">
+                              <p className="font-bold text-oshipink uppercase tracking-wider">Queue Paused</p>
+                              <p className="mt-0.5 text-ink font-medium">{pauseReason || 'Rate limit detected. Queue paused to protect your IP.'}</p>
+                              <p className="mt-1 text-[10px] text-muted">Wait a few minutes, or attach cookies in Settings to resume.</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="primary"
+                            onClick={resumeQueue}
+                            className="h-8 text-[10px] px-3 shrink-0"
+                          >
+                            Resume
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    {visibleQueue.length === 0 ? (
+                      <div className="flex-1 flex flex-col items-center justify-center opacity-40 text-ink py-10">
+                        <span className="font-zen font-bold text-sm">No items match this filter</span>
+                        <span className="font-mono text-[10px] mt-1">Switch filter to 'All items' to view the queue.</span>
+                      </div>
+                    ) : (
+                      [...visibleQueue].reverse().map((item) => (
+                        <QueueItemCard
+                          key={item.id}
+                          item={item}
+                          onCancel={cancelItem}
+                          onRetry={retryItem}
+                          onRemove={removeFromQueue}
+                        />
+                      ))
+                    )}
+                  </PanelScrollArea>
+                </>
+              ) : (
+                /* Information & Quick Reference Panel when Queue is Idle */
+                <div className="flex flex-col h-full p-4 sm:p-5 justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-xl bg-panel border-2 border-subtleborder flex items-center justify-center text-toska shrink-0">
+                        <Globe className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="font-zen font-bold text-xs text-ink">Supported Platforms</h4>
+                        <p className="font-mono text-[10px] text-muted">Powered by yt-dlp media engine</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-4">
+                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
+                        <span className="block font-zen font-bold text-[11px] text-ink">YouTube</span>
+                        <span className="block font-mono text-[9px] text-muted">Videos & Playlists</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
+                        <span className="block font-zen font-bold text-[11px] text-ink">TikTok</span>
+                        <span className="block font-mono text-[9px] text-muted">Direct media</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
+                        <span className="block font-zen font-bold text-[11px] text-ink">Twitter / X</span>
+                        <span className="block font-mono text-[9px] text-muted">HD Video clips</span>
+                      </div>
+                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
+                        <span className="block font-zen font-bold text-[11px] text-ink">Twitch</span>
+                        <span className="block font-mono text-[9px] text-muted">Clips & VODs</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-panel border border-subtleborder space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-toska text-[11px] font-mono font-bold">
+                        <ShieldCheck className="w-3.5 h-3.5" />
+                        <span>Ready to download</span>
+                      </div>
+                      <p className="font-mono text-[10px] text-muted leading-relaxed">
+                        Paste any link on the left and click <strong className="text-ink">Check links</strong>. Real-time download progress, bitrate, and status will appear right here.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-subtleborder flex items-center justify-between text-[10px] font-mono text-muted">
+                    <span>Queue status: Idle</span>
+                    <span>0 items</span>
+                  </div>
+                </div>
+              )}
+            </Panel>
+          </Column>
+        </PageLayout>
       </div>
     </div>
   );

@@ -3,7 +3,8 @@ import { LucideIcon } from 'lucide-react';
 
 /**
  * PageLayout: The main container for a view. 
- * Forces the view to take up the remaining height and handles the column gap.
+ * On desktop (xl:), it creates a balanced two-column side-by-side workspace.
+ * On mobile/tablet (< xl), it creates a clean, natural single-column scrolling page.
  */
 export function PageLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,8 +15,8 @@ export function PageLayout({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Column: A vertical flex container for side-by-side layouts.
- * Use `isSidebar` for the smaller right-hand column.
+ * Column: A vertical flex container for layouts.
+ * Use `isSidebar` for the secondary right-hand column (queue, results, logs).
  */
 export function Column({ 
   children, 
@@ -26,23 +27,21 @@ export function Column({
   isSidebar?: boolean;
   className?: string;
 }) {
-  const baseClass = "flex flex-col gap-4 min-h-0";
   const sizeClass = isSidebar
-    ? "w-full xl:w-[34%] xl:min-w-[360px] xl:max-w-[480px] xl:h-full shrink-0"
+    ? "w-full xl:w-[36%] xl:min-w-[340px] xl:max-w-[460px] xl:h-full shrink-0"
     : "w-full xl:flex-1 xl:h-full min-w-0";
   return (
-    <div className={`${baseClass} ${sizeClass} ${className}`}>
+    <div className={`flex flex-col gap-3 min-h-min xl:min-h-0 ${sizeClass} ${className}`}>
       {children}
     </div>
   );
 }
 
 /**
- * SectionHeader: The dynamic skewed header `>> TITLE`.
+ * SectionHeader: Legacy skewed header kept for backward compatibility.
  */
 export function SectionHeader({ 
   title, 
-  icon: _Icon,
   align = 'left',
   variant = 'primary'
 }: { 
@@ -54,13 +53,13 @@ export function SectionHeader({
   const alignClass = align === 'left' ? 'self-start' : 'self-end';
   
   const boxClass = variant === 'primary' 
-    ? 'text-inkinverse bg-ink border-4 border-gameborder'
-    : 'bg-panel border-4 text-ink border-gameborder';
+    ? 'text-inkinverse bg-ink border-2 border-subtleborder'
+    : 'bg-panel border-2 text-ink border-subtleborder';
 
   return (
-    <div className={`${alignClass} inline-block shrink-0`}>
-      <div className={`inline-block px-5 py-1.5 rounded-xl shadow-game-thin ${boxClass}`}>
-        <h2 className="font-mono text-base font-black tracking-widest">
+    <div className={`${alignClass} inline-block shrink-0 mb-1`}>
+      <div className={`inline-block px-4 py-1 rounded-xl shadow-game-thin ${boxClass}`}>
+        <h2 className="font-mono text-xs font-black tracking-wider uppercase">
           {title.replace(/_/g, ' ')}
         </h2>
       </div>
@@ -69,8 +68,7 @@ export function SectionHeader({
 }
 
 /**
- * Panel: The main white box with thick borders and shadows.
- * Using `flex flex-col min-h-0` ensures inner contents can scroll if needed.
+ * Panel: Clean workstation surface with subtle borders and arcade drop shadow.
  */
 export function Panel({ 
   children, 
@@ -82,18 +80,18 @@ export function Panel({
   noPadding?: boolean;
 }) {
   return (
-    <div className={`bg-panel border-4 border-gameborder rounded-3xl shadow-game-thick flex flex-col min-h-0 ${noPadding ? '' : 'p-5'} ${className}`}>
+    <div className={`bg-panel border-2 border-subtleborder rounded-2xl shadow-game-thin flex flex-col min-h-min xl:min-h-0 ${noPadding ? '' : 'p-4 sm:p-5'} ${className}`}>
       {children}
     </div>
   );
 }
 
 /**
- * PanelScrollArea: A designated area inside a panel that handles scrolling.
+ * PanelScrollArea: Handles natural vertical flow on mobile, and internal scrolling on desktop.
  */
 export function PanelScrollArea({ children, className = '' }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={`flex-1 overflow-y-auto custom-scrollbar min-h-0 pr-2 ${className}`}>
+    <div className={`flex-1 min-h-min xl:min-h-0 xl:overflow-y-auto custom-scrollbar pr-1.5 ${className}`}>
       {children}
     </div>
   );
@@ -104,7 +102,7 @@ export function PanelScrollArea({ children, className = '' }: { children: React.
  */
 export function PanelHeader({ children, className = '' }: { children: React.ReactNode, className?: string }) {
   return (
-    <div className={`p-3 border-b-4 border-gameborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between ${className}`}>
+    <div className={`p-3.5 border-b-2 border-subtleborder bg-panel rounded-t-2xl shrink-0 flex items-center justify-between ${className}`}>
       {children}
     </div>
   );
@@ -116,16 +114,16 @@ export function PanelHeader({ children, className = '' }: { children: React.Reac
 export function FormLabel({ 
   text, 
   icon: Icon,
-  iconColor = 'text-oshipink'
+  iconColor = 'text-toska'
 }: { 
   text: string;
   icon?: LucideIcon;
   iconColor?: string;
 }) {
   return (
-    <label className="flex items-center gap-2 mb-2 font-mono text-sm font-black text-ink">
-      {Icon && <Icon className={`w-4 h-4 ${iconColor}`} />}
-      {text}
+    <label className="flex items-center gap-1.5 mb-1.5 font-mono text-xs font-bold text-ink">
+      {Icon && <Icon className={`w-3.5 h-3.5 ${iconColor} shrink-0`} />}
+      <span>{text}</span>
     </label>
   );
 }

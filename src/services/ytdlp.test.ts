@@ -207,7 +207,7 @@ describe('YtDlpService', () => {
     expect(info.entries?.[1].url).toBe('https://example.com/watch?v=track789012');
   });
 
-  it('downloads companion thumbnail and embeds cover art across mp4, mp3, and video-only', async () => {
+  it('embeds cover art without writing standalone thumbnail files to disk across mp4, mp3, and video-only', async () => {
     execute.mockResolvedValue({
       code: 0,
       stdout: '',
@@ -226,7 +226,7 @@ describe('YtDlpService', () => {
       const args = calls[0][1];
 
       expect(args).toContain('--embed-thumbnail');
-      expect(args).toContain('--write-thumbnail');
+      expect(args).not.toContain('--write-thumbnail');
       expect(args).toContain('--convert-thumbnails');
       const convIdx = args.indexOf('--convert-thumbnails');
       expect(args[convIdx + 1]).toBe('jpg');

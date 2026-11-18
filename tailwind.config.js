@@ -11,6 +11,8 @@ export default {
         appbg: 'var(--color-appbg)',
         panel: 'var(--color-panel)',
         gameborder: 'var(--color-gameborder)',
+        subtleborder: 'var(--color-subtleborder)',
+        strongborder: 'var(--color-strongborder)',
         ink: 'var(--color-ink)',
         inkinverse: 'var(--color-inkinverse)',
         buttontext: 'var(--color-buttontext)',
@@ -19,6 +21,11 @@ export default {
         toska: 'var(--color-toska)',
         softpink: 'var(--color-softpink)',
         softtoska: 'var(--color-softtoska)',
+      },
+      borderColor: {
+        gameborder: 'var(--color-gameborder)',
+        subtleborder: 'var(--color-subtleborder)',
+        strongborder: 'var(--color-strongborder)',
       },
       fontFamily: {
         zen: ['"Zen Maru Gothic"', 'sans-serif'],

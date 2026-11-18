@@ -18,14 +18,14 @@ export function CustomSelect({ options, value, onChange, className = '' }: Custo
 
   return (
     <Listbox value={value} onChange={onChange}>
-      <div className={`relative ${className}`}>
-        <ListboxButton className="relative w-full cursor-pointer h-12 bg-appbg border-4 border-gameborder rounded-2xl pl-4 pr-10 text-left shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:outline-none focus-visible:ring-2 focus-visible:ring-oshipink focus-visible:border-oshipink flex items-center transition-all hover:brightness-95">
-          <span className="block truncate font-zen font-bold text-ink text-sm">
+      <div className={`relative h-10 ${className}`}>
+        <ListboxButton className="relative w-full cursor-pointer h-10 bg-panel border-2 border-subtleborder hover:border-gameborder rounded-xl pl-3 pr-8 text-left shadow-none focus:outline-none focus-visible:ring-1 focus-visible:ring-oshipink focus-visible:border-oshipink flex items-center transition-colors box-border">
+          <span className="block truncate font-zen font-bold text-ink text-xs">
             {selectedOption?.label}
           </span>
-          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3">
+          <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2.5">
             <ChevronDown
-              className="h-5 w-5 text-muted transition-transform duration-200 ui-open:rotate-180"
+              className="h-4 w-4 text-muted transition-transform duration-200 ui-open:rotate-180"
               aria-hidden="true"
             />
           </span>
@@ -38,11 +38,11 @@ export function CustomSelect({ options, value, onChange, className = '' }: Custo
           leaveFrom="transform scale-100 opacity-100"
           leaveTo="transform scale-95 opacity-0"
         >
-          <ListboxOptions className="absolute z-50 mt-2 max-h-60 w-full overflow-auto rounded-2xl border-4 border-gameborder bg-panel py-1 text-base shadow-[4px_4px_0px_0px_rgba(0,0,0,0.1)] focus:outline-none sm:text-sm custom-scrollbar">
+          <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border-2 border-gameborder bg-panel py-1 text-xs shadow-lg focus:outline-none custom-scrollbar">
             {options.map((option, idx) => (
               <ListboxOption
                 key={idx}
-                className="relative cursor-pointer select-none py-2.5 pl-10 pr-4 font-zen font-bold text-ink hover:bg-black/5 data-[focus]:bg-oshipink data-[focus]:text-buttontext transition-colors"
+                className="relative cursor-pointer select-none py-2 pl-8 pr-3 font-zen font-bold text-ink hover:bg-black/5 dark:hover:bg-white/5 data-[focus]:bg-oshipink data-[focus]:text-buttontext transition-colors"
                 value={option.value}
               >
                 {({ selected }) => (
@@ -51,8 +51,8 @@ export function CustomSelect({ options, value, onChange, className = '' }: Custo
                       {option.label}
                     </span>
                     {selected ? (
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-current">
-                        <Check className="h-4 w-4" aria-hidden="true" />
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-current">
+                        <Check className="h-3.5 w-3.5" aria-hidden="true" />
                       </span>
                     ) : null}
                   </>

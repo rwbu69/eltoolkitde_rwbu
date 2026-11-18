@@ -53,17 +53,36 @@ function targetName(name) {
 }
 
 function copyExecutable(source, destination) {
-    if (!fs.existsSync(destination)) {
+    if (!source || !fs.existsSync(source)) {
+        throw new Error(`Source executable not found: ${source}`);
+    }
+    const destExists = fs.existsSync(destination) && fs.statSync(destination).size > 0;
+    if (!destExists) {
         fs.copyFileSync(source, destination);
-        fs.chmodSync(destination, 0o755);
+        try {
+            fs.chmodSync(destination, 0o755);
+        } catch {
+            // ignore chmod on platforms where it's not supported
+        }
         console.log(`[OK] Copied ${path.basename(destination)}`);
     } else {
         console.log(`[SKIP] ${path.basename(destination)} already exists`);
     }
 }
 
+const ffprobeMap = {
+    'x86_64-pc-windows-msvc': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'win32', 'x64', 'ffprobe.exe'),
+    'x86_64-unknown-linux-gnu': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'linux', 'x64', 'ffprobe'),
+    'x86_64-apple-darwin': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'darwin', 'x64', 'ffprobe'),
+    'aarch64-apple-darwin': path.join(__dirname, '..', 'node_modules', 'ffprobe-static', 'bin', 'darwin', 'arm64', 'ffprobe'),
+};
+
+const ffprobeSource = (ffprobeMap[target] && fs.existsSync(ffprobeMap[target]))
+    ? ffprobeMap[target]
+    : (ffprobeStatic && ffprobeStatic.path ? ffprobeStatic.path : null);
+
 copyExecutable(ffmpegStatic, path.join(binDir, targetName('ffmpeg')));
-copyExecutable(ffprobeStatic.path, path.join(binDir, targetName('ffprobe')));
+copyExecutable(ffprobeSource, path.join(binDir, targetName('ffprobe')));
 
 function downloadFile(url, destination) {
     if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {

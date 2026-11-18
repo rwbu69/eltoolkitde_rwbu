@@ -9,6 +9,8 @@
     --color-appbg: #eff1f5;
     --color-panel: #ffffff;
     --color-gameborder: #4c4f69;
+    --color-subtleborder: rgba(76, 79, 105, 0.18);
+    --color-strongborder: rgba(76, 79, 105, 0.35);
     --color-ink: #4c4f69;
     --color-inkinverse: #ffffff;
     --color-muted: #62657a;
@@ -37,7 +39,9 @@
   .dark {
     --color-appbg: #1e1e2e;
     --color-panel: #181825;
-    --color-gameborder: #11111b;
+    --color-gameborder: #313244;
+    --color-subtleborder: rgba(205, 214, 244, 0.12);
+    --color-strongborder: rgba(205, 214, 244, 0.25);
     --color-ink: #cdd6f4;
     --color-inkinverse: #1e1e2e;
     --color-muted: #a6adc8;
@@ -48,6 +52,10 @@
     --color-gameshadow: #11111b;
     --color-buttontext: #1e1e2e;
     --kh-control-shadow: 2px 2px 0 var(--color-gameshadow);
+  }
+
+  *, ::before, ::after {
+    border-color: var(--color-subtleborder);
   }
 
   html, body, #root {
@@ -64,34 +72,31 @@
 @layer components {
   /* THE ARCADE BUTTON PHYSICS */
   .game-btn-primary {
-    @apply bg-oshipink text-buttontext rounded-2xl border-[3px] border-gameborder shadow-game-thin transition-all duration-150 font-zen;
+    @apply bg-oshipink text-buttontext rounded-xl border-2 border-gameborder shadow-none transition-all duration-150 font-zen font-bold hover:brightness-105 active:translate-y-[1px];
   }
-  .game-btn-primary:active {
-    @apply translate-y-[3px] shadow-none;
-  }
-  
   .game-btn-primary:disabled {
-    @apply opacity-50 cursor-not-allowed active:translate-y-0 active:shadow-game-thin;
+    @apply opacity-50 cursor-not-allowed active:translate-y-0 hover:brightness-100;
   }
 
   .game-btn-secondary {
-    @apply bg-panel text-ink rounded-xl border-[3px] border-gameborder shadow-[2px_2px_0px_0px_rgba(76,79,105,0.35)] transition-all duration-150 font-zen font-bold;
-  }
-  .game-btn-secondary:active {
-    @apply translate-y-[2px] shadow-none;
+    @apply bg-panel text-ink rounded-xl border-2 shadow-none transition-all duration-150 font-zen font-bold hover:border-gameborder hover:bg-appbg active:translate-y-[1px] box-border;
+    border-color: var(--color-subtleborder);
   }
   .game-btn-secondary:disabled {
-    @apply opacity-50 cursor-not-allowed active:translate-y-0 active:shadow-[2px_2px_0px_0px_rgba(76,79,105,0.35)];
+    @apply opacity-50 cursor-not-allowed active:translate-y-0 hover:bg-panel;
+    border-color: var(--color-subtleborder);
   }
 
   /* Game Input Field */
   .game-input {
-    @apply w-full bg-panel border-4 border-gameborder rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors placeholder:text-muted;
+    @apply w-full h-10 bg-panel border-2 rounded-xl px-3 py-2 font-mono text-xs text-ink outline-none focus:border-oshipink transition-colors placeholder:text-muted box-border;
+    border-color: var(--color-subtleborder);
   }
   
   /* Select Input */
   .game-select {
-    @apply w-full bg-panel border-4 border-gameborder rounded-2xl px-4 py-3 font-mono text-sm text-ink outline-none shadow-[inset_0_4px_0_0_rgba(165,151,176,0.1)] focus:border-oshipink transition-colors appearance-none cursor-pointer;
+    @apply w-full h-10 bg-panel border-2 rounded-xl px-3 py-2 font-mono text-xs text-ink outline-none focus:border-oshipink transition-colors appearance-none cursor-pointer box-border;
+    border-color: var(--color-subtleborder);
   }
 
   .kh-control-md,
@@ -215,9 +220,24 @@
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-muted);
+  background: var(--color-strongborder);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-ink);
+  background: var(--color-muted);
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-strongborder) transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-strongborder);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
 }

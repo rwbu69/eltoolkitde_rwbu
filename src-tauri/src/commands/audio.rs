@@ -309,3 +309,167 @@ pub async fn detect_audio_bpm(
     .await
     .map_err(|e| format!("Task join error: {e}"))?
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WaveformDataDto {
+    pub peaks: Vec<f32>,
+    pub duration_seconds: f64,
+}
+
+#[tauri::command]
+pub async fn get_audio_waveform(
+    path: String,
+    target_peaks: Option<usize>,
+) -> Result<WaveformDataDto, String> {
+    tokio::task::spawn_blocking(move || {
+        use std::fs::File;
+        use std::path::Path;
+        use symphonia::core::audio::SampleBuffer;
+        use symphonia::core::codecs::DecoderOptions;
+        use symphonia::core::formats::FormatOptions;
+        use symphonia::core::io::MediaSourceStream;
+        use symphonia::core::meta::MetadataOptions;
+        use symphonia::core::probe::Hint;
+
+        let target_buckets = target_peaks.unwrap_or(800).clamp(100, 3000);
+
+        let file = File::open(Path::new(&path))
+            .map_err(|e| format!("Failed to open file: {e}"))?;
+        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+
+        let mut hint = Hint::new();
+        if let Some(ext) = Path::new(&path).extension().and_then(|s| s.to_str()) {
+            hint.with_extension(ext);
+        }
+
+        let probed = symphonia::default::get_probe()
+            .format(
+                &hint,
+                mss,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+            .map_err(|e| format!("Unsupported format: {e}"))?;
+
+        let mut format = probed.format;
+        let track = format.default_track().ok_or("No default audio track")?;
+        let track_id = track.id;
+        let sample_rate = track.codec_params.sample_rate.unwrap_or(44100) as f64;
+        let n_frames = track.codec_params.n_frames;
+        let codec_params = track.codec_params.clone();
+
+        let mut decoder = symphonia::default::get_codecs()
+            .make(&codec_params, &DecoderOptions::default())
+            .map_err(|e| format!("Codec unsupported: {e}"))?;
+
+        // Streaming micro-chunk downsampling to keep RAM footprint < 4MB
+        const MICRO_CHUNK: usize = 256;
+        let mut micro_min = 0.0f32;
+        let mut micro_max = 0.0f32;
+        let mut micro_count = 0;
+        let mut intermediate_peaks: Vec<f32> = Vec::new();
+        let mut total_samples: usize = 0;
+
+        loop {
+            let packet = match format.next_packet() {
+                Ok(packet) => packet,
+                Err(symphonia::core::errors::Error::IoError(ref e))
+                    if e.kind() == std::io::ErrorKind::UnexpectedEof =>
+                {
+                    break;
+                }
+                Err(_) => break,
+            };
+
+            if packet.track_id() != track_id {
+                continue;
+            }
+
+            let decoded = match decoder.decode(&packet) {
+                Ok(decoded) => decoded,
+                Err(_) => continue,
+            };
+
+            let spec = *decoded.spec();
+            let mut sample_buf = SampleBuffer::<f32>::new(decoded.capacity() as u64, spec);
+            sample_buf.copy_interleaved_ref(decoded);
+            let samples = sample_buf.samples();
+            let channels = spec.channels.count().max(1);
+
+            for frame in samples.chunks(channels) {
+                let mono = frame.iter().sum::<f32>() / (channels as f32);
+                if mono < micro_min {
+                    micro_min = mono;
+                }
+                if mono > micro_max {
+                    micro_max = mono;
+                }
+                micro_count += 1;
+                total_samples += 1;
+
+                if micro_count >= MICRO_CHUNK {
+                    intermediate_peaks.push(micro_min);
+                    intermediate_peaks.push(micro_max);
+                    micro_min = 0.0;
+                    micro_max = 0.0;
+                    micro_count = 0;
+                }
+            }
+        }
+
+        if micro_count > 0 {
+            intermediate_peaks.push(micro_min);
+            intermediate_peaks.push(micro_max);
+        }
+
+        if total_samples == 0 || intermediate_peaks.is_empty() {
+            return Err("No audio samples could be decoded".to_string());
+        }
+
+        let duration_seconds = if let Some(frames) = n_frames {
+            if frames > 0 {
+                frames as f64 / sample_rate
+            } else {
+                total_samples as f64 / sample_rate
+            }
+        } else {
+            total_samples as f64 / sample_rate
+        };
+
+        // Resample intermediate_peaks into target_buckets * 2
+        let pairs_count = intermediate_peaks.len() / 2;
+        let mut final_peaks = Vec::with_capacity(target_buckets * 2);
+
+        if pairs_count <= target_buckets {
+            final_peaks.extend_from_slice(&intermediate_peaks);
+        } else {
+            let chunk_size = pairs_count as f64 / target_buckets as f64;
+            for i in 0..target_buckets {
+                let start_idx = (i as f64 * chunk_size).floor() as usize;
+                let end_idx = (((i + 1) as f64 * chunk_size).ceil() as usize).min(pairs_count);
+
+                let mut b_min = 0.0f32;
+                let mut b_max = 0.0f32;
+                for p in start_idx..end_idx {
+                    let min_val = intermediate_peaks[p * 2];
+                    let max_val = intermediate_peaks[p * 2 + 1];
+                    if min_val < b_min {
+                        b_min = min_val;
+                    }
+                    if max_val > b_max {
+                        b_max = max_val;
+                    }
+                }
+                final_peaks.push(b_min);
+                final_peaks.push(b_max);
+            }
+        }
+
+        Ok(WaveformDataDto {
+            peaks: final_peaks,
+            duration_seconds,
+        })
+    })
+    .await
+    .map_err(|e| format!("Task join error: {e}"))?
+}

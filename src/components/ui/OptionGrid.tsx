@@ -34,7 +34,7 @@ export function OptionGrid<T extends string>({
             className={`h-10 rounded-lg border-2 px-2 font-zen text-xs font-bold transition-all duration-150 ${
               selected
                 ? 'bg-oshipink text-buttontext border-oshipink shadow-[0_2px_0_0_rgba(76,79,105,0.45)]'
-                : 'bg-panel text-ink border-gameborder/60 hover:border-gameborder hover:bg-appbg'
+                : 'bg-panel text-ink border-subtleborder hover:border-gameborder hover:bg-appbg'
             }`}
           >
             {option.label}

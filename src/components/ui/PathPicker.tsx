@@ -32,22 +32,24 @@ export function PathPicker({
   };
 
   return (
-    <div className={`flex gap-2 ${compact ? 'min-w-0' : ''}`}>
+    <div className={`flex gap-2 items-center h-10 ${compact ? 'min-w-0' : 'w-full'}`}>
       <Input
         type="text"
         value={value}
         readOnly
         placeholder={placeholder}
         title={value || placeholder}
-        className={`flex-1 min-w-0 ${compact ? 'kh-input px-3' : ''}`}
+        className={`flex-1 min-w-0 h-10 box-border ${compact ? 'kh-input px-3' : ''}`}
       />
       <Button 
         onClick={handleSelect}
         variant="secondary"
-        className={`kh-control-md px-4 ${compact ? '' : 'h-[48px] !rounded-2xl'}`}
-        title="Select Path"
+        size="md"
+        className="h-10 w-10 !px-0 flex items-center justify-center shrink-0 rounded-xl box-border"
+        title={directory ? "Select Directory" : "Select File"}
+        aria-label={directory ? "Select Directory" : "Select File"}
       >
-        <FolderOpen className="w-5 h-5" />
+        <FolderOpen className="w-4 h-4 text-muted hover:text-ink" />
       </Button>
     </div>
   );

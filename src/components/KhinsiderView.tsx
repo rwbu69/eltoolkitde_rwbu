@@ -7,7 +7,7 @@ import { KhinsiderService, KHINSIDER_HOME, type KhinsiderAlbum, type KhinsiderPa
 import { useAppStore } from '../store/useAppStore';
 import { Button } from './ui/Button';
 import { InlineNotice } from './ui/InlineNotice';
-import { PageLayout, Panel, PanelScrollArea, SectionHeader } from './ui/Layout';
+import { PageLayout, Panel, PanelScrollArea } from './ui/Layout';
 import { showToast } from './ui/Toast';
 import { PathPicker } from './ui/PathPicker';
 
@@ -261,28 +261,30 @@ export default function KhinsiderView() {
 
   return (
     <PageLayout>
-      <div className="flex flex-col w-full min-h-0 gap-4">
-        <SectionHeader title="Khinsider browser" />
+      <div className="flex flex-col w-full min-h-0 gap-3">
         <Panel className="flex-1 min-h-0">
           <div className="flex flex-col h-full min-h-0 gap-4">
-            <form onSubmit={submitSearch} className="flex gap-2 shrink-0">
-              <input
-                className="game-input kh-input"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search game, album, or artist..."
-                aria-label="Search Khinsider"
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                icon={Search}
-                disabled={!query.trim()}
-                aria-label="Search Khinsider"
-                title="Search Khinsider"
-                className="kh-control-md w-[48px] px-0"
-              />
-            </form>
+            {!album && (
+              <form onSubmit={submitSearch} className="flex gap-2 shrink-0">
+                <input
+                  className="game-input kh-input h-10 text-xs"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Search game, album, or artist..."
+                  aria-label="Search Khinsider"
+                />
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  icon={Search}
+                  disabled={!query.trim()}
+                  aria-label="Search Khinsider"
+                  title="Search Khinsider"
+                  className="h-10 w-10 !px-0"
+                />
+              </form>
+            )}
 
             {error && !album && (
               <Button
@@ -298,7 +300,7 @@ export default function KhinsiderView() {
               </div>
             ) : album ? (
               <PanelScrollArea>
-                <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-gameborder">
+                <div className="flex items-center justify-between gap-3 pb-3 border-b-2 border-subtleborder">
                   <Button
                     icon={ArrowLeft}
                     onClick={() => setAlbum(null)}

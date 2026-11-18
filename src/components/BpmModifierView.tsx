@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress, BpmOutputFormat } from '../services/bpm';
-import { FileAudio, PlayCircle, FolderOpen, Search, Edit3, AlertTriangle } from 'lucide-react';
-import { PageLayout, Column, SectionHeader, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
+import { FileAudio, PlayCircle, FolderOpen, Search, Edit3, AlertTriangle, Activity } from 'lucide-react';
+import { PageLayout, Column, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
 import { PathPicker } from './ui/PathPicker';
 import { Input } from './ui/Input';
 import { ProgressBar } from './ui/ProgressBar';
-import { EmptyState } from './ui/EmptyState';
 import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
 import { showToast } from './ui/Toast';
@@ -61,8 +60,6 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     }
   };
 
-  // handleSelectOutput removed, using PathPicker
-
   const handleDetect = async () => {
     if (selectedFiles.length === 0) return;
     setIsDetecting(true);
@@ -89,7 +86,6 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
         });
       }, () => cancelRequested.current);
 
-      // Update selectedFiles with detected BPMs
       setSelectedFiles(prevFiles => {
         const newFiles = [...prevFiles];
         results.forEach(res => {
@@ -133,7 +129,6 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     setIsProcessing(true);
     cancelRequested.current = false;
     setNotice('');
-    // Keep detection progresses but start new ones for processing
     setProgresses([]);
     
     try {
@@ -158,76 +153,126 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
 
   const canDetect = selectedFiles.length > 0 && !isDetecting && !isProcessing;
   const canModify = selectedFiles.some(f => f.originalBPM !== undefined) && outputDir !== '' && targetBPM !== '' && !isDetecting && !isProcessing;
+  const detectedCount = selectedFiles.filter(f => f.originalBPM !== undefined).length;
 
   return (
     <PageLayout>
+      {/* LEFT COLUMN: Input & Step 1 / Step 2 */}
       <Column>
-        <SectionHeader title="BPM Modifier" />
+        <div className="flex items-center justify-between px-1 select-none">
+          <div className="flex items-center gap-1.5">
+            <Activity className="w-4 h-4 text-oshipink" />
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-ink">BPM Setup</span>
+          </div>
+          {selectedFiles.length > 0 && (
+            <span className="text-[10px] font-mono font-bold text-muted bg-panel border-2 border-subtleborder px-2 py-0.5 rounded-full">
+              {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
 
         <Panel className="flex-1 flex flex-col min-w-0">
-          <PanelScrollArea className="flex flex-col gap-4 pr-2">
+          <PanelScrollArea className="flex flex-col gap-4">
             
-            {/* Phase 1: Input & Detection */}
-            <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
-              <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-                1. Detect BPM
-              </h3>
+            {/* Step 1: Input & Detection */}
+            <div className="bg-appbg border border-subtleborder rounded-2xl p-3.5 sm:p-4 shrink-0 space-y-3">
+              <div className="flex items-center justify-between border-b border-subtleborder pb-1.5">
+                <h3 className="font-zen font-bold text-ink text-xs">
+                  1. Detect tempo
+                </h3>
+                {detectedCount > 0 && (
+                  <span className="text-[10px] font-mono font-bold text-toska">
+                    {detectedCount}/{selectedFiles.length} detected
+                  </span>
+                )}
+              </div>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <FormLabel text="Input files" icon={FileAudio} />
-                  <div className="flex gap-2">
+                  <FormLabel text="Audio files" icon={FileAudio} />
+                  <div className="flex gap-2 items-center">
                     <Input
                       type="text"
-                      value={selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : ''}
+                      value={selectedFiles.length > 0 ? `${selectedFiles.length} audio file(s) selected` : ''}
                       readOnly
                       placeholder="Select audio files..."
-                      className="bg-panel"
+                      className="bg-panel text-xs h-10 flex-1 min-w-0"
                     />
                     <Button 
                       onClick={handleSelectFiles}
                       variant="secondary"
-                      className="px-4 h-[48px] !rounded-2xl"
-                      title="Select Files"
+                      size="md"
+                      className="h-10 w-10 !px-0 flex items-center justify-center shrink-0 rounded-xl"
+                      title="Select Audio Files"
+                      aria-label="Select Audio Files"
                     >
-                      <FolderOpen className="w-5 h-5" />
+                      <FolderOpen className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
 
-                <div>
-                  <FormLabel text="Expected BPM range" />
-                  <select 
-                    value={bpmRange} 
-                    onChange={e => setBpmRange(e.target.value)}
-                    className="game-input bg-panel"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-muted mb-1">Expected genre range</label>
+                    <select 
+                      value={bpmRange} 
+                      onChange={e => setBpmRange(e.target.value)}
+                      className="game-select text-xs h-10 font-bold"
+                    >
+                      <option value="any">Any (No constraints)</option>
+                      <option value="70-150">70 - 150 BPM (Hip-Hop / House)</option>
+                      <option value="90-180">90 - 180 BPM (Pop / Bass)</option>
+                      <option value="120-200">120 - 200 BPM (DnB / Hardstyle)</option>
+                    </select>
+                  </div>
+                  
+                  <Button 
+                    onClick={handleDetect}
+                    disabled={!canDetect}
+                    variant="secondary"
+                    size="md"
+                    icon={Search}
+                    className="h-10 text-xs"
+                    fullWidth
                   >
-                    <option value="any">Any (No constraints)</option>
-                    <option value="70-150">70 - 150 BPM (Hip-Hop / House)</option>
-                    <option value="90-180">90 - 180 BPM (Pop / Bass)</option>
-                    <option value="120-200">120 - 200 BPM (DnB / Hardstyle)</option>
-                  </select>
+                    {isDetecting ? 'Analyzing tempo...' : 'Detect BPM'}
+                  </Button>
                 </div>
-                
-                <Button 
-                  onClick={handleDetect}
-                  disabled={!canDetect}
-                  variant="secondary"
-                  icon={Search}
-                  fullWidth
-                >
-                  {isDetecting ? 'Analyzing...' : 'Detect BPM'}
-                </Button>
               </div>
             </div>
 
-            {/* Phase 2: Modify */}
-            <div className="bg-appbg border-4 border-gameborder rounded-2xl p-4 shrink-0">
-              <h3 className="flex items-center gap-1.5 font-zen font-black text-ink mb-3 border-b-2 border-gameborder pb-1.5 text-base">
-                2. Modify tempo
+            {/* Step 2: Modify Tempo */}
+            <div className="bg-appbg border border-subtleborder rounded-2xl p-3.5 sm:p-4 shrink-0 space-y-3">
+              <h3 className="font-zen font-bold text-ink text-xs border-b border-subtleborder pb-1.5">
+                2. Adjust tempo
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-muted mb-1">Target BPM</label>
+                    <Input 
+                      type="number" 
+                      value={targetBPM} 
+                      onChange={e => setTargetBPM(e.target.value)} 
+                      className="bg-panel text-xs h-10" 
+                      placeholder="e.g. 128" 
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-mono font-bold text-muted mb-1">Output format</label>
+                    <select
+                      value={outputFormat}
+                      onChange={e => setOutputFormat(e.target.value as BpmOutputFormat)}
+                      className="game-select text-xs h-10 font-bold"
+                    >
+                      <option value="wav">WAV (Lossless)</option>
+                      <option value="mp3">MP3 (Compressed)</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <FormLabel text="Output folder" icon={FolderOpen} />
                   <PathPicker 
@@ -237,36 +282,13 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                     directory={true}
                   />
                 </div>
-
-                <div>
-                  <FormLabel text="Target BPM" />
-                  <Input 
-                    type="number" 
-                    value={targetBPM} 
-                    onChange={e => setTargetBPM(e.target.value)} 
-                    className="bg-panel" 
-                    placeholder="Enter desired unified BPM (e.g. 192)" 
-                  />
-                </div>
-
-                <div>
-                  <FormLabel text="Output format" />
-                  <select
-                    value={outputFormat}
-                    onChange={e => setOutputFormat(e.target.value as BpmOutputFormat)}
-                    className="game-input bg-panel"
-                  >
-                    <option value="wav">WAV (lossless)</option>
-                    <option value="mp3">MP3 (compressed)</option>
-                  </select>
-                </div>
               </div>
             </div>
 
           </PanelScrollArea>
 
           {/* Action Button */}
-          <div className="pt-3 mt-3 border-t-4 border-appbg shrink-0">
+          <div className="pt-3 mt-3 border-t-2 border-subtleborder shrink-0">
             <Button 
               onClick={() => {
                 if (isProcessing) {
@@ -278,6 +300,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
               }}
               disabled={!canModify && !isProcessing}
               variant="primary"
+              size="lg"
               icon={PlayCircle}
               fullWidth
             >
@@ -288,81 +311,93 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
         </Panel>
       </Column>
 
+      {/* RIGHT COLUMN: Results */}
       <Column isSidebar>
-        <SectionHeader title="Results" align="right" variant="secondary" />
-        <Panel className="bg-appbg" noPadding>
-          <PanelHeader>
-            <FormLabel text="Selected files" />
-          </PanelHeader>
-          <PanelScrollArea className="p-3">
-            {selectedFiles.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center opacity-50 space-y-2">
-                <EmptyState title="No files selected" description="Select files to begin" />
+        <div className="flex items-center justify-between px-1 select-none">
+          <div className="flex items-center gap-1.5">
+            <Search className="w-4 h-4 text-toska" />
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-ink">Analysis & Results</span>
+          </div>
+          {selectedFiles.length > 0 && (
+            <span className="text-[10px] font-mono font-bold text-muted bg-panel border-2 border-subtleborder px-2 py-0.5 rounded-full">
+              {detectedCount}/{selectedFiles.length} analyzed
+            </span>
+          )}
+        </div>
+
+        <Panel className="gap-3 bg-appbg flex-1 min-h-min xl:min-h-0" noPadding>
+          {selectedFiles.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center my-auto">
+              <div className="w-12 h-12 rounded-2xl border-2 border-subtleborder bg-panel flex items-center justify-center mb-3 text-muted/60 shadow-sm">
+                <Activity className="w-5 h-5" />
               </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {selectedFiles.map((fileObj, i) => {
-                  const fileName = fileObj.path.split('\\').pop() || fileObj.path.split('/').pop() || 'unknown';
-                  const prog = progresses.find(p => p.file === fileName);
-                  const isError = prog?.status === 'error';
-                  const isDone = prog?.status === 'done';
-                  
-                  return (
-                    <div key={i} className={`flex flex-col p-2.5 rounded-xl border-2 shrink-0 ${isError ? 'bg-softpink border-oshipink' : isDone && !isDetecting ? 'bg-softtoska border-toska' : 'bg-panel border-gameborder'}`}>
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="text-[10px] font-bold text-muted truncate pr-2">File</span>
-                        {prog && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded border border-gameborder/20">
-                            {prog.percent}%
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-xs font-mono font-bold text-ink truncate mb-2" title={fileName}>{fileName}</span>
-                      
-                      <div className="flex justify-between items-center mb-1">
-                        <span className={`text-[10px] font-bold ${fileObj.originalBPM ? 'text-toska' : 'text-ink/40'}`}>
-                          Detected BPM:
-                        </span>
-                        {fileObj.originalBPM !== undefined ? (
-                          <div className="flex items-center gap-2">
-                            {(fileObj.confidence === 'low' || fileObj.confidence === 'medium') && (
-                              <div title={`Confidence: ${fileObj.confidence.toUpperCase()}. Please verify the BPM.`}>
-                                <AlertTriangle className="w-3.5 h-3.5 text-oshipink" />
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1 bg-appbg px-1.5 py-0.5 rounded border border-gameborder/30 focus-within:border-toska transition-colors" title="Click to manually correct BPM drift">
-                              <input 
-                                type="number" 
-                                step="0.01"
-                                value={fileObj.originalBPM}
-                                onChange={(e) => handleManualBpmEdit(fileObj.path, e.target.value)}
-                                className="w-14 bg-transparent text-right font-mono text-xs text-ink font-bold outline-none"
-                              />
-                              <Edit3 className="w-3 h-3 text-muted" />
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] font-bold text-ink/40">---</span>
-                        )}
-                        {fileObj.candidates && fileObj.candidates.length > 1 && (
-                          <span className="text-[9px] text-muted">
-                            Candidates: {fileObj.candidates.slice(0, 3).map(candidate => `${candidate.toFixed(1)} BPM`).join(' / ')}
-                          </span>
-                        )}
-                      </div>
-                      
+              <span className="font-zen font-bold text-xs text-ink">No files selected</span>
+              <span className="font-mono text-[10px] text-muted max-w-[200px] mt-1 leading-relaxed">
+                Add audio tracks on the left and run Detect BPM to see tempo results.
+              </span>
+            </div>
+          ) : (
+            <PanelScrollArea className="flex flex-col gap-2 p-3">
+              {selectedFiles.map((fileObj, i) => {
+                const fileName = fileObj.path.split('\\').pop() || fileObj.path.split('/').pop() || 'unknown';
+                const prog = progresses.find(p => p.file === fileName);
+                const isError = prog?.status === 'error';
+                const isDone = prog?.status === 'done';
+                
+                return (
+                  <div key={i} className={`flex flex-col p-2.5 rounded-xl border transition-colors shrink-0 ${
+                    isError ? 'bg-softpink/40 border-oshipink/40' :
+                    isDone && !isDetecting ? 'bg-softtoska/30 border-toska/40' :
+                    'bg-panel border-subtleborder'
+                  }`}>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-[10px] font-mono font-bold text-muted truncate pr-2">File</span>
                       {prog && (
-                        <div className="mt-2 flex flex-col gap-1">
-                          <ProgressBar percent={prog.percent} status={prog.status} />
-                          {isError && <span className="text-[9px] font-bold text-oshipink text-right">{getStatusLabel('error')}</span>}
-                        </div>
+                        <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-appbg border border-subtleborder">
+                          {prog.percent}%
+                        </span>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </PanelScrollArea>
+                    <span className="text-xs font-mono font-bold text-ink truncate mb-2" title={fileName}>{fileName}</span>
+                    
+                    <div className="flex justify-between items-center">
+                      <span className={`text-[10px] font-mono font-bold ${fileObj.originalBPM ? 'text-toska' : 'text-muted'}`}>
+                        Detected BPM:
+                      </span>
+                      {fileObj.originalBPM !== undefined ? (
+                        <div className="flex items-center gap-1.5">
+                          {(fileObj.confidence === 'low' || fileObj.confidence === 'medium') && (
+                            <div title={`Confidence: ${fileObj.confidence.toUpperCase()}. Please verify the BPM.`}>
+                              <AlertTriangle className="w-3.5 h-3.5 text-oshipink" />
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1 bg-appbg px-1.5 py-0.5 rounded border border-subtleborder focus-within:border-toska transition-colors" title="Click to manually edit BPM">
+                            <input 
+                              type="number" 
+                              step="0.01"
+                              value={fileObj.originalBPM}
+                              onChange={(e) => handleManualBpmEdit(fileObj.path, e.target.value)}
+                              className="w-12 bg-transparent text-right font-mono text-xs text-ink font-bold outline-none"
+                            />
+                            <Edit3 className="w-3 h-3 text-muted" />
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-mono text-muted">---</span>
+                      )}
+                    </div>
+                    
+                    {prog && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        <ProgressBar percent={prog.percent} status={prog.status} />
+                        {isError && <span className="text-[9px] font-mono font-bold text-oshipink text-right">{getStatusLabel('error')}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </PanelScrollArea>
+          )}
         </Panel>
       </Column>
     </PageLayout>

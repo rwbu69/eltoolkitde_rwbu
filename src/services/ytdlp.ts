@@ -191,7 +191,6 @@ export class YtDlpService {
       '--extractor-args', 'youtube:player_client=android,web',
       '--print', 'after_move:[final_path] %(filepath)s',
       '--embed-thumbnail',
-      '--write-thumbnail',
       '--convert-thumbnails', 'jpg',
       '--embed-metadata',
       ...formatArgs,
@@ -340,14 +339,18 @@ export class YtDlpService {
                       '-hide_banner',
                       '-y',
                       '-i', file,
-                      '-c:v', targetEncoder,
+                      '-map', '0:v:0',
+                      '-c:v:0', targetEncoder,
                       '-crf', '22',
                       '-preset', 'fast',
+                      '-map', '0:v:1?',
+                      '-c:v:1', 'copy',
+                      '-disposition:v:1', 'attached_pic',
                     ];
                     if (format === 'video-only') {
                       ffmpegArgs.push('-an');
                     } else {
-                      ffmpegArgs.push('-c:a', 'copy');
+                      ffmpegArgs.push('-map', '0:a?', '-c:a', 'copy');
                     }
                     ffmpegArgs.push(tempFile);
 
@@ -362,7 +365,7 @@ export class YtDlpService {
                       dispatchLog(`[codec-optimizer ERROR] Transcoding failed: ${ffmpegRes.stderr}`);
                     }
                   } else if (detectedCodec) {
-                    dispatchLog(`[codec-optimizer] Verified native ${detectedCodec} in ${file}. No transcoding needed.`);
+                    dispatchLog(`[codec-optimizer] Verified ${detectedCodec} in ${file}. No transcoding needed.`);
                   }
                 }
               } catch (probeErr) {

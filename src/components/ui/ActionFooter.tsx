@@ -10,6 +10,7 @@ interface ActionFooterProps {
   actionIcon?: LucideIcon;
   onCancel?: () => void;
   cancelLabel?: string;
+  className?: string;
 }
 
 export function ActionFooter({
@@ -21,17 +22,19 @@ export function ActionFooter({
   actionIcon,
   onCancel,
   cancelLabel = 'Cancel',
+  className = '',
 }: ActionFooterProps) {
   return (
-    <div className="flex gap-2 border-t-4 border-appbg pt-3 mt-3 shrink-0">
+    <div className={`flex gap-2 w-full ${className}`}>
       {onCancel && (
-        <Button onClick={onCancel} variant="danger" icon={X} className="w-1/3">
+        <Button onClick={onCancel} variant="danger" size="lg" icon={X} className="w-1/3">
           {cancelLabel}
         </Button>
       )}
       <Button
         onClick={onAction}
         variant="primary"
+        size="lg"
         disabled={disabled || loading}
         icon={actionIcon}
         className={onCancel ? 'w-2/3' : 'w-full'}

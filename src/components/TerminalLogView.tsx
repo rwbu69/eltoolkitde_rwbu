@@ -24,7 +24,12 @@ export default function TerminalLogView() {
     };
 
     window.addEventListener('toolkit-log', handleLog);
-    return () => window.removeEventListener('toolkit-log', handleLog);
+    const handleToggle = () => setIsOpen((prev) => !prev);
+    window.addEventListener('toolkit-toggle-terminal', handleToggle);
+    return () => {
+      window.removeEventListener('toolkit-log', handleLog);
+      window.removeEventListener('toolkit-toggle-terminal', handleToggle);
+    };
   }, []);
 
   useEffect(() => {
@@ -43,79 +48,69 @@ export default function TerminalLogView() {
 
   return (
     <footer 
-      className="fixed bottom-16 lg:bottom-0 left-1/2 w-full max-w-[1400px] px-3 lg:px-12 z-40 pointer-events-none transition-transform duration-250 ease-in-out"
-      style={{ transform: `translate(-50%, ${isOpen ? '0px' : 'calc(100% + 4px)'})` }}
+      className={`fixed bottom-16 lg:bottom-0 left-1/2 w-full max-w-[1400px] px-3 lg:px-12 z-40 transition-all duration-200 ease-in-out ${
+        isOpen 
+          ? 'translate-x-[-50%] translate-y-0 opacity-100 pointer-events-auto' 
+          : 'translate-x-[-50%] translate-y-full opacity-0 pointer-events-none'
+      }`}
     >
-      <div className="w-full relative pointer-events-auto h-[260px] lg:h-[140px]">
-        {/* Toggle Tab (Nameplate) */}
-        <button 
-          onClick={() => setIsOpen(!isOpen)}
-          className="absolute left-4 lg:left-10 top-[-28px] h-[28px] bg-oshipink border-2 border-b-0 border-gameborder px-3.5 rounded-t-lg z-20 flex items-center gap-1.5 hover:bg-pink-500 transition-colors shadow-sm select-none"
-          title={isOpen ? 'Minimize terminal' : 'Open system logs'}
-        >
-          <Terminal className="w-3.5 h-3.5 text-buttontext shrink-0" />
-          <span className="text-xs font-mono font-bold tracking-wider text-buttontext uppercase">System Logs</span>
-
-          {/* High-Contrast Pill Badge */}
-          {!isOpen && logs.length > 0 && (
-            <span
-              className={`ml-1.5 text-[10px] font-mono font-black px-2 py-0.5 rounded-full border shadow-sm leading-none flex items-center ${
-                errorCount > 0
-                  ? 'bg-rose-600 text-white border-rose-700'
-                  : 'bg-toska text-white dark:text-buttontext border-gameborder/30'
-              }`}
-            >
-              {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : logs.length > 99 ? '99+' : logs.length}
-            </span>
-          )}
-        </button>
-
+      <div className="w-full relative h-[260px] lg:h-[160px]">
         {/* The Text Box (100% Solid Opaque Panel) */}
-        <div className="w-full h-full bg-panel border-t-3 border-x-3 border-gameborder rounded-t-2xl shadow-[0_-6px_20px_rgba(0,0,0,0.18)] flex flex-col px-4 py-2.5 relative">
+        <div className="w-full h-full bg-panel border-t-2 border-x-2 border-gameborder rounded-t-2xl shadow-2xl flex flex-col px-4 py-2.5 relative">
           
-          {/* Mobile Drag Pill */}
-          <div 
-            onClick={() => setIsOpen(false)}
-            className="lg:hidden w-10 h-1.5 rounded-full bg-gameborder/40 mx-auto mb-2 shrink-0 cursor-pointer"
-            title="Swipe down or tap to close"
-          />
+          {/* Header Row */}
+          <div className="flex items-center justify-between pb-2 border-b border-subtleborder shrink-0">
+            <div className="flex items-center gap-2 select-none">
+              <Terminal className="w-4 h-4 text-oshipink shrink-0" />
+              <span className="text-xs font-mono font-bold tracking-wider text-ink uppercase">System Logs</span>
+              {logs.length > 0 && (
+                <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full border shadow-none leading-none ${
+                  errorCount > 0
+                    ? 'bg-rose-500 text-white border-rose-600'
+                    : 'bg-appbg text-muted border-subtleborder'
+                }`}>
+                  {errorCount > 0 ? `${errorCount} error${errorCount > 1 ? 's' : ''}` : logs.length}
+                </span>
+              )}
+            </div>
 
-          {/* Quick Actions (Floating Top-Right) */}
-          <div className="absolute top-2.5 right-3 flex items-center gap-1.5 z-10">
-            {logs.length > 0 && (
-              <>
-                <button
-                  onClick={handleCopyLogs}
-                  className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-gameborder/30 hover:border-oshipink hover:text-oshipink text-muted bg-panel transition-colors"
-                  title="Copy logs to clipboard"
-                >
-                  <Copy className="w-3 h-3" />
-                  <span className="hidden sm:inline">Copy</span>
-                </button>
-                <button
-                  onClick={() => setLogs([])}
-                  className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-0.5 rounded border border-gameborder/30 hover:border-oshipink hover:text-oshipink text-muted bg-panel transition-colors"
-                  title="Clear in-memory logs"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span className="hidden sm:inline">Clear</span>
-                </button>
-              </>
-            )}
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 hover:text-ink text-muted transition-colors rounded hover:bg-gameborder/10"
-              title="Close terminal drawer"
-              aria-label="Close terminal drawer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            {/* Quick Actions */}
+            <div className="flex items-center gap-1.5">
+              {logs.length > 0 && (
+                <>
+                  <button
+                    onClick={handleCopyLogs}
+                    className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-1 rounded-lg border border-subtleborder hover:border-oshipink hover:text-oshipink text-muted bg-panel transition-colors"
+                    title="Copy logs to clipboard"
+                  >
+                    <Copy className="w-3 h-3" />
+                    <span className="hidden sm:inline">Copy</span>
+                  </button>
+                  <button
+                    onClick={() => setLogs([])}
+                    className="flex items-center gap-1 text-[10px] font-mono uppercase px-2 py-1 rounded-lg border border-subtleborder hover:border-oshipink hover:text-oshipink text-muted bg-panel transition-colors"
+                    title="Clear in-memory logs"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span className="hidden sm:inline">Clear</span>
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 hover:text-ink text-muted transition-colors rounded-lg hover:bg-subtleborder/20"
+                title="Close terminal drawer"
+                aria-label="Close terminal drawer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Log Lines Area */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto text-[11px] leading-snug font-mono text-ink custom-scrollbar pr-16 space-y-0.5">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto text-[11px] leading-snug font-mono text-ink custom-scrollbar py-2 space-y-0.5">
             {logs.length === 0 ? (
-              <p className="text-muted font-mono italic text-[11px]">No system logs available.</p>
+              <p className="text-muted font-mono italic text-[11px]">No system logs recorded.</p>
             ) : (
               logs.map((log, i) => {
                 const isError = log.includes('ERROR') || log.includes('error');

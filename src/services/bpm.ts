@@ -40,7 +40,7 @@ export function buildAtempoFilter(tempoRatio: number): string {
 
 export class BpmService {
   static async detectBPM(filePath: string, minBpm?: number, maxBpm?: number): Promise<BpmDetectionResult> {
-    dispatchLog(`[bpm_detector] Analyzing ${filePath} via native Rust audio analyzer...`);
+    dispatchLog(`[bpm_detector] Analyzing ${filePath}...`);
 
     try {
       const result = await invoke<{ bpm: number; confidence: 'high' | 'medium' | 'low'; candidates: number[] }>('detect_audio_bpm', {

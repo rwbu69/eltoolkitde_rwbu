@@ -24,7 +24,7 @@ export function SegmentedDeck<T extends string>({
   return (
     <div
       role="tablist"
-      className={`flex items-center w-full gap-2 p-1 bg-appbg/80 border-2 border-gameborder rounded-2xl shadow-sm ${className}`}
+      className={`flex items-center w-full gap-1.5 p-1 bg-panel border-2 border-subtleborder rounded-2xl shadow-none ${className}`}
     >
       {options.map((option) => {
         const isActive = activeId === option.id;
@@ -36,13 +36,13 @@ export function SegmentedDeck<T extends string>({
             role="tab"
             aria-selected={isActive}
             onClick={() => onChange(option.id)}
-            className={`flex-1 h-11 px-3 rounded-xl border-2 font-zen text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 select-none ${
+            className={`flex-1 h-10 px-3 rounded-xl border-2 font-zen text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 select-none shadow-none ${
               isActive
-                ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin'
-                : 'bg-panel text-ink border-transparent hover:border-gameborder/40 hover:text-ink'
+                ? 'bg-oshipink text-buttontext border-gameborder'
+                : 'bg-appbg text-muted border-transparent hover:border-subtleborder hover:text-ink'
             }`}
           >
-            {Icon && <Icon className="w-4 h-4 shrink-0" />}
+            {Icon && <Icon className="w-3.5 h-3.5 shrink-0" />}
             <span className="truncate">{option.label}</span>
 
             {/* High-Contrast Badge */}
@@ -50,7 +50,7 @@ export function SegmentedDeck<T extends string>({
               <span
                 className={`ml-1 px-1.5 py-0.5 text-[9px] font-mono font-black rounded-full border leading-none ${
                   isActive
-                    ? 'bg-gameborder text-panel border-gameborder/50'
+                    ? 'bg-gameborder text-panel border-subtleborder'
                     : 'bg-oshipink text-buttontext border-gameborder'
                 }`}
               >
@@ -62,7 +62,7 @@ export function SegmentedDeck<T extends string>({
               <span
                 className={`ml-1 px-1.5 py-0.5 text-[9px] font-mono font-black rounded-full border leading-none ${
                   isActive
-                    ? 'bg-gameborder text-panel border-gameborder/50'
+                    ? 'bg-gameborder text-panel border-subtleborder'
                     : 'bg-toska text-buttontext border-gameborder'
                 }`}
               >

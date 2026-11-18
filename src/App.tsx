@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Download, Sliders, Edit3, Settings, Moon, Sun, CheckCircle2 } from 'lucide-react';
-import DownloaderHubView from './components/DownloaderHubView';
+import { Download, Sliders, Edit3, Settings, Moon, Sun, CheckCircle2, Library, Terminal } from 'lucide-react';
+import DownloaderView from './components/DownloaderView';
+import KhinsiderView from './components/KhinsiderView';
 import AudioStudioView from './components/AudioStudioView';
 import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
@@ -13,7 +14,7 @@ import { useAppStore } from './store/useAppStore';
 import { ToastHost } from './components/ui/Toast';
 import appIcon from './assets/icon.png';
 
-export type MainTab = 'downloader' | 'studio' | 'rename' | 'settings';
+export type MainTab = 'downloader' | 'khinsider' | 'studio' | 'rename' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('downloader');
@@ -30,6 +31,12 @@ function App() {
   useEffect(() => {
     invoke('set_khinsider_enabled', { enabled: settings.enableKhinsider }).catch(console.error);
   }, [settings.enableKhinsider]);
+
+  useEffect(() => {
+    if (!settings.enableKhinsider && activeTab === 'khinsider') {
+      setActiveTab('downloader');
+    }
+  }, [settings.enableKhinsider, activeTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -50,6 +57,18 @@ function App() {
     };
   }, []);
 
+  const [hasTerminalError, setHasTerminalError] = useState(false);
+  useEffect(() => {
+    const handleLog = (e: Event) => {
+      const customEvent = e as CustomEvent<string>;
+      if (customEvent.detail && (customEvent.detail.includes('ERROR') || customEvent.detail.includes('error'))) {
+        setHasTerminalError(true);
+      }
+    };
+    window.addEventListener('toolkit-log', handleLog);
+    return () => window.removeEventListener('toolkit-log', handleLog);
+  }, []);
+
   return (
     <div className="flex flex-col w-screen h-screen overflow-hidden bg-appbg">
       <Titlebar />
@@ -58,7 +77,7 @@ function App() {
       {/* BODY CONTAINER (Rail + Stage) */}
       <div className="flex flex-1 w-full h-full min-h-0 overflow-hidden">
         {/* DESKTOP ARCADE RAIL (Left, >= 1024px) */}
-        <aside className="hidden lg:flex flex-col items-center justify-between w-20 py-5 bg-panel border-r-3 border-gameborder shadow-game-thick z-30 shrink-0">
+        <aside className="hidden lg:flex flex-col items-center justify-between w-20 py-5 bg-panel border-r-2 border-subtleborder shadow-game-thick z-30 shrink-0">
           {/* Top: App Avatar */}
           <div className="flex flex-col items-center gap-6">
             <div className="w-12 h-12 rounded-2xl border-3 border-gameborder bg-panel shadow-game-thin overflow-hidden p-1 flex items-center justify-center shrink-0">
@@ -73,7 +92,7 @@ function App() {
                   className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
                     activeTab === 'downloader'
                       ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
-                      : 'bg-panel text-ink border-transparent hover:border-gameborder/40 hover:text-ink'
+                      : 'bg-panel text-ink border-transparent hover:border-subtleborder hover:text-ink'
                   }`}
                   aria-label="Downloader"
                 >
@@ -81,13 +100,29 @@ function App() {
                 </button>
               </Tooltip>
 
+              {settings.enableKhinsider && (
+                <Tooltip text="Game Music (Khinsider)" position="right">
+                  <button
+                    onClick={() => setActiveTab('khinsider')}
+                    className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
+                      activeTab === 'khinsider'
+                        ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
+                        : 'bg-panel text-ink border-transparent hover:border-subtleborder hover:text-ink'
+                    }`}
+                    aria-label="Game Music (Khinsider)"
+                  >
+                    <Library className="w-5 h-5" />
+                  </button>
+                </Tooltip>
+              )}
+
               <Tooltip text="Audio Studio" position="right">
                 <button
                   onClick={() => setActiveTab('studio')}
                   className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
                     activeTab === 'studio'
                       ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
-                      : 'bg-panel text-ink border-transparent hover:border-gameborder/40 hover:text-ink'
+                      : 'bg-panel text-ink border-transparent hover:border-subtleborder hover:text-ink'
                   }`}
                   aria-label="Audio Studio"
                 >
@@ -101,7 +136,7 @@ function App() {
                   className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
                     activeTab === 'rename'
                       ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
-                      : 'bg-panel text-ink border-transparent hover:border-gameborder/40 hover:text-ink'
+                      : 'bg-panel text-ink border-transparent hover:border-subtleborder hover:text-ink'
                   }`}
                   aria-label="Batch Renamer"
                 >
@@ -111,7 +146,7 @@ function App() {
             </nav>
           </div>
 
-          {/* Bottom Rail Actions: Settings & Theme */}
+          {/* Bottom Rail Actions: Settings */}
           <div className="flex flex-col items-center gap-3">
             <Tooltip text="Settings" position="right">
               <button
@@ -119,7 +154,7 @@ function App() {
                 className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
                   activeTab === 'settings'
                     ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
-                    : 'bg-panel text-ink border-transparent hover:border-gameborder/40'
+                    : 'bg-panel text-ink border-transparent hover:border-subtleborder'
                 }`}
                 aria-label="Settings"
               >
@@ -132,7 +167,7 @@ function App() {
         {/* WORKSPACE & HUD COLUMN */}
         <div className="flex flex-col flex-1 h-full min-h-0 overflow-hidden">
           {/* TOP STATUS HUD */}
-          <header className="z-20 flex items-center justify-between flex-none w-full px-4 lg:px-8 py-3 bg-appbg border-b-2 border-gameborder/20">
+          <header className="z-20 flex items-center justify-between flex-none w-full px-4 lg:px-8 py-3 bg-appbg border-b-2 border-subtleborder">
             <div className="flex items-center gap-3">
               {/* Mobile App Icon */}
               <div className="lg:hidden w-8 h-8 rounded-xl border-2 border-gameborder bg-panel overflow-hidden p-0.5 flex items-center justify-center shrink-0">
@@ -141,7 +176,8 @@ function App() {
 
               <div>
                 <h1 className="text-base lg:text-lg font-black leading-tight font-zen text-ink">
-                  {activeTab === 'downloader' && 'Downloader'}
+                  {activeTab === 'downloader' && 'Media Downloader'}
+                  {activeTab === 'khinsider' && 'Game Music (Khinsider)'}
                   {activeTab === 'studio' && 'Audio Studio'}
                   {activeTab === 'rename' && 'Batch Renamer'}
                   {activeTab === 'settings' && 'Settings'}
@@ -152,7 +188,7 @@ function App() {
               </div>
             </div>
 
-            {/* Right Status Badges */}
+            {/* Right Status Badges & Controls */}
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setActiveTab('settings')}
@@ -178,6 +214,22 @@ function App() {
               >
                 {settings.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               </button>
+
+              {/* Terminal Logs Toggle */}
+              <button
+                onClick={() => {
+                  setHasTerminalError(false);
+                  window.dispatchEvent(new CustomEvent('toolkit-toggle-terminal'));
+                }}
+                className="relative p-1.5 rounded-xl border-2 border-gameborder bg-panel text-ink hover:text-oshipink transition-colors"
+                title="Toggle System Logs"
+                aria-label="Toggle System Logs"
+              >
+                <Terminal className="w-4 h-4" />
+                {hasTerminalError && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-panel animate-pulse" />
+                )}
+              </button>
             </div>
           </header>
 
@@ -185,8 +237,13 @@ function App() {
           <main className="flex-1 w-full min-h-0 px-3 lg:px-8 py-3 pb-20 lg:pb-4 overflow-hidden">
             <div className="w-full h-full relative">
               <div className={activeTab === 'downloader' ? 'h-full w-full' : 'hidden'}>
-                <DownloaderHubView />
+                <DownloaderView />
               </div>
+              {settings.enableKhinsider && (
+                <div className={activeTab === 'khinsider' ? 'h-full w-full' : 'hidden'}>
+                  <KhinsiderView />
+                </div>
+              )}
               <div className={activeTab === 'studio' ? 'h-full w-full' : 'hidden'}>
                 <AudioStudioView isActive={activeTab === 'studio'} />
               </div>
@@ -202,7 +259,7 @@ function App() {
       </div>
 
       {/* MOBILE ARCADE BOTTOM DOCK (< 1024px) */}
-      <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-panel border-t-3 border-gameborder z-40 items-center justify-around safe-pb shadow-[0_-4px_16px_rgba(0,0,0,0.15)] px-2">
+      <nav className="flex lg:hidden fixed bottom-0 left-0 right-0 h-16 bg-panel border-t-2 border-subtleborder z-40 items-center justify-around safe-pb shadow-[0_-4px_16px_rgba(0,0,0,0.15)] px-2">
         <button
           onClick={() => setActiveTab('downloader')}
           className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 font-zen text-[10px] font-bold transition-all ${
@@ -212,6 +269,18 @@ function App() {
           <Download className="w-4 h-4 shrink-0" />
           <span>Downloader</span>
         </button>
+
+        {settings.enableKhinsider && (
+          <button
+            onClick={() => setActiveTab('khinsider')}
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 font-zen text-[10px] font-bold transition-all ${
+              activeTab === 'khinsider' ? 'text-oshipink font-black scale-105' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <Library className="w-4 h-4 shrink-0" />
+            <span>Music</span>
+          </button>
+        )}
 
         <button
           onClick={() => setActiveTab('studio')}

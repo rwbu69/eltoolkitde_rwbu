@@ -1,8 +1,59 @@
 # Changelog
 
+## ElToolkitDeRWBU v0.1.4 — Audio Waveform Studio, UI Declutter & Media Pipeline Overhaul
+
+Date: 2026-11-19
+
+### Interactive Waveform Trimmer & Audio Studio
+
+- Added native audio waveform peak extraction in Rust (`get_audio_waveform` command) using `symphonia` with micro-chunk streaming downsampling (< 4 MB peak RAM, ~800 peak amplitude pairs, < 50ms processing).
+- Added interactive `WaveformTrimmer` in Audio Studio powered by `wavesurfer.js` v7 with `RegionsPlugin`: draggable/resizable region handles, timeline ruler, playback controls (`Play Selection`, `Play Full`, `Stop`, `Loop`), zoom slider, and millisecond nudge buttons.
+- Integrated bidirectional synchronization between waveform region drag handles and start/end timecode inputs.
+- Preserved stream-copy lossless trimming via FFmpeg (`-c copy`).
+
+### Media Downloader & Thumbnail Embedding
+
+- Switched to embed-only thumbnail handling across MP4, MP3, and video-only downloads by removing `--write-thumbnail` and retaining `--embed-thumbnail` with automatic format conversion to JPEG (`--convert-thumbnails jpg`).
+- Fixed post-download FFmpeg video codec optimization to preserve embedded cover art (`-map 0:v:0`, `-map 0:v:1? -c:v:1 copy -disposition:v:1 attached_pic`, `-map 0:a? -c:a copy`), preventing FFmpeg from discarding embedded thumbnail streams when transcoding.
+- Ensured no standalone `.jpg` or `.webp` files remain in output folders after downloads complete.
+
+### UI Decluttering & Sizing Standardization
+
+- Removed redundant in-stage section titles and subheaders across Downloader, Batch Renamer, Audio Studio, and Settings, using the Top HUD as the single source of truth.
+- Removed duplicate cookie/authentication status badges inside view cards, preserving the HUD indicator.
+- Standardized layout to the strict 3-Tier Height System:
+  - Tier 1 (`h-10` / 40px): Standard form inputs, selectors, and secondary buttons.
+  - Tier 2 (`h-11` / 44px): Primary hero action buttons (`Check links`, `Apply to N files`, etc.).
+  - Tier 3 (`h-8` / 32px): Utility actions and toolbar buttons.
+- Unified Downloader's 2×2 media controls grid (Format, Video Resolution, Download Preset, Output Folder) into a single symmetrical CSS Grid with matching 40px heights.
+- Replaced the native HTML preset `<select>` with `<CustomSelect>` for visual consistency, chevron indicator, and identical typography.
+- Eliminated blurry inset shadows and fuzzy drop shadows on pill buttons and inputs, establishing crisp, solid flat arcade surfaces with `border-2 border-subtleborder` and explicit `box-border`.
+
+### Responsive Layout & Terminal Drawer Redesign
+
+- Removed the floating `>_ SYSTEM LOGS` tab button from the bottom viewport edge, eliminating layout overlap with the Active Queue and mobile bottom navigation dock.
+- Integrated system log toggling into the dedicated Top HUD Terminal button, with unread error indicators.
+- Added mobile safe bottom padding (`pb-20`) to prevent scrolling content from being hidden behind the bottom navigation dock on narrow screens.
+
+### CI/CD & Cross-Platform Release Reliability
+
+- Made scripts/setup-sidecars.cjs target-aware with explicit architecture mapping (bin/darwin/arm64/ffprobe vs bin/darwin/x64/ffprobe), preventing Mach-O CPU architecture mismatch on Intel and Apple Silicon macOS builds.
+- Added non-zero file size validation in sidecar copying to prevent empty cache artifacts from failing build verification.
+- Integrated Apple quarantine flag purge (xattr -dr com.apple.quarantine) in macOS CI build verification to prevent Gatekeeper bundle packaging errors.
+- Added Swatinem/rust-cache@v2 to GitHub Actions ci.yml Rust checks, speeding up PR verification cycles.
+- Synchronized version 0.1.4 across package.json, Cargo.toml, and tauri.conf.json.
+- Removed *.test.ts pattern from .gitignore so all 7 test suites (31 unit tests) are tracked by Git and executed in CI.
+
+### Cleanups & Maintenance
+
+- Removed technical runtime log annotations ("via native Rust...") across BPM detection, metadata tagging, and yt-dlp codec verification.
+- Updated Vitest unit test suite to assert embed-only thumbnail configurations and ensure 100% test pass rate (31/31 passing).
+
+---
+
 ## ElToolkitDeRWBU v0.1.3 — Release Readiness Update
 
-Released: 2026-11-08
+Released: 2026-10-29
 
 ### Repository maintenance
 
