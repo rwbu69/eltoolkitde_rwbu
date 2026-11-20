@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, FolderOpen, Target, Gauge, FileVideo, AlertTriangle, RotateCw, XCircle, Check, Trash2, Globe, ShieldCheck } from 'lucide-react';
+import { Download, FolderOpen, Target, Gauge, FileVideo, AlertTriangle, RotateCw, XCircle, Check, Trash2, Globe, Youtube, Twitter, Twitch, Music2, ArrowRight } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 import { YtDlpService, type VideoInfo } from '../services/ytdlp';
 import { PageLayout, Column, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
@@ -17,6 +17,35 @@ import { QueueItemCard } from './downloader/QueueItemCard';
 
 const MAX_PLAYLIST_ITEMS = 500;
 
+interface SupportedPlatform {
+  readonly name: string;
+  readonly description: string;
+  readonly icon: typeof Youtube;
+}
+
+const SUPPORTED_PLATFORMS: readonly SupportedPlatform[] = [
+  {
+    name: 'YouTube',
+    description: 'Videos & Playlists',
+    icon: Youtube,
+  },
+  {
+    name: 'TikTok',
+    description: 'Direct media',
+    icon: Music2,
+  },
+  {
+    name: 'Twitter / X',
+    description: 'HD Video clips',
+    icon: Twitter,
+  },
+  {
+    name: 'Twitch',
+    description: 'Clips & VODs',
+    icon: Twitch,
+  },
+] as const;
+
 export default function DownloaderView() {
   const settings = useAppStore(s => s.settings);
   const updateSettings = useAppStore(s => s.updateSettings);
@@ -32,7 +61,7 @@ export default function DownloaderView() {
   const cancelAllDownloads = useAppStore(s => s.cancelAllDownloads);
   const removeFromQueue = useAppStore(s => s.removeFromQueue);
   const clearCompleted = useAppStore(s => s.clearCompleted);
-  
+
   const [urlsInput, setUrlsInput] = useState('');
   const [format, setFormat] = useState<'mp4' | 'mp3' | 'video-only'>('mp4');
   const [preset, setPreset] = useState<DownloadPresetId | 'custom'>('custom');
@@ -180,13 +209,13 @@ export default function DownloaderView() {
                     className="game-input !h-auto min-h-[110px] py-2.5 resize-y w-full text-xs font-mono"
                   />
                 </div>
-                
+
                 {/* 2x2 Unified Media Controls Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Row 1, Col 1: Format */}
                   <div className="min-w-0 flex flex-col">
                     <FormLabel text="Format" icon={FileVideo} iconColor="text-toska" />
-                    <Tabs 
+                    <Tabs
                       options={[
                         { value: 'mp4', label: 'MP4' },
                         { value: 'mp3', label: 'MP3' },
@@ -212,7 +241,7 @@ export default function DownloaderView() {
                     ) : (
                       <>
                         <FormLabel text="Audio bitrate" icon={Gauge} iconColor="text-toska" />
-                        <CustomSelect 
+                        <CustomSelect
                           options={[...AUDIO_BITRATE_OPTIONS]}
                           value={settings.defaultAudioBitrate}
                           onChange={(val) => { setPreset('custom'); updateSettings({ defaultAudioBitrate: val as AudioBitrate }); }}
@@ -239,16 +268,16 @@ export default function DownloaderView() {
                   {/* Row 2, Col 2: Output folder */}
                   <div className="min-w-0 flex flex-col">
                     <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-toska" />
-                    <PathPicker 
-                      value={outputDir} 
-                      onChange={(path) => { setOutputDir(path); updateSettings({ defaultOutputDir: path }); }} 
-                      placeholder="Select output folder..." 
+                    <PathPicker
+                      value={outputDir}
+                      onChange={(path) => { setOutputDir(path); updateSettings({ defaultOutputDir: path }); }}
+                      placeholder="Select output folder..."
                       directory={true}
                     />
                   </div>
                 </div>
               </PanelScrollArea>
-                
+
               {/* Action Buttons */}
               <div className="pt-3 mt-3 border-t-2 border-subtleborder shrink-0">
                 <Button
@@ -457,45 +486,63 @@ export default function DownloaderView() {
                 </>
               ) : (
                 /* Information & Quick Reference Panel when Queue is Idle */
-                <div className="flex flex-col h-full p-4 sm:p-5 justify-between">
+                <div className="flex flex-col h-full p-4 sm:p-5 justify-between overflow-y-auto min-h-0">
                   <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-8 h-8 rounded-xl bg-panel border-2 border-subtleborder flex items-center justify-center text-toska shrink-0">
-                        <Globe className="w-4 h-4" />
+                    <div className="flex items-center gap-2.5 mb-3.5">
+                      <div className="w-8 h-8 rounded-xl bg-panel/80 border border-subtleborder/70 flex items-center justify-center text-toska shrink-0">
+                        <Globe className="w-4 h-4" aria-hidden="true" />
                       </div>
-                      <div>
-                        <h4 className="font-zen font-bold text-xs text-ink">Supported Platforms</h4>
-                        <p className="font-mono text-[10px] text-muted">Powered by yt-dlp media engine</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mb-4">
-                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
-                        <span className="block font-zen font-bold text-[11px] text-ink">YouTube</span>
-                        <span className="block font-mono text-[9px] text-muted">Videos & Playlists</span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
-                        <span className="block font-zen font-bold text-[11px] text-ink">TikTok</span>
-                        <span className="block font-mono text-[9px] text-muted">Direct media</span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
-                        <span className="block font-zen font-bold text-[11px] text-ink">Twitter / X</span>
-                        <span className="block font-mono text-[9px] text-muted">HD Video clips</span>
-                      </div>
-                      <div className="p-2 rounded-xl bg-panel border border-subtleborder text-center">
-                        <span className="block font-zen font-bold text-[11px] text-ink">Twitch</span>
-                        <span className="block font-mono text-[9px] text-muted">Clips & VODs</span>
+                      <div className="min-w-0">
+                        <h4 className="font-inter font-semibold text-xs text-ink truncate">Supported Platforms</h4>
+                        <p className="font-inter text-[11px] text-muted truncate">Powered by yt-dlp media engine</p>
                       </div>
                     </div>
 
-                    <div className="p-3 rounded-xl bg-panel border border-subtleborder space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-toska text-[11px] font-mono font-bold">
-                        <ShieldCheck className="w-3.5 h-3.5" />
-                        <span>Ready to download</span>
-                      </div>
-                      <p className="font-mono text-[10px] text-muted leading-relaxed">
-                        Paste any link on the left and click <strong className="text-ink">Check links</strong>. Real-time download progress, bitrate, and status will appear right here.
+                    <ul className="grid grid-cols-2 gap-2 mb-3.5 list-none p-0 m-0" aria-label="Supported media platforms">
+                      {SUPPORTED_PLATFORMS.map((platform) => {
+                        const Icon = platform.icon;
+                        return (
+                          <li
+                            key={platform.name}
+                            className="h-[58px] px-3 py-2 rounded-xl bg-panel/70 border border-subtleborder/70 flex items-center gap-2.5 min-w-0"
+                          >
+                            <div className="w-7 h-7 rounded-lg bg-appbg/60 border border-subtleborder/40 flex items-center justify-center text-muted shrink-0">
+                              <Icon className="w-3.5 h-3.5" aria-hidden="true" />
+                            </div>
+                            <div className="min-w-0 flex flex-col justify-center">
+                              <span className="font-inter font-semibold text-xs text-ink truncate leading-tight">
+                                {platform.name}
+                              </span>
+                              <span className="font-inter text-[10px] text-muted truncate leading-tight mt-0.5">
+                                {platform.description}
+                              </span>
+                            </div>
+                          </li>
+                        );
+                      })}
+                    </ul>
+
+                    <div className="p-4 rounded-xl border border-dashed border-subtleborder/80 bg-panel/30 flex flex-col items-center justify-center text-center">
+                      <h5 className="font-inter font-semibold text-xs text-ink">Ready to download</h5>
+                      <p className="font-inter text-[11px] text-muted mt-1 leading-relaxed max-w-[240px]">
+                        Paste media links on the left to inspect streams and start downloading.
                       </p>
+                      <ol className="flex items-center justify-center flex-wrap gap-1.5 mt-3 pt-2.5 border-t border-subtleborder/50 text-[10px] font-inter text-muted w-full list-none p-0 m-0" aria-label="Download workflow steps">
+                        <li className="flex items-center gap-1">
+                          <span className="font-semibold text-ink">1.</span>
+                          <span>Paste link</span>
+                        </li>
+                        <ArrowRight className="w-2.5 h-2.5 text-muted/50 shrink-0" aria-hidden="true" />
+                        <li className="flex items-center gap-1">
+                          <span className="font-semibold text-ink">2.</span>
+                          <span>Check links</span>
+                        </li>
+                        <ArrowRight className="w-2.5 h-2.5 text-muted/50 shrink-0" aria-hidden="true" />
+                        <li className="flex items-center gap-1">
+                          <span className="font-semibold text-ink">3.</span>
+                          <span>Download</span>
+                        </li>
+                      </ol>
                     </div>
                   </div>
 
