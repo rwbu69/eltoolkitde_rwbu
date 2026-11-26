@@ -7,6 +7,7 @@
 - [ ] `npm test`
 - [ ] `npm run lint`
 - [ ] `npm run vite:build`
+- [ ] `cargo check` (in `src-tauri/`)
 - [ ] Other: 
 
 ## Checklist

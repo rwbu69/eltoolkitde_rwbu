@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { CheckCircle2, Circle, Clock, X, RotateCcw, Trash2 } from 'lucide-react';
 import type { QueueItem } from '../../store/useAppStore';
 import { getStatusLabel } from '../../config/uiText';
@@ -17,6 +17,12 @@ export const QueueItemCard = React.memo(function QueueItemCard({
   onRetry,
   onRemove
 }: QueueItemCardProps) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [item.thumbnail]);
+
   let statusIcon = <Circle className="w-4 h-4 text-muted" />;
   let statusText = getStatusLabel('pending');
   let cardClass = 'bg-panel border-muted opacity-60';
@@ -32,9 +38,9 @@ export const QueueItemCard = React.memo(function QueueItemCard({
     statusText = getStatusLabel('expanded');
     cardClass = 'bg-toska border-gameborder text-white dark:text-buttontext opacity-100';
     textClass = 'text-white dark:text-buttontext';
-  } else if (item.status === 'downloading' || item.status === 'fetching') {
+  } else if (item.status === 'downloading' || item.status === 'fetching' || item.status === 'processing') {
     statusIcon = <Clock className="w-4 h-4 text-ink" />;
-    statusText = getStatusLabel(item.status);
+    statusText = item.status === 'processing' ? 'Transcoding' : getStatusLabel(item.status);
     cardClass = 'bg-softtoska border-gameborder opacity-100 shadow-game-thin';
     textClass = 'text-ink';
   } else if (item.status === 'error') {
@@ -49,14 +55,27 @@ export const QueueItemCard = React.memo(function QueueItemCard({
     textClass = 'text-muted';
   }
 
-  const isBusy = item.status === 'downloading' || item.status === 'fetching' || item.status === 'pending';
+  const isBusy = item.status === 'downloading' || item.status === 'fetching' || item.status === 'processing' || item.status === 'pending';
   const isFailed = item.status === 'error' || item.status === 'canceled';
 
   return (
     <div className={`flex flex-col p-3 border-2 rounded-xl transition-all ${cardClass}`}>
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="shrink-0 mt-0.5">{statusIcon}</div>
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          {item.thumbnail && !imgError ? (
+            <div className="relative w-14 h-9 rounded-lg overflow-hidden border border-black/20 dark:border-white/15 bg-panel shrink-0">
+              <img
+                src={item.thumbnail}
+                alt=""
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                onError={() => setImgError(true)}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          ) : (
+            <div className="shrink-0 mt-0.5">{statusIcon}</div>
+          )}
           <div className="flex-1 min-w-0">
             <span className={`block font-mono font-black text-[9px] tracking-widest mb-0.5 ${textClass}`}>
               {statusText} • {item.format.toUpperCase()}
@@ -83,7 +102,7 @@ export const QueueItemCard = React.memo(function QueueItemCard({
         </button>
       </div>
 
-      {item.status === 'downloading' && item.progress && (
+      {(item.status === 'downloading' || item.status === 'processing') && item.progress && (
         <div className="mt-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="font-mono text-xs font-bold">{item.progress.speed || '--'}</span>

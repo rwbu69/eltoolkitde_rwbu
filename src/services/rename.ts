@@ -26,8 +26,12 @@ export interface RenamePreview {
   oldName: string;
   newPath: string;
   newName: string;
-  status: 'ok' | 'collision' | 'exists';
+  status: 'ok' | 'collision' | 'exists' | 'invalid';
 }
+
+const ILLEGAL_FILENAME_CHARS = /[<>:"/\\|?*]/;
+const hasInvalidFilenameChars = (name: string) =>
+  ILLEGAL_FILENAME_CHARS.test(name) || [...name].some((ch) => ch.charCodeAt(0) < 32);
 
 export interface RenameProgress {
   file: string; // old name
@@ -87,19 +91,21 @@ export class RenameService {
       }
       
       newName = baseNewName + ext;
+      const isInvalid = !baseNewName.trim() || hasInvalidFilenameChars(baseNewName);
       
       previews.push({
         oldPath: joinPath(inputPath, oldName),
         oldName: oldName,
         newPath: joinPath(inputPath, newName),
         newName: newName,
-        status: 'ok'
+        status: isInvalid ? 'invalid' : 'ok'
       });
     }
     
     // Check for collisions (duplicate new names generated in memory)
     const newNamesSet = new Set<string>();
     for (const p of previews) {
+      if (p.status === 'invalid') continue;
       if (newNamesSet.has(p.newName.toLowerCase())) {
         p.status = 'collision';
       } else {

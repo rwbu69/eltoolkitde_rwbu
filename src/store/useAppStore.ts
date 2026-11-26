@@ -6,24 +6,38 @@ import { invoke } from '@tauri-apps/api/core';
 import type { AudioBitrate, VideoCodec, VideoQuality } from '../config/mediaSettings';
 import { isValidMediaUrl, normalizeConcurrency, normalizeRateLimit } from '../utils/validation';
 
-const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => ({
-  ...DEFAULT_SETTINGS,
-  ...settings,
-  defaultVideoQuality:
-    (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'best' ? '1080p' :
-    (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'mid' ? '720p' :
-    (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'low' ? '360p' :
-    settings.defaultVideoQuality ?? DEFAULT_SETTINGS.defaultVideoQuality,
-  defaultVideoCodec:
-    settings.defaultVideoCodec === 'h264' ? 'h264' : 'h265',
-  defaultAudioBitrate:
-    (settings as { defaultAudioBitrate?: string }).defaultAudioBitrate === '128k' ? '192k' :
-    settings.defaultAudioBitrate ?? DEFAULT_SETTINGS.defaultAudioBitrate,
-  maxConcurrentDownloads: normalizeConcurrency(settings.maxConcurrentDownloads),
-  rateLimitSpeed: normalizeRateLimit(settings.rateLimitSpeed),
-});
+const CURRENT_SETTINGS_VERSION = 2;
+
+const normalizeSettings = (settings: Partial<AppSettings> = {}): AppSettings => {
+  const version = settings.settingsVersion ?? 1;
+  const rawCodec = settings.defaultVideoCodec;
+  const defaultVideoCodec: VideoCodec =
+    version < CURRENT_SETTINGS_VERSION && rawCodec === 'h265'
+      ? 'smart'
+      : rawCodec === 'h264' || rawCodec === 'h265' || rawCodec === 'smart'
+        ? rawCodec
+        : 'smart';
+
+  return {
+    ...DEFAULT_SETTINGS,
+    ...settings,
+    settingsVersion: CURRENT_SETTINGS_VERSION,
+    defaultVideoQuality:
+      (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'best' ? '1080p' :
+      (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'mid' ? '720p' :
+      (settings as { defaultVideoQuality?: string }).defaultVideoQuality === 'low' ? '360p' :
+      settings.defaultVideoQuality ?? DEFAULT_SETTINGS.defaultVideoQuality,
+    defaultVideoCodec,
+    defaultAudioBitrate:
+      (settings as { defaultAudioBitrate?: string }).defaultAudioBitrate === '128k' ? '192k' :
+      settings.defaultAudioBitrate ?? DEFAULT_SETTINGS.defaultAudioBitrate,
+    maxConcurrentDownloads: normalizeConcurrency(settings.maxConcurrentDownloads),
+    rateLimitSpeed: normalizeRateLimit(settings.rateLimitSpeed),
+  };
+};
 
 export interface AppSettings {
+  settingsVersion?: number;
   defaultOutputDir: string;
   defaultVideoQuality: VideoQuality;
   defaultVideoCodec: VideoCodec;
@@ -39,9 +53,10 @@ export interface AppSettings {
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
+  settingsVersion: CURRENT_SETTINGS_VERSION,
   defaultOutputDir: '',
   defaultVideoQuality: '1080p',
-  defaultVideoCodec: 'h265',
+  defaultVideoCodec: 'smart',
   defaultAudioBitrate: '320k',
   cookiesFilePath: '',
   browserForCookies: '',
@@ -53,7 +68,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   enableKhinsider: false,
 };
 
-export type QueueItemStatus = 'pending' | 'fetching' | 'downloading' | 'expanded' | 'done' | 'error' | 'canceled';
+export type QueueItemStatus = 'pending' | 'fetching' | 'downloading' | 'processing' | 'expanded' | 'done' | 'error' | 'canceled';
 
 export interface QueueDownloadOptions {
   outputDir: string;
@@ -69,6 +84,7 @@ export interface QueueItem {
   id: string;
   url: string;
   title: string;
+  thumbnail?: string;
   format: 'mp4' | 'mp3' | 'video-only';
   status: QueueItemStatus;
   options: QueueDownloadOptions;
@@ -91,10 +107,11 @@ interface AppState {
     format: 'mp4' | 'mp3' | 'video-only',
     allowPlaylistExpansion?: boolean,
     options?: QueueDownloadOptions,
-    knownTitle?: string
+    knownTitle?: string,
+    knownThumbnail?: string
   ) => void;
   addBatchToQueue: (
-    items: { url: string; title: string }[],
+    items: { url: string; title: string; thumbnail?: string }[],
     format: 'mp4' | 'mp3' | 'video-only',
     options?: QueueDownloadOptions,
     playlistTitle?: string
@@ -162,7 +179,7 @@ async function executeDownloadJob(
         queue: s.queue.map(q => q.id === id ? {
           ...q,
           progress,
-          status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled'
+          status: progress.status === 'done' || progress.status === 'error' || progress.status === 'canceled' || progress.status === 'processing'
             ? progress.status
             : 'downloading'
         } : q)
@@ -230,7 +247,7 @@ export const useAppStore = create<AppState>()(
         set({ isQueuePaused: false, pauseReason: '' });
       },
       
-      addToQueue: async (url, format, allowPlaylistExpansion = false, providedOptions, knownTitle) => {
+      addToQueue: async (url, format, allowPlaylistExpansion = false, providedOptions, knownTitle, knownThumbnail) => {
         const generation = downloadGeneration;
         const id = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         const state = get();
@@ -263,6 +280,7 @@ export const useAppStore = create<AppState>()(
           id,
           url,
           title: knownTitle || 'Queued item...',
+          thumbnail: knownThumbnail,
           format,
           status: 'pending',
           options: queueOptions,
@@ -344,7 +362,8 @@ export const useAppStore = create<AppState>()(
                 get().addBatchToQueue(
                   entries.map(e => ({
                     url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id),
-                    title: e.title || e.id
+                    title: e.title || e.id,
+                    thumbnail: e.thumbnail,
                   })),
                   format,
                   queueOptions
@@ -353,6 +372,11 @@ export const useAppStore = create<AppState>()(
               }
 
               finalTitle = info.title;
+              if (info.thumbnail) {
+                set(s => ({
+                  queue: s.queue.map(q => q.id === id ? { ...q, thumbnail: info.thumbnail } : q)
+                }));
+              }
             }
 
             await executeDownloadJob(id, url, format, queueOptions, generation, set, get, finalTitle);
@@ -413,6 +437,7 @@ export const useAppStore = create<AppState>()(
             id,
             url: it.url,
             title: it.title || 'Queued item...',
+            thumbnail: it.thumbnail,
             format,
             status: 'pending',
             options: queueOptions,
@@ -435,13 +460,17 @@ export const useAppStore = create<AppState>()(
       retryItem: (id) => {
         const item = get().queue.find(q => q.id === id);
         if (!item || (item.status !== 'error' && item.status !== 'canceled')) return;
-        get().addToQueue(item.url, item.format, true, item.options);
+        const knownTitle = item.title && item.title !== 'Queued item...' && item.title !== 'Invalid URL'
+          ? item.title
+          : undefined;
+        set(s => ({ queue: s.queue.filter(q => q.id !== id) }));
+        get().addToQueue(item.url, item.format, true, item.options, knownTitle, item.thumbnail);
       },
 
       retryFailed: () => {
         const failedItems = get().queue.filter(q => q.status === 'error');
         failedItems.forEach(item => {
-          get().addToQueue(item.url, item.format, true, item.options);
+          get().retryItem(item.id);
         });
       },
 
@@ -465,7 +494,7 @@ export const useAppStore = create<AppState>()(
         downloadGeneration += 1;
         set(s => ({
           queue: s.queue.map(q => {
-            if (q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading') {
+            if (q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading' || q.status === 'processing') {
               q.cancelFn?.();
               return { ...q, status: 'canceled', error: 'Canceled by user' };
             }

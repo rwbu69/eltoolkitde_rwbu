@@ -1,9 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { BpmService, BpmProgress, BpmOutputFormat } from '../services/bpm';
+import { useAppStore } from '../store/useAppStore';
+import { basename } from '../utils/path';
 import { FileAudio, PlayCircle, FolderOpen, Search, Edit3, AlertTriangle, Activity } from 'lucide-react';
 import { PageLayout, Column, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
+import { CustomSelect } from './ui/CustomSelect';
 import { PathPicker } from './ui/PathPicker';
 import { Input } from './ui/Input';
 import { ProgressBar } from './ui/ProgressBar';
@@ -19,9 +22,10 @@ interface SelectedFile {
 }
 
 export default function BpmModifierView({ isActive = false }: { isActive?: boolean }) {
+  const defaultOutputDir = useAppStore(s => s.settings.defaultOutputDir);
   const [selectedFiles, setSelectedFiles] = useState<SelectedFile[]>([]);
   const [bpmRange, setBpmRange] = useState<string>('any');
-  const [outputDir, setOutputDir] = useState<string>('');
+  const [outputDir, setOutputDir] = useState<string>(defaultOutputDir || '');
   const [targetBPM, setTargetBPM] = useState<string>(''); 
   const [outputFormat, setOutputFormat] = useState<BpmOutputFormat>('wav');
   
@@ -30,6 +34,12 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   const [isProcessing, setIsProcessing] = useState(false);
   const [notice, setNotice] = useState<string>('');
   const cancelRequested = useRef(false);
+
+  useEffect(() => {
+    if (!outputDir && defaultOutputDir) {
+      setOutputDir(defaultOutputDir);
+    }
+  }, [outputDir, defaultOutputDir]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -110,7 +120,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
     setSelectedFiles(prev => prev.map(f => {
       if (f.path === filePath) {
         const val = parseFloat(newBpmValue);
-        return { ...f, originalBPM: isNaN(val) ? undefined : val };
+        return { ...f, originalBPM: isNaN(val) || val <= 0 ? undefined : val };
       }
       return f;
     }));
@@ -152,7 +162,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
   };
 
   const canDetect = selectedFiles.length > 0 && !isDetecting && !isProcessing;
-  const canModify = selectedFiles.some(f => f.originalBPM !== undefined) && outputDir !== '' && targetBPM !== '' && !isDetecting && !isProcessing;
+  const canModify = selectedFiles.some(f => f.originalBPM !== undefined && f.originalBPM > 0) && outputDir !== '' && targetBPM !== '' && !isDetecting && !isProcessing;
   const detectedCount = selectedFiles.filter(f => f.originalBPM !== undefined).length;
 
   return (
@@ -214,16 +224,17 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
                   <div>
                     <label className="block text-[11px] font-mono font-bold text-muted mb-1">Expected genre range</label>
-                    <select 
-                      value={bpmRange} 
-                      onChange={e => setBpmRange(e.target.value)}
-                      className="game-select text-xs h-10 font-bold"
-                    >
-                      <option value="any">Any (No constraints)</option>
-                      <option value="70-150">70 - 150 BPM (Hip-Hop / House)</option>
-                      <option value="90-180">90 - 180 BPM (Pop / Bass)</option>
-                      <option value="120-200">120 - 200 BPM (DnB / Hardstyle)</option>
-                    </select>
+                    <CustomSelect
+                      options={[
+                        { value: 'any', label: 'Any (No constraints)' },
+                        { value: '70-150', label: '70 - 150 BPM (Hip-Hop / House)' },
+                        { value: '90-180', label: '90 - 180 BPM (Pop / Bass)' },
+                        { value: '120-200', label: '120 - 200 BPM (DnB / Hardstyle)' },
+                      ]}
+                      value={bpmRange}
+                      onChange={setBpmRange}
+                      className="w-full shrink-0"
+                    />
                   </div>
                   
                   <Button 
@@ -262,14 +273,15 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
 
                   <div>
                     <label className="block text-[11px] font-mono font-bold text-muted mb-1">Output format</label>
-                    <select
+                    <CustomSelect
+                      options={[
+                        { value: 'wav', label: 'WAV (Lossless)' },
+                        { value: 'mp3', label: 'MP3 (Compressed)' },
+                      ]}
                       value={outputFormat}
-                      onChange={e => setOutputFormat(e.target.value as BpmOutputFormat)}
-                      className="game-select text-xs h-10 font-bold"
-                    >
-                      <option value="wav">WAV (Lossless)</option>
-                      <option value="mp3">MP3 (Compressed)</option>
-                    </select>
+                      onChange={(val) => setOutputFormat(val as BpmOutputFormat)}
+                      className="w-full shrink-0"
+                    />
                   </div>
                 </div>
 
@@ -339,7 +351,7 @@ export default function BpmModifierView({ isActive = false }: { isActive?: boole
           ) : (
             <PanelScrollArea className="flex flex-col gap-2 p-3">
               {selectedFiles.map((fileObj, i) => {
-                const fileName = fileObj.path.split('\\').pop() || fileObj.path.split('/').pop() || 'unknown';
+                const fileName = basename(fileObj.path) || 'unknown';
                 const prog = progresses.find(p => p.file === fileName);
                 const isError = prog?.status === 'error';
                 const isDone = prog?.status === 'done';

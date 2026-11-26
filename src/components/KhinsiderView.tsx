@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import pLimit from 'p-limit';
 import { listen } from '@tauri-apps/api/event';
-import { isPermissionGranted, requestPermission, sendNotification } from '@tauri-apps/plugin-notification';
 import { ArrowLeft, Download, ExternalLink, FolderOpen, LoaderCircle, Music2, Search, X } from 'lucide-react';
 import { KhinsiderService, KHINSIDER_HOME, type KhinsiderAlbum, type KhinsiderPage, type KhinsiderTrack } from '../services/khinsider';
+import { notifySuccess } from '../utils/toolkitEvents';
 import { useAppStore } from '../store/useAppStore';
 import { Button } from './ui/Button';
 import { InlineNotice } from './ui/InlineNotice';
@@ -53,23 +53,6 @@ function CoverImage({ src, alt, className }: { src?: string; alt: string; classN
   );
 }
 
-function logCoverDiagnostics(page: KhinsiderPage) {
-  if (!import.meta.env.DEV) return;
-  console.table(page.albums.map((item) => {
-    const url = item.cover_url ? new URL(item.cover_url) : undefined;
-    const path = url?.pathname ?? '';
-    return {
-      title: item.title,
-      rawUrl: item.cover_url ?? '(none)',
-      finalUrl: item.cover_url ?? '(none)',
-      host: url?.host ?? '(none)',
-      hasSpecialCharacters: /[\s%()[\]{}]/.test(path),
-      extension: path.split('.').pop() || '(none)',
-      state: item.cover_url ? 'pending' : 'no-src',
-    };
-  }));
-}
-
 export default function KhinsiderView() {
   const [page, setPage] = useState<KhinsiderPage | null>(null);
   const [album, setAlbum] = useState<KhinsiderPage | null>(null);
@@ -98,7 +81,6 @@ export default function KhinsiderView() {
       nextPage.albums.forEach((item) => {
         if (item.cover_url) coverCacheRef.current.set(item.url, item.cover_url);
       });
-      logCoverDiagnostics(nextPage);
       setPage(nextPage);
       setAlbum(null);
       setSelectedAlbum(null);
@@ -178,26 +160,22 @@ export default function KhinsiderView() {
     if (query.trim()) void loadPage(() => KhinsiderService.search(query.trim()));
   };
 
-  const notifyNative = async (title: string, body: string) => {
-    let granted = await isPermissionGranted();
-    if (!granted) granted = await requestPermission() === 'granted';
-    if (granted) sendNotification({ title, body });
-  };
-
-  const downloadTrack = async (track: KhinsiderTrack, format: 'mp3' | 'flac', subfolder?: string, nativeNotification = true): Promise<boolean> => {
+  const downloadTrack = async (track: KhinsiderTrack, format: 'mp3' | 'flac', subfolder?: string, nativeNotification = true, trackIndex?: number): Promise<boolean> => {
     const url = format === 'mp3' ? track.mp3_url : track.flac_url;
     if (!url) return false;
     if (!settings.defaultOutputDir) {
       showToast('Select an output folder before downloading.', 'warning');
       return false;
     }
+    const prefix = trackIndex !== undefined ? `${String(trackIndex + 1).padStart(2, '0')} - ` : '';
+    const outputFileName = `${prefix}${track.title}.${format}`;
     const key = `${track.source_url}:${format}`;
     setDownloadState((current) => ({ ...current, [key]: 'Downloading...' }));
     try {
-      await KhinsiderService.downloadFile(url, settings.defaultOutputDir, `${track.title}.${format}`, key, subfolder);
+      await KhinsiderService.downloadFile(url, settings.defaultOutputDir, outputFileName, key, subfolder);
       setDownloadState((current) => ({ ...current, [key]: 'Downloaded' }));
-      showToast(`${track.title}.${format} downloaded.`, 'success');
-      if (nativeNotification) await notifyNative('Download complete', `${track.title}.${format} was saved.`);
+      showToast(`${outputFileName} downloaded.`, 'success');
+      if (nativeNotification) await notifySuccess('Download complete', `${outputFileName} was saved.`);
       return true;
     } catch (reason) {
       setDownloadState((current) => ({ ...current, [key]: reason instanceof Error && reason.message.includes('canceled') ? 'Canceled' : 'Failed' }));
@@ -233,22 +211,24 @@ export default function KhinsiderView() {
       showToast('Select an output folder before downloading.', 'warning');
       return;
     }
-    const tracks = album.tracks.filter((track) => {
-      const url = format === 'mp3' ? track.mp3_url : track.flac_url;
-      return (allTracks || selectedTracks.has(track.source_url)) && Boolean(url);
-    });
+    const tracks = album.tracks
+      .map((track, idx) => ({ track, idx }))
+      .filter(({ track }) => {
+        const url = format === 'mp3' ? track.mp3_url : track.flac_url;
+        return (allTracks || selectedTracks.has(track.source_url)) && Boolean(url);
+      });
     if (!tracks.length) {
       showToast(allTracks ? `No ${format.toUpperCase()} tracks are available.` : `Select at least one track with ${format.toUpperCase()} available.`, 'warning');
       return;
     }
     setError('');
     const limit = pLimit(settings.enableConcurrentDownloads ? settings.maxConcurrentDownloads : 1);
-    const results = await Promise.all(tracks.map((track) => limit(() => downloadTrack(track, format, album.title, false))));
+    const results = await Promise.all(tracks.map(({ track, idx }) => limit(() => downloadTrack(track, format, album.title, false, idx))));
     const completed = results.filter(Boolean).length;
     const failed = results.length - completed;
     if (failed === 0) {
       showToast(`${completed} ${format.toUpperCase()} tracks downloaded.`, 'success');
-      await notifyNative(
+      await notifySuccess(
         'Batch download complete',
         `${completed} ${format.toUpperCase()} track${completed === 1 ? '' : 's'} were saved.`,
       );
@@ -408,7 +388,7 @@ export default function KhinsiderView() {
                           return available ? (
                             <Button
                               key={format}
-                              onClick={() => void (downloadState[stateKey]?.startsWith('Downloading') ? cancelTrackDownload(track, format) : downloadTrack(track, format))}
+                              onClick={() => void (downloadState[stateKey]?.startsWith('Downloading') ? cancelTrackDownload(track, format) : downloadTrack(track, format, undefined, true, index))}
                               title={downloadState[stateKey]?.startsWith('Downloading') ? `Cancel ${format.toUpperCase()}` : (downloadState[stateKey] ?? `Download ${format.toUpperCase()}`)}
                               className="kh-control-sm px-2"
                               icon={downloadState[stateKey]?.startsWith('Downloading') ? X : Download}

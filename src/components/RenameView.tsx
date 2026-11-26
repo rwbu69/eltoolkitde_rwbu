@@ -8,7 +8,6 @@ import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { Toggle } from './ui/Toggle';
 import { EmptyState } from './ui/EmptyState';
-import { InlineNotice } from './ui/InlineNotice';
 import { getStatusLabel, getUserFacingError } from '../config/uiText';
 import { showToast } from './ui/Toast';
 
@@ -35,7 +34,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
   const [progresses, setProgresses] = useState<RenameProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [history, setHistory] = useState<{oldPath: string, newPath: string}[]>([]);
-  const [notice, setNotice] = useState<string>('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Re-generate previews whenever inputs change
   useEffect(() => {
@@ -78,7 +77,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
         console.error(err);
         setPreviews([]);
       });
-  }, [inputPath, mode, findText, replaceText, caseSensitive, prefix, suffix, baseName, startNumber, padding]);
+  }, [inputPath, mode, findText, replaceText, caseSensitive, prefix, suffix, baseName, startNumber, padding, refreshKey]);
 
   const handleSelectInput = (path: string) => {
     setInputPath(path);
@@ -88,7 +87,6 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
 
   const handleExecute = async () => {
     if (previews.length === 0 || hasConflicts) return;
-    setNotice('');
     setIsProcessing(true);
     setProgresses([]);
     
@@ -104,11 +102,8 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
       if (res.history.length > 0) {
         setHistory(res.history);
       }
-      
-      setTimeout(() => {
-        setMode(mode); 
-      }, 500);
-      
+
+      setRefreshKey(k => k + 1);
     } catch (err: any) {
       showToast('The file names could not be previewed.', 'error', getUserFacingError(err, 'Check the selected folder and try again.').detail);
     } finally {
@@ -130,11 +125,7 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
         });
       });
       setHistory([]);
-      
-      setTimeout(() => {
-        setMode(mode); 
-      }, 500);
-      
+      setRefreshKey(k => k + 1);
     } catch (err: any) {
       showToast('The files could not be renamed.', 'error', getUserFacingError(err, 'Check the preview and try again.').detail);
     } finally {
@@ -315,6 +306,10 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
                       <div className="flex items-center">
                         {p.status === 'ok' ? (
                           <CheckCircle2 className="w-4 h-4 text-toska shrink-0" />
+                        ) : p.status === 'invalid' ? (
+                          <span className="text-[9px] font-mono font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded" title="Empty or illegal filename characters">
+                            Invalid
+                          </span>
                         ) : p.status === 'collision' ? (
                           <span className="text-[9px] font-mono font-bold text-buttontext bg-oshipink px-1.5 py-0.5 rounded" title="Name collision detected">
                             Collision
@@ -405,7 +400,6 @@ export default function RenameView({ isActive = false }: { isActive?: boolean })
           </div>
         </div>
       </Panel>
-      {notice && <InlineNotice message={notice} tone="error" />}
     </div>
   );
 }

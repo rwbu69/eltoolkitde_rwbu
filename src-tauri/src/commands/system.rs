@@ -16,9 +16,6 @@ pub fn safe_rename(old_path: String, new_path: String) -> Result<(), String> {
     if !old.is_file() {
         return Err("The source file does not exist.".to_string());
     }
-    if new.exists() {
-        return Err("The destination file already exists.".to_string());
-    }
 
     let old_parent = old
         .parent()
@@ -30,6 +27,15 @@ pub fn safe_rename(old_path: String, new_path: String) -> Result<(), String> {
     let new_parent = new_parent.canonicalize().map_err(|e| e.to_string())?;
     if old_parent != new_parent {
         return Err("Renaming across directories is not allowed.".to_string());
+    }
+
+    let is_case_only_rename = old
+        .file_name()
+        .and_then(|a| new.file_name().map(|b| a.to_string_lossy().eq_ignore_ascii_case(&b.to_string_lossy())))
+        .unwrap_or(false);
+
+    if new.exists() && !is_case_only_rename {
+        return Err("The destination file already exists.".to_string());
     }
 
     std::fs::rename(old, new).map_err(|e| e.to_string())
@@ -75,7 +81,7 @@ pub fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
 
     let mut ffmpeg_path = None;
     let mut ffprobe_path = None;
-    let mut node_path = None;
+    let mut qjs_path = None;
 
     for dir in search_dirs {
         if let Ok(entries) = fs::read_dir(&dir) {
@@ -91,10 +97,10 @@ pub fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
                         && !file_name.ends_with(".exe")
                     {
                         ffprobe_path = Some(entry.path());
-                    } else if (file_name.starts_with("node-") || file_name == "node")
+                    } else if (file_name.starts_with("qjs-") || file_name == "qjs")
                         && !file_name.ends_with(".exe")
                     {
-                        node_path = Some(entry.path());
+                        qjs_path = Some(entry.path());
                     }
                 } else {
                     if file_name.starts_with("ffmpeg.exe")
@@ -107,10 +113,10 @@ pub fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
                     {
                         ffprobe_path = Some(entry.path());
                     }
-                    if file_name.starts_with("node.exe")
-                        || (file_name.starts_with("node-") && file_name.ends_with(".exe"))
+                    if file_name.starts_with("qjs.exe")
+                        || (file_name.starts_with("qjs-") && file_name.ends_with(".exe"))
                     {
-                        node_path = Some(entry.path());
+                        qjs_path = Some(entry.path());
                     }
                 }
             }
@@ -156,10 +162,10 @@ pub fn setup_ffmpeg_location(app: tauri::AppHandle) -> Result<String, String> {
         }
     }
 
-    if let Some(node) = node_path {
-        let dest = temp_dir.join(if cfg!(windows) { "node.exe" } else { "node" });
+    if let Some(qjs) = qjs_path {
+        let dest = temp_dir.join(if cfg!(windows) { "qjs.exe" } else { "qjs" });
         if !dest.exists() {
-            let _ = fs::hard_link(&node, &dest).or_else(|_| fs::copy(&node, &dest).map(|_| ()));
+            let _ = fs::hard_link(&qjs, &dest).or_else(|_| fs::copy(&qjs, &dest).map(|_| ()));
         }
         #[cfg(unix)]
         {

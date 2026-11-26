@@ -14,8 +14,9 @@ export const AUDIO_BITRATE_OPTIONS = [
 ] as const;
 
 export const VIDEO_CODEC_OPTIONS = [
-  { value: 'h265', label: 'H.265 / HEVC (High Efficiency - Default)' },
-  { value: 'h264', label: 'H.264 / AVC (Maximum Compatibility)' },
+  { value: 'smart', label: 'H.264 / H.265 (No AV1/VP9 — Fastest)' },
+  { value: 'h264', label: 'H.264 / AVC (Always H.264 — Resolume Safe)' },
+  { value: 'h265', label: 'H.265 / HEVC (Always H.265 — Smaller Files)' },
 ] as const;
 
 export type VideoQuality = typeof VIDEO_QUALITY_OPTIONS[number]['value'];

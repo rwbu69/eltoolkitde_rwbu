@@ -1,10 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Download, Sliders, Edit3, Settings, Moon, Sun, CheckCircle2, Library, Terminal } from 'lucide-react';
 import DownloaderView from './components/DownloaderView';
-import KhinsiderView from './components/KhinsiderView';
-import AudioStudioView from './components/AudioStudioView';
 import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
 import TerminalLogView from './components/TerminalLogView';
@@ -13,6 +11,9 @@ import { Tooltip } from './components/ui/Tooltip';
 import { useAppStore } from './store/useAppStore';
 import { ToastHost } from './components/ui/Toast';
 import appIcon from './assets/icon.png';
+
+const KhinsiderView = lazy(() => import('./components/KhinsiderView'));
+const AudioStudioView = lazy(() => import('./components/AudioStudioView'));
 
 export type MainTab = 'downloader' | 'khinsider' | 'studio' | 'rename' | 'settings';
 
@@ -241,11 +242,15 @@ function App() {
               </div>
               {settings.enableKhinsider && (
                 <div className={activeTab === 'khinsider' ? 'h-full w-full' : 'hidden'}>
-                  <KhinsiderView />
+                  <Suspense fallback={null}>
+                    <KhinsiderView />
+                  </Suspense>
                 </div>
               )}
               <div className={activeTab === 'studio' ? 'h-full w-full' : 'hidden'}>
-                <AudioStudioView isActive={activeTab === 'studio'} />
+                <Suspense fallback={null}>
+                  <AudioStudioView isActive={activeTab === 'studio'} />
+                </Suspense>
               </div>
               <div className={activeTab === 'rename' ? 'h-full w-full' : 'hidden'}>
                 <RenameView isActive={activeTab === 'rename'} />

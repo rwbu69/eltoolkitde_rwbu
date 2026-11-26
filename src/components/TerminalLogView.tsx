@@ -2,16 +2,25 @@ import { useState, useEffect, useRef } from 'react';
 import { Terminal, Trash2, X, Copy } from 'lucide-react';
 import { showToast } from './ui/Toast';
 
+interface LogEntry {
+  time: string;
+  message: string;
+}
+
 export default function TerminalLogView() {
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleLog = (e: Event) => {
       const customEvent = e as CustomEvent<string>;
+      const entry: LogEntry = {
+        time: new Date().toLocaleTimeString(),
+        message: customEvent.detail,
+      };
       setLogs((prev) => {
-        const newLogs = [...prev, customEvent.detail];
+        const newLogs = [...prev, entry];
         if (newLogs.length > 200) {
           return newLogs.slice(newLogs.length - 200);
         }
@@ -40,11 +49,11 @@ export default function TerminalLogView() {
 
   const handleCopyLogs = () => {
     if (logs.length === 0) return;
-    navigator.clipboard.writeText(logs.join('\n'));
+    navigator.clipboard.writeText(logs.map(l => `[${l.time}] ${l.message}`).join('\n'));
     showToast('Logs copied to clipboard', 'info');
   };
 
-  const errorCount = logs.filter(l => l.includes('ERROR') || l.includes('error')).length;
+  const errorCount = logs.filter(l => l.message.includes('ERROR') || l.message.includes('error')).length;
 
   return (
     <footer 
@@ -113,8 +122,8 @@ export default function TerminalLogView() {
               <p className="text-muted font-mono italic text-[11px]">No system logs recorded.</p>
             ) : (
               logs.map((log, i) => {
-                const isError = log.includes('ERROR') || log.includes('error');
-                const isWarn = log.includes('WARN');
+                const isError = log.message.includes('ERROR') || log.message.includes('error');
+                const isWarn = log.message.includes('WARN');
                 return (
                   <p
                     key={i}
@@ -126,8 +135,8 @@ export default function TerminalLogView() {
                         : 'text-ink'
                     }`}
                   >
-                    <span className="opacity-40 text-[10px] mr-1.5 select-none">[{new Date().toLocaleTimeString()}]</span>
-                    {log}
+                    <span className="opacity-40 text-[10px] mr-1.5 select-none">[{log.time}]</span>
+                    {log.message}
                   </p>
                 );
               })

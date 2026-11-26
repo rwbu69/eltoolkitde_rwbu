@@ -11,7 +11,6 @@ import { ProgressBar } from './ui/ProgressBar';
 import { InlineNotice } from './ui/InlineNotice';
 import { parseYtDlpError } from '../config/uiText';
 import { AUDIO_BITRATE_OPTIONS, VIDEO_QUALITY_OPTIONS, type AudioBitrate, type VideoQuality } from '../config/mediaSettings';
-import { DOWNLOAD_PRESETS, type DownloadPresetId } from '../config/downloadPresets';
 import { showToast } from './ui/Toast';
 import { QueueItemCard } from './downloader/QueueItemCard';
 
@@ -64,7 +63,6 @@ export default function DownloaderView() {
 
   const [urlsInput, setUrlsInput] = useState('');
   const [format, setFormat] = useState<'mp4' | 'mp3' | 'video-only'>('mp4');
-  const [preset, setPreset] = useState<DownloadPresetId | 'custom'>('custom');
   const [outputDir, setOutputDir] = useState<string>(settings.defaultOutputDir || '');
   const [isInspecting, setIsInspecting] = useState(false);
   const [confirmation, setConfirmation] = useState<{ urls: string[]; infos: VideoInfo[]; totalItems: number } | null>(null);
@@ -84,16 +82,6 @@ export default function DownloaderView() {
 
   const getUniqueUrls = (urls: string[]) => [...new Set(urls)];
 
-  const applyPreset = (presetId: DownloadPresetId | 'custom') => {
-    setPreset(presetId);
-    if (presetId === 'custom') return;
-    const selected = DOWNLOAD_PRESETS.find(item => item.id === presetId);
-    if (!selected) return;
-    setFormat(selected.format);
-    if (selected.videoQuality) updateSettings({ defaultVideoQuality: selected.videoQuality });
-    if (selected.audioBitrate) updateSettings({ defaultAudioBitrate: selected.audioBitrate });
-  };
-
   const queueInspectedUrls = (urls: string[], infos: VideoInfo[]) => {
     infos.forEach((info, index) => {
       const url = urls[index];
@@ -101,14 +89,15 @@ export default function DownloaderView() {
         addBatchToQueue(
           info.entries.map(e => ({
             url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id),
-            title: e.title || e.id
+            title: e.title || e.id,
+            thumbnail: e.thumbnail,
           })),
           format,
           undefined,
           info.title
         );
       } else {
-        addToQueue(url, format, false, undefined, info.title);
+        addToQueue(url, format, false, undefined, info.title, info.thumbnail);
       }
     });
     setUrlsInput('');
@@ -168,7 +157,7 @@ export default function DownloaderView() {
   };
 
   const pendingCount = queue.filter(q => q.status === 'pending' || q.status === 'fetching').length;
-  const downloadingCount = queue.filter(q => q.status === 'downloading').length;
+  const downloadingCount = queue.filter(q => q.status === 'downloading' || q.status === 'processing').length;
   const completedCount = queue.filter(q => q.status === 'done').length;
   const failedCount = queue.filter(q => q.status === 'error').length;
   const canceledCount = queue.filter(q => q.status === 'canceled').length;
@@ -176,12 +165,12 @@ export default function DownloaderView() {
   const finishedCount = queue.filter(q => q.status === 'done' || q.status === 'error' || q.status === 'canceled' || q.status === 'expanded').length;
   const overallProgress = totalCount === 0 ? 0 : Math.round((finishedCount / totalCount) * 100);
   const visibleQueue = queue.filter((item) => {
-    if (queueFilter === 'active') return item.status === 'pending' || item.status === 'fetching' || item.status === 'downloading';
+    if (queueFilter === 'active') return item.status === 'pending' || item.status === 'fetching' || item.status === 'downloading' || item.status === 'processing';
     if (queueFilter === 'failed') return item.status === 'error' || item.status === 'canceled';
     if (queueFilter === 'completed') return item.status === 'done' || item.status === 'expanded';
     return true;
   });
-  const hasActiveDownloads = queue.some(q => q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading');
+  const hasActiveDownloads = queue.some(q => q.status === 'pending' || q.status === 'fetching' || q.status === 'downloading' || q.status === 'processing');
   const urlsCount = parseUrls().length;
 
   return (
@@ -222,7 +211,7 @@ export default function DownloaderView() {
                         { value: 'video-only', label: 'Video only' }
                       ]}
                       value={format}
-                      onChange={(val) => { setPreset('custom'); setFormat(val as any); }}
+                      onChange={(val) => setFormat(val as any)}
                     />
                   </div>
 
@@ -234,7 +223,7 @@ export default function DownloaderView() {
                         <CustomSelect
                           options={[...VIDEO_QUALITY_OPTIONS]}
                           value={settings.defaultVideoQuality}
-                          onChange={(val) => { setPreset('custom'); updateSettings({ defaultVideoQuality: val as VideoQuality }); }}
+                          onChange={(val) => updateSettings({ defaultVideoQuality: val as VideoQuality })}
                           className="w-full shrink-0"
                         />
                       </>
@@ -244,29 +233,15 @@ export default function DownloaderView() {
                         <CustomSelect
                           options={[...AUDIO_BITRATE_OPTIONS]}
                           value={settings.defaultAudioBitrate}
-                          onChange={(val) => { setPreset('custom'); updateSettings({ defaultAudioBitrate: val as AudioBitrate }); }}
+                          onChange={(val) => updateSettings({ defaultAudioBitrate: val as AudioBitrate })}
                           className="w-full shrink-0"
                         />
                       </>
                     )}
                   </div>
 
-                  {/* Row 2, Col 1: Download preset */}
-                  <div className="min-w-0 flex flex-col">
-                    <FormLabel text="Download preset" icon={Gauge} iconColor="text-toska" />
-                    <CustomSelect
-                      options={[
-                        { value: 'custom', label: 'Custom settings' },
-                        ...DOWNLOAD_PRESETS.map((option) => ({ value: option.id, label: option.label }))
-                      ]}
-                      value={preset}
-                      onChange={(val) => applyPreset(val as DownloadPresetId | 'custom')}
-                      className="w-full shrink-0"
-                    />
-                  </div>
-
-                  {/* Row 2, Col 2: Output folder */}
-                  <div className="min-w-0 flex flex-col">
+                  {/* Row 2: Output folder (full width) */}
+                  <div className="min-w-0 flex flex-col sm:col-span-2">
                     <FormLabel text="Output folder" icon={FolderOpen} iconColor="text-toska" />
                     <PathPicker
                       value={outputDir}
@@ -355,17 +330,17 @@ export default function DownloaderView() {
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-mono font-bold text-muted uppercase">Filter:</span>
-                        <select
+                        <CustomSelect
+                          options={[
+                            { value: 'all', label: `All items (${totalCount})` },
+                            { value: 'active', label: `Active (${downloadingCount + pendingCount})` },
+                            { value: 'completed', label: `Completed (${completedCount})` },
+                            { value: 'failed', label: `Failed (${failedCount + canceledCount})` },
+                          ]}
                           value={queueFilter}
-                          onChange={(event) => setQueueFilter(event.target.value as typeof queueFilter)}
-                          className="game-select h-7 py-0.5 px-2 text-[10px] font-bold"
-                          aria-label="Filter download queue"
-                        >
-                          <option value="all">All items ({totalCount})</option>
-                          <option value="active">Active ({downloadingCount + pendingCount})</option>
-                          <option value="completed">Completed ({completedCount})</option>
-                          <option value="failed">Failed ({failedCount + canceledCount})</option>
-                        </select>
+                          onChange={(val) => setQueueFilter(val as typeof queueFilter)}
+                          className="w-40 shrink-0"
+                        />
                       </div>
 
                       {/* Compact Metrics Row */}

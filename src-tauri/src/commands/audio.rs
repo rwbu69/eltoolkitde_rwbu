@@ -217,6 +217,56 @@ fn calculate_tempo_autocorr(
     (detected_bpm, confidence, candidates)
 }
 
+struct SymphoniaTrackDecoder {
+    format: Box<dyn symphonia::core::formats::FormatReader>,
+    decoder: Box<dyn symphonia::core::codecs::Decoder>,
+    track_id: u32,
+    sample_rate: u32,
+    n_frames: Option<u64>,
+}
+
+fn open_symphonia_decoder(path: &str) -> Result<SymphoniaTrackDecoder, String> {
+    use symphonia::core::codecs::DecoderOptions;
+    use symphonia::core::formats::FormatOptions;
+    use symphonia::core::io::MediaSourceStream;
+    use symphonia::core::meta::MetadataOptions;
+    use symphonia::core::probe::Hint;
+
+    let file = std::fs::File::open(path).map_err(|e| format!("Failed to open audio: {e}"))?;
+    let mss = MediaSourceStream::new(Box::new(file), Default::default());
+
+    let mut hint = Hint::new();
+    if let Some(ext) = std::path::Path::new(path).extension().and_then(|s| s.to_str()) {
+        hint.with_extension(ext);
+    }
+
+    let probed = symphonia::default::get_probe()
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
+        .map_err(|e| format!("Unsupported format: {e}"))?;
+
+    let format = probed.format;
+    let track = format.default_track().ok_or("No default audio track")?;
+    let track_id = track.id;
+    let sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
+    let n_frames = track.codec_params.n_frames;
+    let decoder = symphonia::default::get_codecs()
+        .make(&track.codec_params, &DecoderOptions::default())
+        .map_err(|e| format!("Codec unsupported: {e}"))?;
+
+    Ok(SymphoniaTrackDecoder {
+        format,
+        decoder,
+        track_id,
+        sample_rate,
+        n_frames,
+    })
+}
+
 #[tauri::command]
 pub async fn detect_audio_bpm(
     path: String,
@@ -225,40 +275,17 @@ pub async fn detect_audio_bpm(
 ) -> Result<BpmResultDto, String> {
     tokio::task::spawn_blocking(move || {
         use symphonia::core::audio::SampleBuffer;
-        use symphonia::core::codecs::DecoderOptions;
-        use symphonia::core::formats::FormatOptions;
-        use symphonia::core::io::MediaSourceStream;
-        use symphonia::core::meta::MetadataOptions;
-        use symphonia::core::probe::Hint;
 
         let min_b = min_bpm.unwrap_or(60.0).clamp(30.0, 300.0);
         let max_b = max_bpm.unwrap_or(200.0).clamp(min_b + 10.0, 320.0);
 
-        let file =
-            std::fs::File::open(&path).map_err(|e| format!("Failed to open audio: {e}"))?;
-        let mss = MediaSourceStream::new(Box::new(file), Default::default());
+        let SymphoniaTrackDecoder {
+            mut format,
+            mut decoder,
+            sample_rate,
+            ..
+        } = open_symphonia_decoder(&path)?;
 
-        let mut hint = Hint::new();
-        if let Some(ext) = std::path::Path::new(&path).extension().and_then(|s| s.to_str()) {
-            hint.with_extension(ext);
-        }
-
-        let probed = symphonia::default::get_probe()
-            .format(
-                &hint,
-                mss,
-                &FormatOptions::default(),
-                &MetadataOptions::default(),
-            )
-            .map_err(|e| format!("Unsupported format: {e}"))?;
-
-        let mut format = probed.format;
-        let track = format.default_track().ok_or("No default audio track")?;
-        let mut decoder = symphonia::default::get_codecs()
-            .make(&track.codec_params, &DecoderOptions::default())
-            .map_err(|e| format!("Codec unsupported: {e}"))?;
-
-        let sample_rate = track.codec_params.sample_rate.unwrap_or(44100);
         let max_samples = (sample_rate as usize) * 45;
         let mut mono_samples: Vec<f32> = Vec::with_capacity(max_samples);
 
@@ -322,45 +349,18 @@ pub async fn get_audio_waveform(
     target_peaks: Option<usize>,
 ) -> Result<WaveformDataDto, String> {
     tokio::task::spawn_blocking(move || {
-        use std::fs::File;
-        use std::path::Path;
         use symphonia::core::audio::SampleBuffer;
-        use symphonia::core::codecs::DecoderOptions;
-        use symphonia::core::formats::FormatOptions;
-        use symphonia::core::io::MediaSourceStream;
-        use symphonia::core::meta::MetadataOptions;
-        use symphonia::core::probe::Hint;
 
         let target_buckets = target_peaks.unwrap_or(800).clamp(100, 3000);
 
-        let file = File::open(Path::new(&path))
-            .map_err(|e| format!("Failed to open file: {e}"))?;
-        let mss = MediaSourceStream::new(Box::new(file), Default::default());
-
-        let mut hint = Hint::new();
-        if let Some(ext) = Path::new(&path).extension().and_then(|s| s.to_str()) {
-            hint.with_extension(ext);
-        }
-
-        let probed = symphonia::default::get_probe()
-            .format(
-                &hint,
-                mss,
-                &FormatOptions::default(),
-                &MetadataOptions::default(),
-            )
-            .map_err(|e| format!("Unsupported format: {e}"))?;
-
-        let mut format = probed.format;
-        let track = format.default_track().ok_or("No default audio track")?;
-        let track_id = track.id;
-        let sample_rate = track.codec_params.sample_rate.unwrap_or(44100) as f64;
-        let n_frames = track.codec_params.n_frames;
-        let codec_params = track.codec_params.clone();
-
-        let mut decoder = symphonia::default::get_codecs()
-            .make(&codec_params, &DecoderOptions::default())
-            .map_err(|e| format!("Codec unsupported: {e}"))?;
+        let SymphoniaTrackDecoder {
+            mut format,
+            mut decoder,
+            track_id,
+            sample_rate: raw_sample_rate,
+            n_frames,
+        } = open_symphonia_decoder(&path)?;
+        let sample_rate = raw_sample_rate as f64;
 
         // Streaming micro-chunk downsampling to keep RAM footprint < 4MB
         const MICRO_CHUNK: usize = 256;

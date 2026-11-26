@@ -7,7 +7,7 @@ please open an issue first so the scope can be discussed before implementation.
 ## Before you start
 
 - Check existing issues and pull requests for related work.
-- Read the [README](README.md) and [security policy](SECURITY.md).
+- Read the [README](README.md), [LOGIC_REFERENCE.md](LOGIC_REFERENCE.md) (for where each menu and feature's logic lives), and [security policy](SECURITY.md).
 - Do not include copyrighted media, credentials, cookies, or personal data in
   issues, tests, screenshots, or pull requests.
 
@@ -17,7 +17,6 @@ please open an issue first so the scope can be discussed before implementation.
 
 - Node.js 24 and npm
 - Rust stable and the [Tauri v2 prerequisites](https://v2.tauri.app/start/prerequisites/)
-- Python 3.11+ only when rebuilding the BPM sidecars
 
 Install dependencies with the lockfile:
 
@@ -25,7 +24,7 @@ Install dependencies with the lockfile:
 npm ci
 ```
 
-See the README for sidecar preparation and platform-specific requirements.
+Running `npm run dev` or `npm run build` automatically executes `scripts/setup-sidecars.cjs` to download and verify `ffmpeg`, `ffprobe`, `yt-dlp`, and `qjs` (QuickJS). See the README for platform-specific requirements.
 
 ## Useful commands
 

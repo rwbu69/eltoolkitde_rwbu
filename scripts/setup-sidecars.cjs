@@ -14,21 +14,25 @@ const targets = {
         suffix: '.exe',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe',
         ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz',
+        qjsUrl: 'https://github.com/quickjs-ng/quickjs/releases/latest/download/qjs-windows-x86_64.exe',
     },
     'x86_64-unknown-linux-gnu': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp',
         ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz',
+        qjsUrl: 'https://github.com/quickjs-ng/quickjs/releases/latest/download/qjs-linux-x86_64',
     },
     'x86_64-apple-darwin': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
         ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz',
+        qjsUrl: 'https://github.com/quickjs-ng/quickjs/releases/latest/download/qjs-darwin-x86_64',
     },
     'aarch64-apple-darwin': {
         suffix: '',
         ytdlpUrl: 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_macos',
         ffmpegUrl: 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz',
+        qjsUrl: 'https://github.com/quickjs-ng/quickjs/releases/latest/download/qjs-darwin-arm64',
     },
 };
 
@@ -135,7 +139,7 @@ if (isTargetHostMatch && ffmpegStatic && fs.existsSync(ffmpegStatic)) {
 
 copyExecutable(ffprobeSource, path.join(binDir, targetName('ffprobe')));
 
-function downloadFile(url, destination) {
+function downloadFile(url, destination, minBytes = 1024 * 1024) {
     if (fs.existsSync(destination) && fs.statSync(destination).size > 0) {
         const canValidate = target === getDefaultTarget();
         const validation = canValidate
@@ -156,7 +160,7 @@ function downloadFile(url, destination) {
 
     const temporaryDestination = `${destination}.download`;
     fs.rmSync(temporaryDestination, { force: true });
-    console.log(`[INFO] Downloading yt-dlp for ${target}...`);
+    console.log(`[INFO] Downloading ${path.basename(destination)} for ${target}...`);
 
     const result = spawnSync(
         process.platform === 'win32' ? 'curl.exe' : 'curl',
@@ -174,9 +178,9 @@ function downloadFile(url, destination) {
     }
 
     const downloadedSize = fs.statSync(temporaryDestination).size;
-    if (downloadedSize < 1024 * 1024) {
+    if (downloadedSize < minBytes) {
         fs.rmSync(temporaryDestination, { force: true });
-        throw new Error(`Downloaded yt-dlp is unexpectedly small (${downloadedSize} bytes)`);
+        throw new Error(`Downloaded ${path.basename(destination)} is unexpectedly small (${downloadedSize} bytes)`);
     }
 
     fs.renameSync(temporaryDestination, destination);
@@ -186,6 +190,7 @@ function downloadFile(url, destination) {
 
 try {
     downloadFile(targetConfig.ytdlpUrl, path.join(binDir, targetName('yt-dlp')));
+    downloadFile(targetConfig.qjsUrl, path.join(binDir, targetName('qjs')), 100 * 1024);
 } catch (error) {
     console.error(`[ERROR] Failed to set up sidecars: ${error.message}`);
     process.exitCode = 1;

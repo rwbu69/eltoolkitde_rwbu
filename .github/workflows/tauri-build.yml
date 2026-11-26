@@ -66,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for binary in ffmpeg ffprobe yt-dlp; do
+          for binary in ffmpeg ffprobe yt-dlp qjs; do
             path="src-tauri/${binary}-${{ matrix.target }}${{ matrix.target == 'x86_64-pc-windows-msvc' && '.exe' || '' }}"
             test -s "$path"
             if [[ "${{ matrix.target }}" != "x86_64-pc-windows-msvc" ]]; then

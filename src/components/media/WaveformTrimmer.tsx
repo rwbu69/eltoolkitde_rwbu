@@ -68,7 +68,7 @@ export function WaveformTrimmer({
         // 2. Create media blob URL for audio preview playback
         blobUrl = await WaveformService.createMediaBlobUrl(filePath);
         if (isCancelled) {
-          URL.revokeObjectURL(blobUrl);
+          if (blobUrl) URL.revokeObjectURL(blobUrl);
           return;
         }
 
@@ -94,7 +94,7 @@ export function WaveformTrimmer({
         // 4. Create WaveSurfer v7 instance
         wsInstance = WaveSurfer.create({
           container: containerRef.current,
-          url: blobUrl,
+          ...(blobUrl ? { url: blobUrl } : {}),
           peaks: peaksData?.peaks && peaksData.peaks.length > 0 ? [peaksData.peaks] : undefined,
           duration: peaksData?.duration_seconds,
           waveColor: '#a6adc8',

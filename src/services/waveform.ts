@@ -1,5 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
-import { readFile } from '@tauri-apps/plugin-fs';
+import { readFile, stat } from '@tauri-apps/plugin-fs';
+
+const MAX_BLOB_PREVIEW_BYTES = 250 * 1024 * 1024;
 
 export interface WaveformData {
   peaks: number[];
@@ -21,7 +23,15 @@ export const WaveformService = {
   /**
    * Creates an in-memory blob URL for the local media file so WaveSurfer can preview audio playback.
    */
-  async createMediaBlobUrl(filePath: string): Promise<string> {
+  async createMediaBlobUrl(filePath: string): Promise<string | null> {
+    try {
+      const info = await stat(filePath);
+      if (info.size > MAX_BLOB_PREVIEW_BYTES) {
+        return null;
+      }
+    } catch {
+      // Proceed if stat is unavailable in test/mock environments
+    }
     const bytes = await readFile(filePath);
     const ext = filePath.split('.').pop()?.toLowerCase() || '';
 

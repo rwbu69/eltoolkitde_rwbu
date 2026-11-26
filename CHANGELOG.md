@@ -2,7 +2,7 @@
 
 ## ElToolkitDeRWBU v0.1.4 — Audio Waveform Studio, UI Declutter & Media Pipeline Overhaul
 
-Date: 2026-11-19
+Date: 2026-11-27
 
 ### Interactive Waveform Trimmer & Audio Studio
 
@@ -13,6 +13,11 @@ Date: 2026-11-19
 
 ### Media Downloader & Thumbnail Embedding
 
+- Removed hardcoded `youtube:player_client=android,web` override so all resolutions (`360p`–`4K`) resolve reliably.
+- Added `Smart` (`H.264 / H.265 — No AV1/VP9`) as the default video codec (`settingsVersion: 2` migration) to keep native H.264/H.265 downloads instantaneous while auto-transcoding AV1/VP9 streams (e.g., 1440p/4K) with GPU encoder fallback (`nvenc`/`qsv`/`amf`/`videotoolbox` → CPU), stream-scoped Resolume-safe flags (`-pix_fmt:v:0 yuv420p`, `-tag:v:0 hvc1`, `-movflags +faststart`), and live FFmpeg `time=` progress.
+- Added compact 16:9 thumbnails inside Active Queue cards (`QueueItemCard`) using existing `yt-dlp` metadata and updated Tauri `img-src` CSP (`https: data:`).
+- Added `Transcoding` queue card status, cancellable FFmpeg transcode spawning, session caching for sidecar/encoder probes, and automatic audio stripping (`-an`) if `video-only` falls back to a muxed stream.
+- Bundled lightweight QuickJS (`quickjs-ng` / `qjs`) as a Tauri sidecar and passed `--js-runtimes quickjs:...` to `yt-dlp` for YouTube EJS challenge support.
 - Switched to embed-only thumbnail handling across MP4, MP3, and video-only downloads by removing `--write-thumbnail` and retaining `--embed-thumbnail` with automatic format conversion to JPEG (`--convert-thumbnails jpg`).
 - Fixed post-download FFmpeg video codec optimization to preserve embedded cover art (`-map 0:v:0`, `-map 0:v:1? -c:v:1 copy -disposition:v:1 attached_pic`, `-map 0:a? -c:a copy`), preventing FFmpeg from discarding embedded thumbnail streams when transcoding.
 - Ensured no standalone `.jpg` or `.webp` files remain in output folders after downloads complete.
@@ -25,8 +30,10 @@ Date: 2026-11-19
   - Tier 1 (`h-10` / 40px): Standard form inputs, selectors, and secondary buttons.
   - Tier 2 (`h-11` / 44px): Primary hero action buttons (`Check links`, `Apply to N files`, etc.).
   - Tier 3 (`h-8` / 32px): Utility actions and toolbar buttons.
-- Unified Downloader's 2×2 media controls grid (Format, Video Resolution, Download Preset, Output Folder) into a single symmetrical CSS Grid with matching 40px heights.
-- Replaced the native HTML preset `<select>` with `<CustomSelect>` for visual consistency, chevron indicator, and identical typography.
+- Simplified Downloader's setup grid (Format, Video Resolution / Audio Bitrate, and full-width Output Folder) by removing the redundant Download Preset selector.
+- Fixed `CustomSelect` dark-mode hover contrast and standardized dropdowns in `DownloaderView`, `BpmModifierView`, and `SettingsView` on `<CustomSelect>`.
+- Pre-filled existing ID3 tags in `MetadataView` and expanded its single-file picker to all 7 supported audio formats (`.mp3`, `.flac`, `.m4a`, `.ogg`, `.wav`, `.opus`, `.aac`), preserving source extensions in `.metadata-backup.<ext>`.
+- Auto-filled `defaultOutputDir` in `BpmModifierView`, refreshed `RenameView` previews after rename/undo, preserved per-line timestamps in `TerminalLogView`, and made `joinPath` separator-aware.
 - Eliminated blurry inset shadows and fuzzy drop shadows on pill buttons and inputs, establishing crisp, solid flat arcade surfaces with `border-2 border-subtleborder` and explicit `box-border`.
 
 ### Responsive Layout & Terminal Drawer Redesign
@@ -42,12 +49,16 @@ Date: 2026-11-19
 - Integrated Apple quarantine flag purge (xattr -dr com.apple.quarantine) in macOS CI build verification to prevent Gatekeeper bundle packaging errors.
 - Added Swatinem/rust-cache@v2 to GitHub Actions ci.yml Rust checks, speeding up PR verification cycles.
 - Synchronized version 0.1.4 across package.json, Cargo.toml, and tauri.conf.json.
-- Removed *.test.ts pattern from .gitignore so all 7 test suites (31 unit tests) are tracked by Git and executed in CI.
+- Removed *.test.ts pattern from .gitignore so all 6 test suites (31 unit tests) are tracked by Git and executed in CI.
 
 ### Cleanups & Maintenance
 
+- Added [USER_GUIDE.md](USER_GUIDE.md) and [LOGIC_REFERENCE.md](LOGIC_REFERENCE.md) covering user workflows and code locations for every menu, service, and Rust command.
+- Updated `README.md` with new visual assets (`images/header.png`, refreshed `images/downloader.png`) and synced `.github/` release workflows and templates.
+- Made `update_ytdlp` asynchronous (`tokio::task::spawn_blocking`) so updates do not block the Tauri IPC thread.
+- Lazy-loaded `KhinsiderView` and `AudioStudioView` in `App.tsx`, deduplicated FFmpeg/Symphonia helpers, and removed dead `useSettings.ts` and unused `src-python/` scripts.
 - Removed technical runtime log annotations ("via native Rust...") across BPM detection, metadata tagging, and yt-dlp codec verification.
-- Updated Vitest unit test suite to assert embed-only thumbnail configurations and ensure 100% test pass rate (31/31 passing).
+- Updated Vitest unit test suite to assert `yt-dlp` resolution sorting, playlist thumbnails, QuickJS runtime wiring, and embed-only thumbnail configurations (6 test files, 31 unit tests passing).
 
 ---
 

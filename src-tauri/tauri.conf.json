@@ -33,7 +33,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https://vgmtreasurechest.com https://*.vgmtreasurechest.com data:;"
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:;"
     }
   },
   "bundle": {
@@ -51,7 +51,8 @@
     "externalBin": [
       "yt-dlp",
       "ffmpeg",
-      "ffprobe"
+      "ffprobe",
+      "qjs"
     ]
   }
 }

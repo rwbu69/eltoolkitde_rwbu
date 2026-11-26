@@ -84,12 +84,19 @@ export class MetadataService {
       cancelled = true;
     };
 
-    const parsedYear = year ? parseInt(year, 10) : undefined;
+    const trimmedYear = year?.trim();
+    let parsedYear: number | undefined;
+    if (trimmedYear) {
+      if (!/^\d{4}$/.test(trimmedYear)) {
+        throw new Error('Year must be a 4-digit positive number.');
+      }
+      parsedYear = parseInt(trimmedYear, 10);
+    }
     const tagPayload: AudioMetadataDto = {
       title: title || undefined,
       artist: artist || undefined,
       album: album || undefined,
-      year: Number.isFinite(parsedYear) ? parsedYear : undefined,
+      year: parsedYear,
     };
 
     const task = (async () => {
@@ -97,9 +104,11 @@ export class MetadataService {
         if (cancelled) break;
         
         const fileName = basename(inputFile);
-        const baseName = fileName.replace(/\.[^.]+$/, '');
+        const dotIndex = fileName.lastIndexOf('.');
+        const baseName = dotIndex !== -1 ? fileName.slice(0, dotIndex) : fileName;
+        const ext = dotIndex !== -1 ? fileName.slice(dotIndex) : '';
         const dir = dirname(inputFile);
-        const backupPath = joinPath(dir, `${baseName}.metadata-backup.mp3`);
+        const backupPath = joinPath(dir, `${baseName}.metadata-backup${ext}`);
         
         onProgress({ file: fileName, status: 'processing', inputPath: inputFile });
         

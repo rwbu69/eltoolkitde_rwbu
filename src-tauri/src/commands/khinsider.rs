@@ -223,16 +223,7 @@ fn parse_khinsider_html(html: &str, page_url: &str) -> KhinsiderPage {
             if label.is_empty() {
                 continue;
             }
-            if is_audio_url(href) {
-                if seen_tracks.insert(url.clone()) {
-                    tracks.push(KhinsiderTrack {
-                        title: audio_title(href, label),
-                        source_url: url,
-                        mp3_url: None,
-                        flac_url: None,
-                    });
-                }
-            } else if seen_albums.insert(url.clone()) {
+            if seen_albums.insert(url.clone()) {
                 let cover_url = link
                     .select(&image_selector)
                     .find_map(image_source)

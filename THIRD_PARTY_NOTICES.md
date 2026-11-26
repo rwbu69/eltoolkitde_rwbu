@@ -38,50 +38,10 @@ In compliance with the GNU General Public License, the source code for FFmpeg an
 
 ---
 
-## 3. Node.js
+## 3. QuickJS (`quickjs-ng`)
 
-- **Project**: Node.js
-- **Website**: [https://nodejs.org](https://nodejs.org)
-- **Version**: Node.js 24.x runtime binary
-- **Role in App**: Bundled into `src-tauri/` as an external sidecar runtime passed to yt-dlp via `--js-runtimes node:...` to evaluate JavaScript challenges and extract media signatures.
-- **License**: **MIT License** (for Node.js core) and various compatible permissive licenses for bundled components:
-  - V8: BSD 3-Clause License
-  - libuv: MIT License
-  - OpenSSL: Apache License 2.0
-  - zlib: zlib License
-  - llhttp: MIT License
-- **Source Code**: [https://github.com/nodejs/node](https://github.com/nodejs/node)
-
----
-
-## 4. Python Audio Libraries (BPM Sidecars)
-
-The BPM detector (`bpm_detector`) and tempo modifier (`bpm_modifier`) tools are written in Python and compiled into standalone binaries using PyInstaller. They bundle Python 3.11 along with the following audio analysis libraries:
-
-### librosa
-- **Website / Source**: [https://github.com/librosa/librosa](https://github.com/librosa/librosa)
-- **License**: **ISC License**
-- **Description**: Python package for music and audio analysis, providing HPSS, onset detection, and beat tracking.
-
-### soundfile
-- **Website / Source**: [https://github.com/bastibe/python-soundfile](https://github.com/bastibe/python-soundfile)
-- **License**: **BSD 3-Clause License**
-- **Underlying C Library**: `soundfile` wraps **libsndfile**, which is licensed under the **GNU Lesser General Public License v2.1 or v3.0 (LGPL-2.1-or-later / LGPL-3.0)**.
-- **libsndfile Source Code**: [https://github.com/libsndfile/libsndfile](https://github.com/libsndfile/libsndfile)
-
-### numpy
-- **Website / Source**: [https://github.com/numpy/numpy](https://github.com/numpy/numpy)
-- **License**: **BSD 3-Clause License**
-
-### scipy
-- **Website / Source**: [https://github.com/scipy/scipy](https://github.com/scipy/scipy)
-- **License**: **BSD 3-Clause License**
-
-### numba & llvmlite
-- **Website / Source**: [https://github.com/numba/numba](https://github.com/numba/numba)
-- **License**: **BSD 2-Clause License**
-
-### PyInstaller Bootloader
-- **Website / Source**: [https://github.com/pyinstaller/pyinstaller](https://github.com/pyinstaller/pyinstaller)
-- **License**: **GNU General Public License v2.0 with PyInstaller Exception**
-- *Note*: PyInstaller's licensing explicitly permits bundling and distributing non-GPL application code with its compiled executable bootloader.
+- **Project**: QuickJS (`quickjs-ng`)
+- **Website / Repository**: [https://github.com/quickjs-ng/quickjs](https://github.com/quickjs-ng/quickjs)
+- **Role in App**: Bundled into `src-tauri/` as a lightweight external sidecar runtime (`qjs`) passed to `yt-dlp` via `--js-runtimes quickjs:...` to evaluate JavaScript challenges for media extraction.
+- **License**: **MIT License**
+- **Source Code**: [https://github.com/quickjs-ng/quickjs](https://github.com/quickjs-ng/quickjs)

@@ -15,12 +15,20 @@ vi.mock('@tauri-apps/plugin-shell', () => ({
   Command: { sidecar },
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
+const { invoke } = vi.hoisted(() => ({
   invoke: vi.fn().mockResolvedValue(null),
 }));
 
-vi.mock('@tauri-apps/plugin-fs', () => ({
+const { exists } = vi.hoisted(() => ({
   exists: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke,
+}));
+
+vi.mock('@tauri-apps/plugin-fs', () => ({
+  exists,
   remove: vi.fn().mockResolvedValue(undefined),
   rename: vi.fn().mockResolvedValue(undefined),
 }));
@@ -85,7 +93,7 @@ describe('YtDlpService', () => {
     expect(args[oIndex + 1]).toBe('%(artist,creator,uploader)s - %(title)s.%(ext)s');
   });
 
-  it('defaults to H.265 sorting preference for MP4 downloads', async () => {
+  it('defaults to H.264/H.265 sorting preference (smart mode) for MP4 downloads', async () => {
     execute.mockResolvedValue({
       code: 0,
       stdout: '',
@@ -100,10 +108,33 @@ describe('YtDlpService', () => {
 
     const calls = sidecar.mock.calls as unknown as [string, string[]][];
     const args = calls[0][1];
+    expect(args).toContain('-f');
+    expect(args[args.indexOf('-f') + 1]).toBe('bv*+ba/b');
     expect(args).toContain('-S');
     const sIndex = args.indexOf('-S');
-    expect(args[sIndex + 1]).toBe('vcodec:h265,vcodec:h264,res,acodec:m4a');
+    expect(args[sIndex + 1]).toBe('res:1080,vcodec:h264,vcodec:h265,acodec:m4a');
     expect(args).toContain('--merge-output-format');
+  });
+
+  it('honors H.265 sorting preference when explicitly requested', async () => {
+    execute.mockResolvedValue({
+      code: 0,
+      stdout: '',
+      stderr: '',
+    });
+
+    await YtDlpService.downloadMedia({
+      url: 'https://example.com/video',
+      format: 'mp4',
+      videoCodec: 'h265',
+      outputDir: 'C:\\Videos',
+    }, vi.fn());
+
+    const calls = sidecar.mock.calls as unknown as [string, string[]][];
+    const args = calls[0][1];
+    expect(args).toContain('-S');
+    const sIndex = args.indexOf('-S');
+    expect(args[sIndex + 1]).toBe('res:1080,vcodec:h265,vcodec:h264,acodec:m4a');
   });
 
   it('honors H.264 sorting preference when explicitly requested', async () => {
@@ -124,7 +155,7 @@ describe('YtDlpService', () => {
     const args = calls[0][1];
     expect(args).toContain('-S');
     const sIndex = args.indexOf('-S');
-    expect(args[sIndex + 1]).toBe('vcodec:h264,vcodec:h265,res,acodec:m4a');
+    expect(args[sIndex + 1]).toBe('res:1080,vcodec:h264,vcodec:h265,acodec:m4a');
   });
 
   it('uses --remux-video mp4 and VIDEO suffix for video-only downloads', async () => {
@@ -142,13 +173,17 @@ describe('YtDlpService', () => {
 
     const calls = sidecar.mock.calls as unknown as [string, string[]][];
     const args = calls[0][1];
+    expect(args).toContain('-f');
+    expect(args[args.indexOf('-f') + 1]).toBe('bv*/b');
+    expect(args).toContain('-S');
+    expect(args[args.indexOf('-S') + 1]).toBe('res:1080,vcodec:h264,vcodec:h265');
     expect(args).toContain('--remux-video');
     expect(args).toContain('mp4');
     const oIndex = args.indexOf('-o');
     expect(args[oIndex + 1]).toBe('%(title)s-VIDEO.%(ext)s');
   });
 
-  it('passes sleep pacing and client fallback extractor-args by default', async () => {
+  it('passes sleep pacing without hardcoding player_client overrides by default', async () => {
     execute.mockResolvedValue({
       code: 0,
       stdout: '',
@@ -165,11 +200,10 @@ describe('YtDlpService', () => {
     const args = calls[0][1];
     expect(args).toContain('--sleep-requests');
     expect(args).toContain('1.5');
-    expect(args).toContain('--extractor-args');
-    expect(args).toContain('youtube:player_client=android,web');
+    expect(args).not.toContain('youtube:player_client=android,web');
   });
 
-  it('includes extractor-args and flat-playlist in fetchVideoInfo for client fallback and fast manifest extraction', async () => {
+  it('includes flat-playlist in fetchVideoInfo without hardcoding player_client overrides', async () => {
     execute.mockResolvedValue({
       code: 0,
       stdout: JSON.stringify({ title: 'Example', formats: [] }),
@@ -180,8 +214,7 @@ describe('YtDlpService', () => {
 
     const calls = sidecar.mock.calls as unknown as [string, string[]][];
     const args = calls[0][1];
-    expect(args).toContain('--extractor-args');
-    expect(args).toContain('youtube:player_client=android,web');
+    expect(args).not.toContain('youtube:player_client=android,web');
     expect(args).toContain('--flat-playlist');
   });
 
@@ -204,7 +237,9 @@ describe('YtDlpService', () => {
     expect(info.entries?.length).toBe(2);
     expect(info.entries?.[0].title).toBe('Track One');
     expect(info.entries?.[0].url).toBe('https://www.youtube.com/watch?v=track123456');
+    expect(info.entries?.[0].thumbnail).toBe('https://i.ytimg.com/vi/track123456/mqdefault.jpg');
     expect(info.entries?.[1].url).toBe('https://example.com/watch?v=track789012');
+    expect(info.entries?.[1].thumbnail).toBe('https://i.ytimg.com/vi/track789012/mqdefault.jpg');
   });
 
   it('embeds cover art without writing standalone thumbnail files to disk across mp4, mp3, and video-only', async () => {
@@ -232,5 +267,22 @@ describe('YtDlpService', () => {
       expect(args[convIdx + 1]).toBe('jpg');
       expect(args).toContain('--embed-metadata');
     }
+  });
+
+  it('passes --js-runtimes quickjs when qjs sidecar exists in setup_ffmpeg_location', async () => {
+    invoke.mockResolvedValueOnce('C:\\Temp\\eltoolkit_ffmpeg');
+    exists.mockResolvedValueOnce(true);
+    execute.mockResolvedValue({
+      code: 0,
+      stdout: JSON.stringify({ title: 'Example', formats: [] }),
+      stderr: '',
+    });
+
+    await YtDlpService.fetchVideoInfo('https://example.com/video');
+
+    const calls = sidecar.mock.calls as unknown as [string, string[]][];
+    const args = calls[0][1];
+    expect(args).toContain('--js-runtimes');
+    expect(args[args.indexOf('--js-runtimes') + 1]).toBe('quickjs:C:\\Temp\\eltoolkit_ffmpeg\\qjs.exe');
   });
 });

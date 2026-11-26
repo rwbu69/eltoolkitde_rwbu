@@ -3,7 +3,13 @@ use std::process::Command as ProcessCommand;
 use tauri::Manager;
 
 #[tauri::command]
-pub fn update_ytdlp(app: tauri::AppHandle) -> Result<String, String> {
+pub async fn update_ytdlp(app: tauri::AppHandle) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || update_ytdlp_blocking(app))
+        .await
+        .map_err(|e| format!("Task join error: {e}"))?
+}
+
+fn update_ytdlp_blocking(app: tauri::AppHandle) -> Result<String, String> {
     let mut search_dirs = vec![];
     if let Ok(resource_dir) = app.path().resource_dir() {
         search_dirs.push(resource_dir);

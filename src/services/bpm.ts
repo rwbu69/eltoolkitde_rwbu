@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, remove, rename } from '@tauri-apps/plugin-fs';
+import { basename, joinPath } from '../utils/path';
 import { dispatchLog } from '../utils/toolkitEvents';
 
 export type BpmOutputFormat = 'wav' | 'mp3';
@@ -79,7 +80,7 @@ export class BpmService {
     
     for (const [index, file] of files.entries()) {
       if (isCancelled()) break;
-      const fileName = file.split('\\').pop() || file.split('/').pop() || 'unknown';
+      const fileName = basename(file) || 'unknown';
       try {
         onProgress({ file: fileName, status: 'detecting', percent: 50 });
         const { bpm: originalBPM, confidence, candidates } = await this.detectBPM(file, range?.min, range?.max);
@@ -100,7 +101,9 @@ export class BpmService {
     outputPath: string,
     originalBPM: number,
     targetBPM: number,
-    format: BpmOutputFormat
+    format: BpmOutputFormat,
+    onSpawn?: (child: any) => void,
+    isCancelled: () => boolean = () => false
   ): Promise<void> {
     if (!originalBPM || originalBPM <= 0) {
       throw new Error(`Invalid original BPM: ${originalBPM}`);
@@ -129,12 +132,37 @@ export class BpmService {
     ffmpegArgs.push(tempOutput);
 
     const command = Command.sidecar('ffmpeg', ffmpegArgs);
-    const output = await command.execute();
+    let code: number | null = null;
+    let stderr = '';
 
-    if (output.code !== 0) {
-      if (await exists(tempOutput)) await remove(tempOutput);
-      dispatchLog(`[bpm_tempo ERROR] ${output.stderr}`);
-      throw new Error(`BPM modification error: ${output.stderr}`);
+    if (typeof command.spawn === 'function' && command.stderr) {
+      command.stderr.on('data', (line) => {
+        stderr += line;
+      });
+
+      code = await new Promise<number | null>((resolve, reject) => {
+        command.on('close', (res) => resolve(res.code));
+        command.on('error', (err) => reject(err));
+        command.spawn().then((child) => {
+          onSpawn?.(child);
+          if (isCancelled()) child.kill().catch(() => {});
+        }).catch(reject);
+      });
+    } else {
+      const output = await command.execute();
+      code = output.code;
+      stderr = output.stderr;
+    }
+
+    if (isCancelled()) {
+      if (await exists(tempOutput)) await remove(tempOutput).catch(() => {});
+      throw new Error('Canceled by user');
+    }
+
+    if (code !== 0) {
+      if (await exists(tempOutput)) await remove(tempOutput).catch(() => {});
+      dispatchLog(`[bpm_tempo ERROR] ${stderr}`);
+      throw new Error(`BPM modification error: ${stderr || `exit code ${code}`}`);
     }
 
     if (await exists(outputPath)) await remove(outputPath);
@@ -148,18 +176,19 @@ export class BpmService {
     outputDir: string,
     format: BpmOutputFormat,
     onProgress: (progress: BpmProgress) => void,
-    isCancelled: () => boolean = () => false
+    isCancelled: () => boolean = () => false,
+    onSpawn?: (child: any) => void
   ): Promise<void> {
     dispatchLog(`[bpm] Starting batch tempo modifier to ${targetBPM} BPM...`);
     for (const [index, item] of filesWithBpm.entries()) {
       if (isCancelled()) break;
       const { file, originalBPM } = item;
-      const fileName = file.split('\\').pop() || file.split('/').pop() || 'unknown';
+      const fileName = basename(file) || 'unknown';
       try {
-        const outputPath = `${outputDir}\\${targetBPM}BPM_${fileName.replace(/\.[^.]+$/, '')}.${format}`;
+        const outputPath = joinPath(outputDir, `${targetBPM}BPM_${fileName.replace(/\.[^.]+$/, '')}.${format}`);
 
         onProgress({ file: fileName, originalBPM, status: 'processing', percent: 50 });
-        await this.changeTempo(file, outputPath, originalBPM, targetBPM, format);
+        await this.changeTempo(file, outputPath, originalBPM, targetBPM, format, onSpawn, isCancelled);
 
         onProgress({ file: fileName, originalBPM, status: 'done', percent: Math.round(((index + 1) / filesWithBpm.length) * 100) });
       } catch (err: any) {

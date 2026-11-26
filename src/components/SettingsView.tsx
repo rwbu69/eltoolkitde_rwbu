@@ -4,6 +4,7 @@ import { FolderOpen, Shield, FileBox, Download, Zap, RefreshCcw, Library } from 
 import { useAppStore } from '../store/useAppStore';
 import { Panel, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
+import { CustomSelect } from './ui/CustomSelect';
 import { Input } from './ui/Input';
 import { PathPicker } from './ui/PathPicker';
 import { Toggle } from './ui/Toggle';
@@ -16,6 +17,7 @@ export default function SettingsView() {
   const { settings, updateSettings } = useAppStore();
   const [isUpdatingYtDlp, setIsUpdatingYtDlp] = useState(false);
   const [updateNotice, setUpdateNotice] = useState('');
+  const [concurrentDraft, setConcurrentDraft] = useState(String(settings.maxConcurrentDownloads));
 
   return (
     <div className="flex flex-col w-full h-full min-h-0 overflow-hidden">
@@ -59,41 +61,32 @@ export default function SettingsView() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <FormLabel text="Default video resolution" />
-                <select 
+                <CustomSelect
+                  options={[...VIDEO_QUALITY_OPTIONS]}
                   value={settings.defaultVideoQuality}
-                  onChange={(e) => updateSettings({ defaultVideoQuality: e.target.value as VideoQuality })}
-                  className="game-select font-bold text-xs"
-                >
-                  {VIDEO_QUALITY_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => updateSettings({ defaultVideoQuality: val as VideoQuality })}
+                  className="w-full shrink-0"
+                />
               </div>
 
               <div>
                 <FormLabel text="Default video codec" />
-                <select 
+                <CustomSelect
+                  options={[...VIDEO_CODEC_OPTIONS]}
                   value={settings.defaultVideoCodec}
-                  onChange={(e) => updateSettings({ defaultVideoCodec: e.target.value as VideoCodec })}
-                  className="game-select font-bold text-xs"
-                >
-                  {VIDEO_CODEC_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => updateSettings({ defaultVideoCodec: val as VideoCodec })}
+                  className="w-full shrink-0"
+                />
               </div>
               
               <div>
                 <FormLabel text="Default audio bitrate (MP3)" />
-                <select 
+                <CustomSelect
+                  options={[...AUDIO_BITRATE_OPTIONS]}
                   value={settings.defaultAudioBitrate}
-                  onChange={(e) => updateSettings({ defaultAudioBitrate: e.target.value as AudioBitrate })}
-                  className="game-select font-bold text-xs"
-                >
-                  {AUDIO_BITRATE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </select>
+                  onChange={(val) => updateSettings({ defaultAudioBitrate: val as AudioBitrate })}
+                  className="w-full shrink-0"
+                />
               </div>
             </div>
           </div>
@@ -121,8 +114,13 @@ export default function SettingsView() {
                   type="number"
                   min="1"
                   max="10"
-                  value={settings.maxConcurrentDownloads}
-                  onChange={(e) => updateSettings({ maxConcurrentDownloads: parseInt(e.target.value) || 1 })}
+                  value={concurrentDraft}
+                  onChange={(e) => setConcurrentDraft(e.target.value)}
+                  onBlur={() => {
+                    const parsed = Math.min(10, Math.max(1, parseInt(concurrentDraft, 10) || 1));
+                    setConcurrentDraft(String(parsed));
+                    updateSettings({ maxConcurrentDownloads: parsed });
+                  }}
                   disabled={!settings.enableConcurrentDownloads}
                   className="font-bold text-xs bg-panel disabled:opacity-50"
                 />

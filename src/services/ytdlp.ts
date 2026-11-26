@@ -2,12 +2,14 @@ import { invoke } from '@tauri-apps/api/core';
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, remove, rename } from '@tauri-apps/plugin-fs';
 import type { VideoCodec } from '../config/mediaSettings';
+import { joinPath } from '../utils/path';
 import { dispatchLog, notifySuccess } from '../utils/toolkitEvents';
 
 export interface PlaylistItem {
   title: string;
   id: string;
   url?: string;
+  thumbnail?: string;
 }
 
 export interface VideoInfo {
@@ -40,13 +42,38 @@ export interface DownloadOptions {
 }
 
 export class YtDlpService {
+  private static cachedFfmpegLocation: string | null = null;
+  private static cachedJsRuntime: string | null = null;
+  private static cachedAvailableEncoders: Set<string> | null = null;
+  private static failedEncoders = new Set<string>();
+
   private static async getFfmpegLocation(): Promise<string | null> {
+    if (this.cachedFfmpegLocation) return this.cachedFfmpegLocation;
     try {
-      return await invoke<string>('setup_ffmpeg_location');
+      const dir = await invoke<string>('setup_ffmpeg_location');
+      if (dir) this.cachedFfmpegLocation = dir;
+      return dir;
     } catch (e) {
       console.warn('Failed to setup ffmpeg location:', e);
       return null;
     }
+  }
+
+  private static async getJsRuntimeArg(sidecarDir: string | null): Promise<string | null> {
+    if (this.cachedJsRuntime) return this.cachedJsRuntime;
+    if (!sidecarDir) return null;
+    for (const bin of ['qjs.exe', 'qjs']) {
+      const candidate = joinPath(sidecarDir, bin);
+      try {
+        if (await exists(candidate)) {
+          this.cachedJsRuntime = `quickjs:${candidate}`;
+          return this.cachedJsRuntime;
+        }
+      } catch {
+        // Ignore fs probe errors
+      }
+    }
+    return null;
   }
 
   static async getMediaVideoCodec(filePath: string): Promise<string | null> {
@@ -68,14 +95,101 @@ export class YtDlpService {
     return null;
   }
 
+  private static async hasAudioStream(filePath: string): Promise<boolean> {
+    try {
+      const ffprobe = Command.sidecar('ffprobe', [
+        '-v', 'error',
+        '-select_streams', 'a:0',
+        '-show_entries', 'stream=codec_type',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        filePath
+      ]);
+      const res = await ffprobe.execute();
+      return res.code === 0 && res.stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  private static async getMediaDuration(filePath: string): Promise<number> {
+    try {
+      const ffprobe = Command.sidecar('ffprobe', [
+        '-v', 'error',
+        '-show_entries', 'format=duration',
+        '-of', 'default=noprint_wrappers=1:nokey=1',
+        filePath
+      ]);
+      const res = await ffprobe.execute();
+      const parsed = parseFloat(res.stdout);
+      return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+    } catch {
+      return 0;
+    }
+  }
+
+  private static async getAvailableEncoders(): Promise<Set<string>> {
+    if (this.cachedAvailableEncoders) return this.cachedAvailableEncoders;
+    const found = new Set<string>();
+    try {
+      const res = await Command.sidecar('ffmpeg', ['-hide_banner', '-encoders']).execute();
+      if (res.code === 0) {
+        const known = [
+          'h264_nvenc', 'h264_qsv', 'h264_amf', 'h264_videotoolbox', 'libx264',
+          'hevc_nvenc', 'hevc_qsv', 'hevc_amf', 'hevc_videotoolbox', 'libx265',
+        ];
+        for (const name of known) {
+          if (res.stdout.includes(name)) found.add(name);
+        }
+      }
+    } catch {
+      // Fall back to software encoders only
+    }
+    this.cachedAvailableEncoders = found;
+    return found;
+  }
+
+  private static buildEncoderCandidates(
+    targetCodec: 'h264' | 'hevc',
+    availableEncoders: Set<string>
+  ): { encoder: string; args: string[] }[] {
+    const hardwareMap: Record<'h264' | 'hevc', { encoder: string; args: string[] }[]> = {
+      h264: [
+        { encoder: 'h264_nvenc', args: ['-c:v:0', 'h264_nvenc', '-cq', '22', '-preset', 'p4'] },
+        { encoder: 'h264_qsv', args: ['-c:v:0', 'h264_qsv', '-global_quality', '22'] },
+        { encoder: 'h264_amf', args: ['-c:v:0', 'h264_amf', '-quality', 'balanced', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22'] },
+        { encoder: 'h264_videotoolbox', args: ['-c:v:0', 'h264_videotoolbox', '-q:v', '65'] },
+      ],
+      hevc: [
+        { encoder: 'hevc_nvenc', args: ['-c:v:0', 'hevc_nvenc', '-cq', '22', '-preset', 'p4'] },
+        { encoder: 'hevc_qsv', args: ['-c:v:0', 'hevc_qsv', '-global_quality', '22'] },
+        { encoder: 'hevc_amf', args: ['-c:v:0', 'hevc_amf', '-quality', 'balanced', '-rc', 'cqp', '-qp_i', '22', '-qp_p', '22'] },
+        { encoder: 'hevc_videotoolbox', args: ['-c:v:0', 'hevc_videotoolbox', '-q:v', '65'] },
+      ],
+    };
+
+    const softwareFallback = targetCodec === 'h264'
+      ? { encoder: 'libx264', args: ['-c:v:0', 'libx264', '-crf', '22', '-preset', 'fast'] }
+      : { encoder: 'libx265', args: ['-c:v:0', 'libx265', '-crf', '22', '-preset', 'fast'] };
+
+    const candidates = hardwareMap[targetCodec].filter(
+      (item) => availableEncoders.has(item.encoder) && !this.failedEncoders.has(item.encoder)
+    );
+    candidates.push(softwareFallback);
+    return candidates;
+  }
+
   static async fetchVideoInfo(url: string, cookiesFilePath?: string, browserForCookies?: string): Promise<VideoInfo> {
     const ffmpegLocation = await this.getFfmpegLocation();
+    const jsRuntime = await this.getJsRuntimeArg(ffmpegLocation);
     const fetchArgs = [
       '--encoding', 'utf-8',
       '-J',
       '--flat-playlist',
-      '--extractor-args', 'youtube:player_client=android,web'
     ];
+
+    if (jsRuntime) {
+      fetchArgs.push('--js-runtimes', jsRuntime);
+    }
 
     if (browserForCookies) {
       fetchArgs.push('--cookies-from-browser', browserForCookies);
@@ -117,6 +231,7 @@ export class YtDlpService {
         title: e.title || e.id || 'Untitled media',
         id: e.id,
         url: e.url || (e.id && e.id.length === 11 ? `https://www.youtube.com/watch?v=${e.id}` : e.id || e.webpage_url),
+        thumbnail: e.thumbnail || e.thumbnails?.[0]?.url || (e.id && e.id.length === 11 ? `https://i.ytimg.com/vi/${e.id}/mqdefault.jpg` : undefined),
       })) : []
     };
   }
@@ -130,38 +245,39 @@ export class YtDlpService {
       format,
       outputDir,
       videoQuality = '1080p',
-      videoCodec = 'h265',
+      videoCodec = 'smart',
       audioBitrate = '320k',
       cookiesFilePath,
       browserForCookies,
       rateLimit
     } = options;
     const ffmpegLocation = await this.getFfmpegLocation();
+    const jsRuntime = await this.getJsRuntimeArg(ffmpegLocation);
 
     let formatArgs: string[] = [];
     
-    // Video quality map
-    const videoMap: Record<string, string> = {
-      '4k': 'bestvideo[height<=2160]',
-      '1440p': 'bestvideo[height<=1440]',
-      '1080p': 'bestvideo[height<=1080]',
-      '720p': 'bestvideo[height<=720]',
-      '480p': 'bestvideo[height<=480]',
-      '360p': 'bestvideo[height<=360]'
+    // Video resolution cap
+    const heightMap: Record<string, number> = {
+      '4k': 2160,
+      '1440p': 1440,
+      '1080p': 1080,
+      '720p': 720,
+      '480p': 480,
+      '360p': 360
     };
-    const vidArg = videoMap[videoQuality] || 'bestvideo';
-    const sortCodecs = videoCodec === 'h264' ? 'vcodec:h264,vcodec:h265' : 'vcodec:h265,vcodec:h264';
+    const heightCap = heightMap[videoQuality] || 1080;
+    const sortCodecs = videoCodec === 'h265' ? 'vcodec:h265,vcodec:h264' : 'vcodec:h264,vcodec:h265';
 
     if (format === 'mp4') {
       formatArgs = [
-        '-f', `${vidArg}+bestaudio/best`, 
-        '-S', `${sortCodecs},res,acodec:m4a`,
+        '-f', 'bv*+ba/b',
+        '-S', `res:${heightCap},${sortCodecs},acodec:m4a`,
         '--merge-output-format', 'mp4'
       ];
     } else if (format === 'video-only') {
       formatArgs = [
-        '-f', vidArg, 
-        '-S', `${sortCodecs},res`,
+        '-f', 'bv*/b',
+        '-S', `res:${heightCap},${sortCodecs}`,
         '--remux-video', 'mp4'
       ];
     } else if (format === 'mp3') {
@@ -188,7 +304,6 @@ export class YtDlpService {
       '--min-sleep-interval', '1',
       '--max-sleep-interval', '3',
       '--retry-sleep', 'fragment:exp=1:20',
-      '--extractor-args', 'youtube:player_client=android,web',
       '--print', 'after_move:[final_path] %(filepath)s',
       '--embed-thumbnail',
       '--convert-thumbnails', 'jpg',
@@ -220,12 +335,17 @@ export class YtDlpService {
       dlArgs.push('--ffmpeg-location', ffmpegLocation);
     }
 
+    if (jsRuntime) {
+      dlArgs.push('--js-runtimes', jsRuntime);
+    }
+
     dlArgs.push('--', url);
 
     let currentPlaylistIndex = 0;
     let totalPlaylistItems = 0;
     let cancelFn: () => void;
     let cancelled = false;
+    let lastErrorLine = '';
     const downloadedFiles: string[] = [];
 
     const task = new Promise<void>((resolve, reject) => {
@@ -257,6 +377,11 @@ export class YtDlpService {
           if (playlistMatch) {
             currentPlaylistIndex = parseInt(playlistMatch[1], 10);
             totalPlaylistItems = parseInt(playlistMatch[2], 10);
+          }
+
+          // Track already-downloaded skips from --no-overwrites
+          if (line.includes('has already been downloaded')) {
+            dispatchLog(`[yt-dlp] ${line.trim()} (skipped by --no-overwrites)`);
           }
 
           // Track final downloaded destination files
@@ -300,9 +425,8 @@ export class YtDlpService {
       command.stderr.on('data', (line) => {
         const trimmed = line.trim();
         if (trimmed) {
-          // Suppress harmless SABR format negotiation warnings from terminal output
-          if (trimmed.includes('SABR-only streaming experiment')) {
-            return;
+          if (/^ERROR:/i.test(trimmed)) {
+            lastErrorLine = trimmed;
           }
           console.warn('[YT-DLP WARN]', trimmed);
           dispatchLog(`[yt-dlp WARN] ${trimmed}`);
@@ -318,8 +442,7 @@ export class YtDlpService {
 
         if (data.code === 0) {
           if (format === 'mp4' || format === 'video-only') {
-            const targetEncoder = videoCodec === 'h264' ? 'libx264' : 'libx265';
-            const expectedCodec = videoCodec === 'h264' ? 'h264' : 'hevc';
+            const targetCodec: 'h264' | 'hevc' = videoCodec === 'h265' ? 'hevc' : 'h264';
             const uniqueFiles = [...new Set(downloadedFiles)];
 
             for (const file of uniqueFiles) {
@@ -330,39 +453,92 @@ export class YtDlpService {
                   if (detectedCodec) {
                     dispatchLog(`[codec-check] Probed ${file} -> codec: ${detectedCodec}`);
                   }
-                  if (detectedCodec && detectedCodec !== expectedCodec) {
-                    onProgress({ percent: 99, speed: '--', eta: '--', status: 'processing' });
-                    dispatchLog(`[codec-optimizer] Target is ${videoCodec.toUpperCase()} (${expectedCodec}), but found ${detectedCodec}. Transcoding with FFmpeg...`);
-                    
-                    const tempFile = `${file}.opt.mp4`;
-                    const ffmpegArgs = [
-                      '-hide_banner',
-                      '-y',
-                      '-i', file,
-                      '-map', '0:v:0',
-                      '-c:v:0', targetEncoder,
-                      '-crf', '22',
-                      '-preset', 'fast',
-                      '-map', '0:v:1?',
-                      '-c:v:1', 'copy',
-                      '-disposition:v:1', 'attached_pic',
-                    ];
-                    if (format === 'video-only') {
-                      ffmpegArgs.push('-an');
-                    } else {
-                      ffmpegArgs.push('-map', '0:a?', '-c:a', 'copy');
-                    }
-                    ffmpegArgs.push(tempFile);
+                  const isAllowedNative = videoCodec === 'smart'
+                    ? (detectedCodec === 'h264' || detectedCodec === 'hevc')
+                    : detectedCodec === targetCodec;
+                  const needsTranscode = Boolean(detectedCodec && !isAllowedNative);
+                  const needsAudioStrip = Boolean(detectedCodec) && !needsTranscode && format === 'video-only' && (await YtDlpService.hasAudioStream(file));
 
-                    const ffmpegCommand = Command.sidecar('ffmpeg', ffmpegArgs);
-                    const ffmpegRes = await ffmpegCommand.execute();
-                    if (ffmpegRes.code === 0 && (await exists(tempFile))) {
-                      await remove(file);
-                      await rename(tempFile, file);
-                      dispatchLog(`[codec-optimizer] Successfully transcoded to ${targetEncoder}: ${file}`);
-                    } else {
-                      if (await exists(tempFile)) await remove(tempFile);
-                      dispatchLog(`[codec-optimizer ERROR] Transcoding failed: ${ffmpegRes.stderr}`);
+                  if (needsTranscode || needsAudioStrip) {
+                    const durationSec = await YtDlpService.getMediaDuration(file);
+                    onProgress({ percent: 0, speed: 'FFmpeg', eta: '--', status: 'processing' });
+                    dispatchLog(
+                      needsTranscode
+                        ? `[codec-optimizer] Target is ${targetCodec.toUpperCase()}, found ${detectedCodec}. Transcoding with FFmpeg...`
+                        : `[codec-optimizer] Stripping audio stream for video-only output: ${file}`
+                    );
+
+                    const tempFile = `${file}.opt.mp4`;
+                    const encoderCandidates = needsTranscode
+                      ? YtDlpService.buildEncoderCandidates(targetCodec, await YtDlpService.getAvailableEncoders())
+                      : [{ encoder: 'copy', args: ['-c:v:0', 'copy'] }];
+
+                    let succeeded = false;
+                    let lastFfmpegStderr = '';
+                    for (const candidate of encoderCandidates) {
+                      if (cancelled) break;
+                      const ffmpegArgs = [
+                        '-hide_banner',
+                        '-y',
+                        '-i', file,
+                        '-map', '0:v:0',
+                        ...candidate.args,
+                        ...(needsTranscode ? ['-pix_fmt:v:0', 'yuv420p', '-movflags', '+faststart'] : []),
+                        ...(needsTranscode && targetCodec === 'hevc' ? ['-tag:v:0', 'hvc1'] : []),
+                        '-map', '0:v:1?',
+                        '-c:v:1', 'copy',
+                        '-disposition:v:1', 'attached_pic',
+                      ];
+                      if (format === 'video-only') {
+                        ffmpegArgs.push('-an');
+                      } else {
+                        ffmpegArgs.push('-map', '0:a?', '-c:a', 'copy');
+                      }
+                      ffmpegArgs.push(tempFile);
+
+                      const ffmpegCommand = Command.sidecar('ffmpeg', ffmpegArgs);
+                      lastFfmpegStderr = '';
+                      ffmpegCommand.stderr.on('data', (line: string) => {
+                        lastFfmpegStderr += line;
+                        const timeMatch = line.match(/time=\s*(\d+):(\d+):(\d+(?:\.\d+)?)/);
+                        if (timeMatch && durationSec > 0 && !cancelled) {
+                          const currentSec =
+                            parseInt(timeMatch[1], 10) * 3600 +
+                            parseInt(timeMatch[2], 10) * 60 +
+                            parseFloat(timeMatch[3]);
+                          const percent = Math.min(99, Math.round((currentSec / durationSec) * 100));
+                          onProgress({ percent, speed: candidate.encoder, eta: '--', status: 'processing' });
+                        }
+                      });
+
+                      const ffmpegCode = await new Promise<number | null>((resFfmpeg, rejFfmpeg) => {
+                        ffmpegCommand.on('close', (res) => resFfmpeg(res.code));
+                        ffmpegCommand.on('error', (err) => rejFfmpeg(err));
+                        ffmpegCommand.spawn().then((child) => {
+                          childProcess = child;
+                          if (cancelled) child.kill().catch(() => {});
+                        }).catch(rejFfmpeg);
+                      });
+
+                      if (!cancelled && ffmpegCode === 0 && (await exists(tempFile))) {
+                        await remove(file);
+                        await rename(tempFile, file);
+                        dispatchLog(`[codec-optimizer] Processed with ${candidate.encoder}: ${file}`);
+                        succeeded = true;
+                        break;
+                      }
+
+                      if (await exists(tempFile)) await remove(tempFile).catch(() => {});
+                      if (!cancelled && candidate.encoder !== 'libx264' && candidate.encoder !== 'libx265' && candidate.encoder !== 'copy') {
+                        YtDlpService.failedEncoders.add(candidate.encoder);
+                      }
+                      if (!cancelled && encoderCandidates.length > 1) {
+                        dispatchLog(`[codec-optimizer WARN] ${candidate.encoder} failed, trying fallback...`);
+                      }
+                    }
+
+                    if (!succeeded && !cancelled) {
+                      dispatchLog(`[codec-optimizer ERROR] Transcoding failed for ${file}: ${lastFfmpegStderr.trim().slice(-300)}`);
                     }
                   } else if (detectedCodec) {
                     dispatchLog(`[codec-optimizer] Verified ${detectedCodec} in ${file}. No transcoding needed.`);
@@ -379,7 +555,7 @@ export class YtDlpService {
           await notifySuccess('Download complete', `Task complete: ${options.url}`);
         } else {
           onProgress({ percent: 0, speed: '--', eta: '--', status: 'error' });
-          reject(new Error(`Process exited with code ${data.code}`));
+          reject(new Error(lastErrorLine || `Process exited with code ${data.code}`));
         }
       });
 

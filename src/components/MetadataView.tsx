@@ -6,7 +6,6 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { BatchProgressItem } from './ui/BatchProgressItem';
-import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
 import { getUserFacingError } from '../config/uiText';
 import { showToast } from './ui/Toast';
@@ -23,8 +22,24 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
   const [progresses, setProgresses] = useState<MetadataProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
-  const [notice, setNotice] = useState<string>('');
   const [restoringFile, setRestoringFile] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'file' || !inputPath) return;
+    let active = true;
+    MetadataService.readMetadata(inputPath)
+      .then((tags) => {
+        if (!active) return;
+        setTitle(tags.title ?? '');
+        setArtist(tags.artist ?? '');
+        setAlbum(tags.album ?? '');
+        setYear(tags.year !== undefined ? String(tags.year) : '');
+      })
+      .catch(() => {
+        // Ignore read failures on non-tagged or unreadable files
+      });
+    return () => { active = false; };
+  }, [mode, inputPath]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -41,7 +56,6 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
 
   const handleProcess = async () => {
     if (!inputPath) return;
-    setNotice('');
     setIsProcessing(true);
     setProgresses([]);
     
@@ -98,13 +112,13 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
             </div>
 
             <div>
-              <FormLabel text={mode === 'file' ? 'Target MP3 file' : 'Target directory'} icon={Target} />
+              <FormLabel text={mode === 'file' ? 'Target audio file' : 'Target directory'} icon={Target} />
               <PathPicker 
                 value={inputPath}
                 onChange={setInputPath}
                 placeholder={`Select target ${mode}...`}
                 directory={mode === 'folder'}
-                filters={mode === 'file' ? [{ name: 'MP3 Files', extensions: ['mp3'] }] : undefined}
+                filters={mode === 'file' ? [{ name: 'Audio Files', extensions: ['mp3', 'flac', 'm4a', 'ogg', 'wav', 'opus', 'aac'] }] : undefined}
               />
             </div>
 
@@ -140,13 +154,12 @@ export default function MetadataView({ isActive = false }: { isActive?: boolean 
             <ActionFooter
               onAction={handleProcess}
               actionLabel="Apply metadata"
-              disabled={!inputPath}
+              disabled={!inputPath || (!title.trim() && !artist.trim() && !album.trim() && !year.trim())}
               loading={isProcessing}
               actionIcon={Tag}
               onCancel={isProcessing && cancelFn ? cancelFn : undefined}
             />
           </div>
-          {notice && <InlineNotice message={notice} tone="error" />}
         </Panel>
       </Column>
 

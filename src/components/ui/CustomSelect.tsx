@@ -38,11 +38,11 @@ export function CustomSelect({ options, value, onChange, className = '' }: Custo
           leaveFrom="transform scale-100 opacity-100"
           leaveTo="transform scale-95 opacity-0"
         >
-          <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border-2 border-gameborder bg-panel py-1 text-xs shadow-lg focus:outline-none custom-scrollbar">
+          <ListboxOptions className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-xl border-2 border-gameborder bg-panel p-1 text-xs shadow-lg focus:outline-none custom-scrollbar">
             {options.map((option, idx) => (
               <ListboxOption
                 key={idx}
-                className="relative cursor-pointer select-none py-2 pl-8 pr-3 font-zen font-bold text-ink hover:bg-black/5 dark:hover:bg-white/5 data-[focus]:bg-oshipink data-[focus]:text-buttontext transition-colors"
+                className="relative cursor-pointer select-none rounded-lg py-2 pl-8 pr-3 font-zen font-bold text-ink data-[focus]:bg-oshipink data-[focus]:text-buttontext transition-colors"
                 value={option.value}
               >
                 {({ selected }) => (

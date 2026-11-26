@@ -3,6 +3,7 @@ import { Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, X, FileAudio,
 import { open } from '@tauri-apps/plugin-dialog';
 import { readDir } from '@tauri-apps/plugin-fs';
 import { FfmpegService, FfmpegProgress } from '../services/ffmpeg';
+import { WaveformService } from '../services/waveform';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
@@ -10,9 +11,9 @@ import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
 import { BatchProgressItem } from './ui/BatchProgressItem';
-import { InlineNotice } from './ui/InlineNotice';
 import { ActionFooter } from './ui/ActionFooter';
 import { getUserFacingError } from '../config/uiText';
+import { basename, joinPath } from '../utils/path';
 import { showToast } from './ui/Toast';
 import { WaveformTrimmer } from './media/WaveformTrimmer';
 
@@ -29,7 +30,6 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
   const [progresses, setProgresses] = useState<FfmpegProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [cancelFn, setCancelFn] = useState<(() => void) | null>(null);
-  const [notice, setNotice] = useState<string>('');
 
   useEffect(() => {
     if (!outputDir && settings.defaultOutputDir) {
@@ -80,7 +80,6 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
       });
       if (selected && typeof selected === 'string') {
         const entries = await readDir(selected);
-        const joinPath = (...parts: string[]) => parts.join('\\').replace(/\\\\/g, '\\');
         const files = entries
           .filter(e => e.isFile && /\.(mp4|mkv|webm|mp3|wav|m4a|flac|avi|mov)$/i.test(e.name))
           .map(e => joinPath(selected, e.name));
@@ -94,29 +93,39 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
 
   const handleProcess = async () => {
     if (inputPaths.length === 0 || !outputDir) return;
-    setNotice('');
+    if (mode === 'trim') {
+      const timePattern = /^\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?$/;
+      if (!timePattern.test(trimStart.trim()) || !timePattern.test(trimEnd.trim())) {
+        showToast('Enter valid HH:MM:SS timestamps for trim start and end.', 'warning');
+        return;
+      }
+      if (WaveformService.parseTimestampToSeconds(trimEnd) <= WaveformService.parseTimestampToSeconds(trimStart)) {
+        showToast('End time must be greater than start time.', 'warning');
+        return;
+      }
+    }
     setIsProcessing(true);
-    setProgresses(inputPaths.map(p => ({ file: p.split(/[\\/]/).pop() || p, status: 'pending', percent: 0 })));
+    setProgresses(inputPaths.map(p => ({ id: p, file: basename(p), status: 'pending', percent: 0 })));
+
+    const upsertProgress = (prog: FfmpegProgress) => {
+      setProgresses(prev => {
+        const idx = prev.findIndex(x => (prog.id && x.id === prog.id) || (!prog.id && x.file === prog.file));
+        if (idx >= 0) { const next = [...prev]; next[idx] = prog; return next; }
+        return [...prev, prog];
+      });
+    };
 
     try {
       let result;
       if (mode === 'mp3') {
         result = await FfmpegService.convertToMp3(
           { inputFiles: inputPaths, outputRoot: outputDir, bitrate: settings.defaultAudioBitrate },
-          (prog) => setProgresses(prev => {
-            const idx = prev.findIndex(x => x.file === prog.file);
-            if (idx >= 0) { const next = [...prev]; next[idx] = prog; return next; }
-            return [...prev, prog];
-          })
+          upsertProgress
         );
       } else if (mode === 'mirror') {
         result = await FfmpegService.mirrorMedia(
           { inputFiles: inputPaths, outputDir: outputDir },
-          (prog) => setProgresses(prev => {
-            const idx = prev.findIndex(x => x.file === prog.file);
-            if (idx >= 0) { const next = [...prev]; next[idx] = prog; return next; }
-            return [...prev, prog];
-          })
+          upsertProgress
         );
       } else if (mode === 'trim') {
         const inputFile = inputPaths[0];
@@ -326,7 +335,6 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
               onCancel={isProcessing && cancelFn ? cancelFn : undefined}
             />
           </div>
-          {notice && <InlineNotice message={notice} tone="error" />}
         </Panel>
       </Column>
 
