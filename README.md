@@ -47,6 +47,8 @@ Retyping the same `yt-dlp` and `ffmpeg` flags from memory gets old fast. **ElToo
   <img src="images/downloader.png" width="48%" alt="Media Downloader with Active Queue Thumbnails" />
   &nbsp;
   <img src="images/khinsider.png" width="48%" alt="Khinsider Game Music Browser" />
+  <br /><br />
+  <img src="images/audio-trimmer.png" width="76%" alt="Audio Studio Waveform Cutter" />
 </div>
 
 ---

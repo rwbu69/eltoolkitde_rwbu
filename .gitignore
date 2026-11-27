@@ -19,6 +19,7 @@ referensi2.html
 src-tauri/ffmpeg-*
 src-tauri/ffprobe-*
 src-tauri/yt-dlp-*
+src-tauri/qjs-*
 src-tauri/node-*
 
 # Editor directories and files
@@ -33,6 +34,7 @@ src-tauri/node-*
 *.sw?
 STYLE_GUIDE.md
 DESIGN.md
+FUTURE_TODO.md
 
 build/
 *.spec

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: User Guide
+    url: https://github.com/rwbu69/eltoolkitde_rwbu/blob/main/USER_GUIDE.md
+    about: Check button locations, settings, and workflows before opening an issue.
+  - name: Logic Reference
+    url: https://github.com/rwbu69/eltoolkitde_rwbu/blob/main/LOGIC_REFERENCE.md
+    about: Look up which frontend view or Rust module owns a feature.

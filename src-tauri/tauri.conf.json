@@ -38,6 +38,9 @@
   },
   "bundle": {
     "publisher": "RWBU",
+    "shortDescription": "All-in-one desktop audio, video, and media toolkit powered by yt-dlp and FFmpeg.",
+    "category": "Utility",
+    "licenseFile": "../LICENSE",
     "active": true,
     "targets": "all",
     "icon": [
@@ -53,6 +56,31 @@
       "ffmpeg",
       "ffprobe",
       "qjs"
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/nsis-header.bmp",
+        "sidebarImage": "icons/nsis-sidebar.bmp",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    },
+    "macOS": {
+      "dmg": {
+        "background": "icons/dmg-background.png",
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        },
+        "appPosition": {
+          "x": 180,
+          "y": 220
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 220
+        }
+      }
+    }
   }
 }
