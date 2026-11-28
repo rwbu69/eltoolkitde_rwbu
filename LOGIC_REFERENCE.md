@@ -86,7 +86,18 @@ This document maps every menu, sub-feature, shared service, global store, Rust T
 
 | Layer | File | Responsible Functions / Symbols | Logic Responsibility |
 | :--- | :--- | :--- | :--- |
-| **Settings UI** | [src/components/SettingsView.tsx](src/components/SettingsView.tsx) | `SettingsView` | Configures `defaultOutputDir`, `closeToTray`, `defaultVideoQuality`, `defaultVideoCodec`, `defaultAudioBitrate`, `enableConcurrentDownloads`, `maxConcurrentDownloads`, `rateLimitSpeed`, `enableKhinsider`, `browserForCookies`, `cookiesFilePath`; triggers `YtDlpService.updateYtDlp` and `clear_khinsider_cache`. |
+| **Settings UI** | [src/components/SettingsView.tsx](src/components/SettingsView.tsx) | `SettingsView` | Configures `defaultOutputDir`, `closeToTray`, `debugMode`, `defaultVideoQuality`, `defaultVideoCodec`, `defaultAudioBitrate`, `enableConcurrentDownloads`, `maxConcurrentDownloads`, `rateLimitSpeed`, `enableKhinsider`, `enableAnimeThemes`, `browserForCookies`, `cookiesFilePath`; triggers `YtDlpService.updateYtDlp` and `clear_khinsider_cache`. |
+
+---
+
+## 6b. Menu: Anime Themes Downloader (`animethemes`)
+
+| Layer | File | Responsible Functions / Symbols | Logic Responsibility |
+| :--- | :--- | :--- | :--- |
+| **AnimeThemes UI** | [src/components/AnimeThemesView.tsx](src/components/AnimeThemesView.tsx) | `AnimeThemesView`, `CoverImage` | Debounced search/autocomplete across anime, song, and artist names; responsive horizontal strip cards (`< lg`) & poster grid (`lg:`); `IntersectionObserver` lazy cover loading; inline `<video>` preview modal with `$TEMP` fallback; batch/single download. |
+| **AnimeThemes Service** | [src/services/animethemes.ts](src/services/animethemes.ts) | `AnimeThemesService`, `buildAnimeThemeFilename` | Calls `animethemes_search`, `animethemes_suggest`, `animethemes_fetch_covers`, `animethemes_download`; formats `<Show> - <Theme> (<Res>p NC).<ext>`; transcodes WebM → H.264/H.265 MP4 with `-metadata` (`title`, `artist`, `album`, `date`). |
+| **Rust AnimeThemes** | [src-tauri/src/commands/animethemes.rs](src-tauri/src/commands/animethemes.rs) | `set_animethemes_enabled`, `animethemes_search`, `animethemes_suggest`, `animethemes_fetch_covers`, `animethemes_download` | Enforces opt-in `AtomicBool`/Mutex guard; queries `rs.animethemes.moe/graphql`; batches AniList `Page.media` covers (`s4.anilist.co`); streams `.webm` from `v.animethemes.moe` with `Referer`; maps `429` `Retry-After` to `RATE_LIMIT:<seconds>`. |
+| **Rate-Limit & Errors** | [src/utils/rateLimit.ts](src/utils/rateLimit.ts), [src/hooks/useRateLimitCooldown.ts](src/hooks/useRateLimitCooldown.ts), [src/components/ui/RateLimitNotice.tsx](src/components/ui/RateLimitNotice.tsx), [src/config/uiText.ts](src/config/uiText.ts) | `parseRateLimitError`, `useRateLimitCooldown`, `RateLimitNotice`, `formatFriendlyError` | Shared cooldown countdown UX across `AnimeThemesView` and `KhinsiderView`; logs raw technical errors to console (`>_`) while showing plain-English UI messages. |
 
 ---
 
@@ -102,8 +113,8 @@ This document maps every menu, sub-feature, shared service, global store, Rust T
 
 | File | Responsible Functions / Symbols | Logic Responsibility |
 | :--- | :--- | :--- |
-| [src-tauri/src/lib.rs](src-tauri/src/lib.rs) | `run` | Registers Tauri plugins (`notification`, `fs`, `dialog`, `shell`, `opener`, `single_instance`), sets up system tray (`show`, `quit`), intercepts `CloseRequested` for close-to-tray + notification, and registers all 15 Tauri `invoke_handler` commands. |
-| [src-tauri/src/state.rs](src-tauri/src/state.rs) | `AppState`, `CachedKhinsiderHtml` | Holds `close_to_tray`, `canceled_khinsider_downloads`, `khinsider_request_gate`, `khinsider_html_cache`, `khinsider_enabled`, and `khinsider_download_slots` (2-permit semaphore). |
+| [src-tauri/src/lib.rs](src-tauri/src/lib.rs) | `run` | Registers Tauri plugins (`notification`, `fs`, `dialog`, `shell`, `opener`, `single_instance`), sets up system tray (`show`, `quit`), intercepts `CloseRequested` for close-to-tray + notification, and registers all Tauri `invoke_handler` commands. |
+| [src-tauri/src/state.rs](src-tauri/src/state.rs) | `AppState`, `CachedKhinsiderHtml` | Holds `close_to_tray`, `canceled_khinsider_downloads`, `khinsider_request_gate`, `khinsider_html_cache`, `khinsider_enabled`, `khinsider_download_slots`, `animethemes_enabled`, and `animethemes_cover_cache`. |
 | [src-tauri/src/commands/system.rs](src-tauri/src/commands/system.rs) | `set_close_behavior`, `safe_rename`, `close_splashscreen`, `setup_ffmpeg_location` | Updates tray close behavior, performs safe same-directory rename, transitions splashscreen to main window, and provisions `ffmpeg`/`ffprobe`/`qjs` into `%TEMP%/eltoolkit_ffmpeg`. |
 | [src-tauri/src/commands/updater.rs](src-tauri/src/commands/updater.rs) | `update_ytdlp` | Downloads latest `yt-dlp` binary via `curl`, validates `--version`, and performs atomic backup-and-swap. |
 | [scripts/setup-sidecars.cjs](scripts/setup-sidecars.cjs) & [src-tauri/tauri.conf.json](src-tauri/tauri.conf.json) | `setup-sidecars.cjs` | Provisions target-triple-suffixed `ffmpeg`, `ffprobe`, `yt-dlp`, and `qjs` (QuickJS) sidecars before dev/build; configures Tauri windows, CSP, and `externalBin`. |

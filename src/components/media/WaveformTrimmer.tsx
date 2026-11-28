@@ -1,10 +1,14 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { convertFileSrc } from '@tauri-apps/api/core';
 import WaveSurfer from 'wavesurfer.js';
 import RegionsPlugin, { type Region } from 'wavesurfer.js/dist/plugins/regions.esm.js';
 import TimelinePlugin from 'wavesurfer.js/dist/plugins/timeline.esm.js';
 import { Play, Pause, Square, Repeat, ZoomIn, Scissors, Loader2, AlertCircle } from 'lucide-react';
 import { WaveformService } from '../../services/waveform';
+import { dispatchDebug } from '../../utils/toolkitEvents';
 import { Button } from '../ui/Button';
+
+const VIDEO_EXT_RE = /\.(mp4|mkv|webm|mov|avi|m4v)$/i;
 
 interface WaveformTrimmerProps {
   filePath: string;
@@ -21,12 +25,17 @@ export function WaveformTrimmer({
 }: WaveformTrimmerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
   const regionsPluginRef = useRef<ReturnType<typeof RegionsPlugin.create> | null>(null);
   const activeRegionRef = useRef<Region | null>(null);
 
+  const isVideo = VIDEO_EXT_RE.test(filePath);
+  const videoSrc = isVideo ? convertFileSrc(filePath) : '';
+
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isPlayingSelection, setIsPlayingSelection] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
@@ -53,6 +62,7 @@ export function WaveformTrimmer({
       if (!containerRef.current || !filePath) return;
       setIsLoading(true);
       setLoadError(null);
+      setVideoError(false);
 
       try {
         // 1. Fetch pre-computed peaks from Rust Symphonia backend in < 50ms
@@ -65,11 +75,15 @@ export function WaveformTrimmer({
 
         if (isCancelled) return;
 
-        // 2. Create media blob URL for audio preview playback
-        blobUrl = await WaveformService.createMediaBlobUrl(filePath);
-        if (isCancelled) {
-          if (blobUrl) URL.revokeObjectURL(blobUrl);
-          return;
+        // 2. For audio files, create a blob URL; for video files, stream via Tauri assetProtocol
+        if (isVideo) {
+          dispatchDebug('trimmer', 'Streaming video via assetProtocol', { filePath, videoSrc });
+        } else {
+          blobUrl = await WaveformService.createMediaBlobUrl(filePath);
+          if (isCancelled) {
+            if (blobUrl) URL.revokeObjectURL(blobUrl);
+            return;
+          }
         }
 
         // 3. Setup Plugins
@@ -91,10 +105,14 @@ export function WaveformTrimmer({
 
         const plugins = timeline ? [regions, timeline] : [regions];
 
-        // 4. Create WaveSurfer v7 instance
+        // 4. Create WaveSurfer instance (synced to <video> when trimming a video file)
         wsInstance = WaveSurfer.create({
           container: containerRef.current,
-          ...(blobUrl ? { url: blobUrl } : {}),
+          ...(isVideo && videoRef.current
+            ? { media: videoRef.current }
+            : blobUrl
+              ? { url: blobUrl }
+              : {}),
           peaks: peaksData?.peaks && peaksData.peaks.length > 0 ? [peaksData.peaks] : undefined,
           duration: peaksData?.duration_seconds,
           waveColor: '#a6adc8',
@@ -312,6 +330,28 @@ export function WaveformTrimmer({
           </span>
         </div>
       </div>
+
+      {/* Video Preview (synced with WaveSurfer when trimming a video file) */}
+      {isVideo && (
+        <div className="w-full rounded-xl bg-black/90 border-2 border-subtleborder overflow-hidden flex flex-col items-center justify-center">
+          {videoError ? (
+            <div className="py-4 px-3 flex items-center gap-2 text-muted font-mono text-[11px]">
+              <AlertCircle className="w-4 h-4 text-oshipink shrink-0" />
+              <span>Preview unavailable for this container — waveform & timestamps still work.</span>
+            </div>
+          ) : (
+            <video
+              ref={videoRef}
+              src={videoSrc}
+              playsInline
+              preload="metadata"
+              onError={() => setVideoError(true)}
+              onClick={handlePlayPauseFull}
+              className="w-full max-h-[200px] object-contain cursor-pointer"
+            />
+          )}
+        </div>
+      )}
 
       {/* Waveform Canvas Area */}
       <div className="relative w-full rounded-xl bg-panel border-2 border-subtleborder overflow-hidden min-h-[105px] flex flex-col justify-center">

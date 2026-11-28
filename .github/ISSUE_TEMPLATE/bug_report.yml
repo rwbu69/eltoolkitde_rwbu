@@ -45,4 +45,4 @@ body:
     id: logs
     attributes:
       label: Relevant logs or screenshots
-      description: You can copy logs from the Top HUD System Logs drawer (>_) . Remove secrets, cookies, and personal data before posting.
+      description: You can copy logs from the Top HUD System Logs drawer (>_ ). For deeper API/FFmpeg/preview issues, turn on "Enable debug console logging" in Settings first. Remove secrets, cookies, and personal data before posting.

@@ -50,6 +50,8 @@ export interface AppSettings {
   rateLimitSpeed: string;
   theme: 'light' | 'dark';
   enableKhinsider: boolean;
+  enableAnimeThemes: boolean;
+  debugMode: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -66,6 +68,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   rateLimitSpeed: '',
   theme: 'light',
   enableKhinsider: false,
+  enableAnimeThemes: false,
+  debugMode: false,
 };
 
 export type QueueItemStatus = 'pending' | 'fetching' | 'downloading' | 'processing' | 'expanded' | 'done' | 'error' | 'canceled';

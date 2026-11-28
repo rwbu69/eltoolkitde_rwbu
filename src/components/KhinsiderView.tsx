@@ -8,8 +8,10 @@ import { useAppStore } from '../store/useAppStore';
 import { Button } from './ui/Button';
 import { InlineNotice } from './ui/InlineNotice';
 import { PageLayout, Panel, PanelScrollArea } from './ui/Layout';
+import { RateLimitNotice } from './ui/RateLimitNotice';
 import { showToast } from './ui/Toast';
 import { PathPicker } from './ui/PathPicker';
+import { useRateLimitCooldown } from '../hooks/useRateLimitCooldown';
 
 function CoverImage({ src, alt, className }: { src?: string; alt: string; className: string }) {
   const imageRef = useRef<HTMLImageElement>(null);
@@ -60,6 +62,7 @@ export default function KhinsiderView() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { cooldownSeconds, isRateLimited, handleError: handleRateLimitError } = useRateLimitCooldown();
   const [downloadState, setDownloadState] = useState<Record<string, string>>({});
   const [selectedTracks, setSelectedTracks] = useState<Set<string>>(new Set());
   const [resolvingTracks, setResolvingTracks] = useState(false);
@@ -86,9 +89,11 @@ export default function KhinsiderView() {
       setSelectedAlbum(null);
       setSelectedTracks(new Set());
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : String(reason);
-      setError(detail);
-      showToast('Khinsider could not be loaded.', 'error', detail);
+      const friendly = handleRateLimitError(reason, 'Khinsider could not be loaded. Check your connection and try again.');
+      if (friendly) {
+        setError(friendly);
+        showToast('Khinsider could not be loaded.', 'error', friendly);
+      }
     } finally {
       setResolvingTracks(false);
       setLoading(false);
@@ -147,9 +152,11 @@ export default function KhinsiderView() {
       setSelectedTracks(new Set());
       setResolvingTracks(false);
     } catch (reason) {
-      const detail = reason instanceof Error ? reason.message : String(reason);
-      setError(detail);
-      showToast('Album could not be opened.', 'error', detail);
+      const friendly = handleRateLimitError(reason, 'Album could not be opened. Try again shortly.');
+      if (friendly) {
+        setError(friendly);
+        showToast('Album could not be opened.', 'error', friendly);
+      }
     } finally {
       setLoading(false);
     }
@@ -266,7 +273,9 @@ export default function KhinsiderView() {
               </form>
             )}
 
-            {error && !album && (
+            <RateLimitNotice source="Khinsider" seconds={cooldownSeconds} />
+            {error && !isRateLimited && <InlineNotice tone="error" message={error} />}
+            {error && !album && !isRateLimited && (
               <Button
                 onClick={() => void loadPage(() => query.trim() ? KhinsiderService.search(query.trim()) : KhinsiderService.fetchPage(KHINSIDER_HOME))}
                 className="kh-control-md self-start px-3"

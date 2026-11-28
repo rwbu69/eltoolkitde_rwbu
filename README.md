@@ -80,7 +80,7 @@ Because releases are currently distributed without Apple Developer notarization,
 If macOS does not show the Open button:
 
 1. Open **System Settings** → **Privacy & Security**.
-2. Scroll to the Security section where it mentions *ElToolkitDeRWBU was blocked from use*.
+2. Scroll to the Security section where it mentions _ElToolkitDeRWBU was blocked from use_.
 3. Click **Open Anyway**.
 
 If Gatekeeper continues to block the application or its bundled binary sidecars, open Terminal and clear the quarantine attribute:
@@ -108,7 +108,7 @@ chmod +x ElToolkitDeRWBU*.AppImage
 sudo apt install ./ElToolkitDeRWBU*.deb
 ```
 
-*Note*: Packages are compiled on Ubuntu 22.04 with standard GNU libc. On minimal installations, ensure desktop dependencies such as WebKitGTK (`libwebkit2gtk-4.1-dev` and `libgtk-3-0`) are installed.
+_Note_: Packages are compiled on Ubuntu 22.04 with standard GNU libc. On minimal installations, ensure desktop dependencies such as WebKitGTK (`libwebkit2gtk-4.1-dev` and `libgtk-3-0`) are installed.
 </details>
 
 ---
@@ -120,29 +120,75 @@ Need a full walkthrough of where every button lives and how to use each tool? Re
 | Tool | Core Capability | Under the Hood |
 | :--- | :--- | :--- |
 | **Media Downloader** | Download MP4, MP3, and video-only streams with Active Queue thumbnails, embedded cover art, and Resolume-friendly H.264/H.265 handling | `yt-dlp` + `QuickJS` + `FFmpeg` |
-| **Game Music Browser** | Search, explore, and batch download game soundtracks with album art *(opt-in via Settings)* | `Reqwest` + `Scraper` (Khinsider) |
-| **Audio Studio** | Interactive waveform inspection, playback looping, millisecond nudge trimming, and lossless stream cutting | `wavesurfer.js` + `Symphonia` + `FFmpeg` |
-| **FFmpeg Processor** | Batch MP3 extraction, lossless timestamp trimming, and horizontal video mirroring | Bundled `FFmpeg` + `FFprobe` |
+| **Game Music Browser** | Search, explore, and batch download game soundtracks with album art _(opt-in via Settings)_ | `Reqwest` + `Scraper` (Khinsider) |
+| **Anime Themes Downloader** | Search anime by show, song, or artist; preview OP/ED/Insert themes; convert WebM to H.264/H.265 MP4 with song & artist metadata _(opt-in via Settings)_ | `Reqwest` (`AnimeThemes` + `AniList`) + `FFmpeg` |
+| **Audio & Video Studio** | Interactive waveform trimmer with synced `<video>` preview, frame-accurate cut option, Video → GIF (`palettegen`/`paletteuse`), MP3 extraction, and horizontal mirror | `wavesurfer.js` + `Symphonia` + `FFmpeg` |
 | **BPM Tuner** | Native Rust tempo detection, confidence scoring, manual BPM correction, and pitch-preserving tempo changes | `Symphonia` + `FFmpeg` |
 | **Metadata Editor** | Pre-fill and edit Title, Artist, Album, and Year across 7 audio formats with one-click restore backups | `Lofty` Rust Engine |
 | **Batch File Renamer** | Find & replace, prefix/suffix, and sequential numbering with collision checks and one-click undo | Native Rust `safe_rename` |
-| **Workstation HUD** | Catppuccin Mocha & Latte themes, system tray minimization, live System Logs drawer, single-instance lock | `Tauri v2` + `Zustand` + `Tailwind CSS` |
+| **Workstation HUD** | Catppuccin Mocha & Latte themes, system tray minimization, live System Logs drawer (`>_`) with Debug Mode, rate-limit cooldown banners, single-instance lock | `Tauri v2` + `Zustand` + `Tailwind CSS` |
+
+<details>
+<summary>Feature Gallery & Screenshots</summary>
+
+#### Anime Themes Downloader (Search by Title, Song, or Artist)
+
+<div align="center">
+  <img src="images/anime-theme-anime-title-search.png" width="32%" alt="Search Anime by Title" />
+  <img src="images/anime-theme-song-title-search.png" width="32%" alt="Search Anime by Song Title" />
+  <img src="images/anime-theme-artist-search.png" width="32%" alt="Search Anime by Artist" />
+</div>
+
+#### Audio & Video Trimmer, GIF Maker & Mirror
+
+<div align="center">
+  <img src="images/audio-trimmer.png" width="48%" alt="Audio Studio Waveform Trimmer" />
+  <img src="images/video-trimmer.png" width="48%" alt="Visual Video Trimmer with Synced Preview" />
+  <br /><br />
+  <img src="images/gif-maker.png" width="48%" alt="Video to GIF Converter" />
+  <img src="images/mirror-videos.png" width="48%" alt="Horizontal Video Mirror" />
+</div>
+
+<div align="center">
+  <br />
+  <img src="images/gif-result.gif" width="480" alt="Sample GIF Output" />
+  <br />
+  <sub>Sample output from <b>To GIF</b> using <code>palettegen</code> + <code>paletteuse</code></sub>
+</div>
+
+#### Opt-In Browsers & Settings
+
+<div align="center">
+  <img src="images/enable-other-menu-settings.png" width="76%" alt="Enable Khinsider and Anime Themes Downloader in Settings" />
+</div>
+
+</details>
 
 <details>
 <summary>Tool Breakdown & Highlights</summary>
 
 ### Media Downloader (`yt-dlp` + `QuickJS`)
+
 - **All-Resolution & Resolume-Safe Codec Pipeline**: Picks `360p`–`4K` properly using native resolution sorting. By default (**`H.264 / H.265 (No AV1/VP9 — Fastest)`**), native H.264/H.265 streams finish with zero re-encoding while AV1/VP9 streams (like 1440p/4K) auto-transcode using GPU encoders (`nvenc` / `qsv` / `amf` / `videotoolbox` → CPU fallback), `-pix_fmt:v:0 yuv420p`, `-movflags +faststart`, and live `%` progress.
 - **Active Queue Thumbnails & Filters**: Compact 16:9 thumbnails on queue cards, status filters (`All`, `Active`, `Completed`, `Failed`), rate-limit auto-pause/Resume, and cancellable FFmpeg transcodes.
 - **Embed-Only Thumbnails**: Cover art is embedded straight into MP4/MP3 outputs (`--embed-thumbnail`, `--convert-thumbnails jpg`) with zero leftover `.jpg`/`.webp` clutter.
 - **Atomic In-App `yt-dlp` Updates**: Update `yt-dlp` cleanly from **Settings → Engine binary updates** without blocking the UI.
 
 ### Game Music Browser (Khinsider)
-- **Disabled by Default**: Hidden until enabled in **Settings → Game music (Khinsider)**—zero network requests when turned off.
+
+- **Disabled by Default**: Hidden until enabled in **Settings → Enable Other Menus**—zero network requests when turned off.
 - **Batch or Single Track**: Browse categories, search albums, select individual tracks or download entire albums in MP3/FLAC into numbered album subfolders (`01 - Track.mp3`) with polite rate limiting and `vgmtreasurechest.com` origin checks.
 
-### Audio Studio, BPM Tuner, Metadata & Batch Renamer
-- **Waveform Trimmer**: Native Rust `symphonia` peak extraction (`< 4 MB` RAM) paired with `wavesurfer.js` draggable regions, `Play Selection`, `Loop`, zoom, `±100ms`/`±1s` nudges, and lossless `-c copy` trimming.
+### Anime Themes Downloader
+
+- **Disabled by Default**: Hidden until enabled in **Settings → Enable Other Menus**—zero network requests when turned off.
+- **Search by Anime, Song, or Artist**: Queries `rs.animethemes.moe/graphql` with a lightweight debounced autocomplete dropdown, dual Romaji + English titles, and lazy-loaded AniList cover art.
+- **Preview & H.264/H.265 Conversion**: Preview themes inline, then download and convert `.webm` to **H.264 MP4** (Resolume-safe) or **H.265 MP4** with `<Show Title> - <OP/ED/IN> (<Res>p NC).mp4` naming and embedded `title`, `artist`, `album`, and `date` metadata.
+
+### Audio & Video Studio, GIF Maker, BPM Tuner, Metadata & Batch Renamer
+
+- **Waveform & Visual Video Trimmer**: Native Rust `symphonia` peak extraction (`< 4 MB` RAM) paired with `wavesurfer.js` draggable regions, synced `<video>` preview via Tauri `assetProtocol`, `Play Selection`, `Loop`, zoom, `±100ms`/`±1s` nudges, lossless `-c copy` trimming, and optional **Frame-accurate cut** re-encoding.
+- **Video → GIF Maker**: Single-pass `fps` + `scale` + `palettegen=stats_mode=diff` + `paletteuse` with optional start/end clip range.
 - **Metadata Editor**: Supports `.mp3`, `.flac`, `.m4a`, `.ogg`, `.wav`, `.opus`, and `.aac`, pre-fills existing tags in single-file mode, and creates `.metadata-backup.<ext>` backups so **Restore original** always works.
 - **BPM Tuner**: Native Rust onset/autocorrelation BPM detection (`70–150`, `90–180`, `120–200`, or `Any`), manual BPM override, and `20–300` BPM FFmpeg `atempo` export to WAV or MP3.
 - **Batch Renamer**: Live diff preview with `Collision`, `Exists`, and `Invalid` guards, case-only Windows rename support, and **Undo last rename**.
@@ -162,7 +208,7 @@ flowchart TD
     RUST["Rust Core Backend<br/>(Commands, State, Dispatcher)"]
     SYM["Symphonia Engine<br/>(Waveform Peaks & BPM Detection)"]
     LOF["Lofty Engine<br/>(Audio Tag Read / Write)"]
-    HTTP["Reqwest HTTP Client<br/>(Khinsider Scraper & Updates)"]
+    HTTP["Reqwest HTTP Client<br/>(Khinsider, AnimeThemes, AniList & Updates)"]
     SHELL["Tauri Plugin Shell"]
     SC["Bundled Sidecars<br/>(yt-dlp, FFmpeg, FFprobe, QuickJS)"]
 
@@ -182,6 +228,7 @@ Want to know which file handles each menu and feature? Check **[LOGIC_REFERENCE.
 ## Build from Source
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org) (v24 recommended) and `npm`
 - [Rust](https://rustup.rs) (stable) and [Tauri v2 system prerequisites](https://v2.tauri.app/start/prerequisites/)
 - C compiler tools (Visual Studio C++ Build Tools on Windows, `build-essential` on Linux, Xcode Command Line Tools on macOS)
@@ -245,13 +292,15 @@ For security vulnerabilities, report privately according to [SECURITY.md](SECURI
 
 ## Acknowledgements & Third-Party Software
 
-Standing on the shoulders of open-source giants: [FFmpeg & FFprobe](https://ffmpeg.org), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [QuickJS (`quickjs-ng`)](https://github.com/quickjs-ng/quickjs), [Tauri](https://tauri.app), [Symphonia](https://github.com/pdeljanov/Symphonia), [Lofty](https://github.com/Serial-ATA/lofty-rs), [React](https://react.dev), [Vite](https://vitejs.dev), [Zustand](https://github.com/pmndrs/zustand), [wavesurfer.js](https://wavesurfer.js.org), [Tailwind CSS](https://tailwindcss.com), [Catppuccin](https://github.com/catppuccin/catppuccin), [Vitest](https://vitest.dev), and [oxlint](https://oxc.rs).
+Standing on the shoulders of open-source giants and community archives: [FFmpeg & FFprobe](https://ffmpeg.org), [yt-dlp](https://github.com/yt-dlp/yt-dlp), [QuickJS (`quickjs-ng`)](https://github.com/quickjs-ng/quickjs), [Tauri](https://tauri.app), [Symphonia](https://github.com/pdeljanov/Symphonia), [Lofty](https://github.com/Serial-ATA/lofty-rs), [reqwest](https://github.com/seanmonstar/reqwest), [scraper](https://github.com/rust-scraper/scraper), [React](https://react.dev), [Vite](https://vitejs.dev), [Zustand](https://github.com/pmndrs/zustand), [wavesurfer.js](https://wavesurfer.js.org), [Tailwind CSS](https://tailwindcss.com), [Catppuccin](https://github.com/catppuccin/catppuccin), [Lucide](https://lucide.dev) & `lucide-brands`, [Vitest](https://vitest.dev), and [oxlint](https://oxc.rs).
+
+Media discovery and artwork integrations are powered by [AnimeThemes.moe](https://animethemes.moe), [AniList](https://anilist.co), and [KHInsider](https://downloads.khinsider.com).
 
 Release packages bundle precompiled static binaries of FFmpeg, FFprobe, yt-dlp, and QuickJS (`qjs`). The bundled static FFmpeg and FFprobe builds include GPL-licensed libraries (such as `libx264`) and are distributed under **GPL-3.0-or-later**. Full license texts and source links live in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Disclaimer & License
 
-Please only download, convert, or modify media you have the legal right or permission to process, and respect the terms of service and access limits of third-party services including [Khinsider](https://downloads.khinsider.com/).
+Please only download, convert, or modify media you have the legal right or permission to process, and respect the terms of service and rate limits of third-party services including [AnimeThemes.moe](https://animethemes.moe), [AniList](https://anilist.co), and [KHInsider](https://downloads.khinsider.com/).
 
 ElToolkitDeRWBU source code is released under the **MIT License**. Copyright (c) 2026 RWBU. See [LICENSE](LICENSE) for details.
 

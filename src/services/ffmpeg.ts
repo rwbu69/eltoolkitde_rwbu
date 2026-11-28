@@ -1,7 +1,7 @@
 import { Command } from '@tauri-apps/plugin-shell';
 import { exists, mkdir, remove, rename } from '@tauri-apps/plugin-fs';
 import { basename, joinPath } from '../utils/path';
-import { dispatchLog, notifySuccess } from '../utils/toolkitEvents';
+import { dispatchDebug, dispatchLog, notifySuccess } from '../utils/toolkitEvents';
 
 export interface Mp3ConvertOptions {
   inputFiles: string[];
@@ -19,6 +19,16 @@ export interface TrimOptions {
   startTime: string;
   endTime: string;
   outputDir: string;
+  accurate?: boolean;
+}
+
+export interface GifOptions {
+  inputFiles: string[];
+  outputDir: string;
+  fps?: number;
+  width?: number | null;
+  startTime?: string;
+  endTime?: string;
 }
 
 export interface FfmpegProgress {
@@ -67,6 +77,7 @@ function runFfmpegAtomic(options: {
   } = options;
 
   return new Promise<boolean>((resolve) => {
+    dispatchDebug('ffmpeg', `Spawning sidecar [${logPrefix}]`, args.join(' '));
     const command = Command.sidecar('ffmpeg', args);
 
     command.stdout.on('data', (line) => line.trim() && dispatchLog(`[${logPrefix}] ${line.trim()}`));
@@ -267,7 +278,7 @@ export class FfmpegService {
     options: TrimOptions,
     onProgress: (progress: FfmpegProgress) => void
   ): Promise<{ task: Promise<void>, cancel: () => void }> {
-    const { inputFile, startTime, endTime, outputDir } = options;
+    const { inputFile, startTime, endTime, outputDir, accurate = false } = options;
     const { base, name, ext } = splitStemAndExt(inputFile);
     const outputFile = joinPath(outputDir, `${name} (trimmed)${ext}`);
     const tempFile = `${outputFile}.part`;
@@ -277,7 +288,7 @@ export class FfmpegService {
       return { task: Promise.resolve(), cancel: () => {} };
     }
 
-    onProgress({ id: inputFile, file: base, status: 'processing', log: 'Starting trim...' });
+    onProgress({ id: inputFile, file: base, status: 'processing', log: accurate ? 'Frame-accurate trimming...' : 'Starting trim...' });
 
     let childProcess: any = null;
     let cancelled = false;
@@ -286,16 +297,40 @@ export class FfmpegService {
       childProcess?.kill().catch(() => {});
     };
 
-    const task = (async () => {
-      const ok = await runFfmpegAtomic({
-        args: [
+    const parseSec = (ts: string) => {
+      const parts = ts.trim().split(':').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return 0;
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    };
+    const durationSec = Math.max(0.1, parseSec(endTime) - parseSec(startTime));
+
+    const args = accurate
+      ? [
+          '-hide_banner', '-y',
+          '-ss', startTime,
+          '-i', inputFile,
+          '-t', durationSec.toFixed(3),
+          '-c:v', 'libx264',
+          '-preset', 'veryfast',
+          '-crf', '18',
+          '-pix_fmt', 'yuv420p',
+          '-movflags', '+faststart',
+          '-c:a', 'aac',
+          '-b:a', '192k',
+          tempFile,
+        ]
+      : [
           '-hide_banner', '-y',
           '-i', inputFile,
           '-ss', startTime,
           '-to', endTime,
           '-c', 'copy',
           tempFile,
-        ],
+        ];
+
+    const task = (async () => {
+      const ok = await runFfmpegAtomic({
+        args,
         id: inputFile,
         fileLabel: base,
         tempFile,
@@ -304,10 +339,120 @@ export class FfmpegService {
         isCancelled: () => cancelled,
         onSpawn: (child) => { childProcess = child; },
         onProgress,
+        donePercent: 100,
+        onStderrLine: accurate
+          ? (line) => {
+              const m = line.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
+              if (m && !cancelled) {
+                const cur = parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseFloat(m[3]);
+                const percent = Math.min(100, Math.round((cur / durationSec) * 100));
+                onProgress({ id: inputFile, file: base, status: 'processing', log: `Trimming... ${percent}%`, percent });
+              }
+            }
+          : undefined,
       });
 
       if (ok && !cancelled) {
         await notifySuccess('Trim complete', `File: ${base}`);
+      }
+    })();
+
+    return { task, cancel: cancelFn };
+  }
+
+  static async convertToGif(
+    options: GifOptions,
+    onProgress: (progress: FfmpegProgress) => void
+  ): Promise<{ task: Promise<void>, cancel: () => void }> {
+    const { inputFiles, outputDir, fps = 15, width = 720, startTime, endTime } = options;
+    if (inputFiles.length === 0) {
+      throw new Error('No media files selected.');
+    }
+
+    let childProcess: any = null;
+    let cancelled = false;
+    const cancelFn = () => {
+      cancelled = true;
+      childProcess?.kill().catch(() => {});
+    };
+
+    const parseSec = (ts: string) => {
+      const parts = ts.trim().split(':').map(Number);
+      if (parts.length !== 3 || parts.some(isNaN)) return 0;
+      return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    };
+
+    const hasRange = Boolean(startTime && endTime);
+    const rangeDuration = hasRange ? Math.max(0.1, parseSec(endTime!) - parseSec(startTime!)) : 0;
+
+    const task = (async () => {
+      for (const inputFile of inputFiles) {
+        if (cancelled) break;
+        const { base, name } = splitStemAndExt(inputFile);
+        const outputFile = joinPath(outputDir, `${name}.gif`);
+        const tempFile = `${outputFile}.part.gif`;
+
+        if (await exists(outputFile)) {
+          onProgress({ id: inputFile, file: base, status: 'skipped', log: 'File already exists' });
+          continue;
+        }
+
+        onProgress({ id: inputFile, file: base, status: 'processing', log: 'Generating GIF...', percent: 0 });
+
+        let totalDuration = rangeDuration;
+        if (!hasRange) {
+          try {
+            const ffprobe = Command.sidecar('ffprobe', [
+              '-v', 'error',
+              '-show_entries', 'format=duration',
+              '-of', 'default=noprint_wrappers=1:nokey=1',
+              inputFile,
+            ]);
+            const probeResult = await ffprobe.execute();
+            totalDuration = parseFloat(probeResult.stdout) || 0;
+          } catch {
+            // fallback without percentage
+          }
+        }
+
+        if (cancelled) break;
+
+        const scaleFilter = width ? `,scale=${width}:-1:flags=lanczos` : '';
+        const vf = `fps=${fps}${scaleFilter},split[s0][s1];[s0]palettegen=stats_mode=diff[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5`;
+
+        const args = [
+          '-hide_banner', '-y',
+          ...(hasRange ? ['-ss', startTime!, '-t', rangeDuration.toFixed(3)] : []),
+          '-i', inputFile,
+          '-vf', vf,
+          '-loop', '0',
+          tempFile,
+        ];
+
+        await runFfmpegAtomic({
+          args,
+          id: inputFile,
+          fileLabel: base,
+          tempFile,
+          outputFile,
+          logPrefix: 'ffmpeg gif',
+          isCancelled: () => cancelled,
+          onSpawn: (child) => { childProcess = child; },
+          onProgress,
+          donePercent: 100,
+          onStderrLine: (line) => {
+            const m = line.match(/time=\s*(\d+):(\d+):(\d+\.\d+)/);
+            if (m && totalDuration > 0 && !cancelled) {
+              const cur = parseInt(m[1], 10) * 3600 + parseInt(m[2], 10) * 60 + parseFloat(m[3]);
+              const percent = Math.min(100, Math.round((cur / totalDuration) * 100));
+              onProgress({ id: inputFile, file: base, status: 'processing', log: `Encoding GIF... ${percent}%`, percent });
+            }
+          },
+        });
+      }
+
+      if (!cancelled) {
+        await notifySuccess('GIF conversion complete', `Processed ${inputFiles.length} file${inputFiles.length === 1 ? '' : 's'}.`);
       }
     })();
 

@@ -1,3 +1,5 @@
+import { dispatchDebug } from '../utils/toolkitEvents';
+
 export type OperationStatus =
   | 'pending'
   | 'fetching'
@@ -73,4 +75,36 @@ export function parseYtDlpError(error: unknown, fallback = 'Operation failed'): 
     message: fallback,
     detail: raw && raw !== fallback ? raw : undefined,
   };
+}
+
+export function formatFriendlyError(
+  error: unknown,
+  fallback = 'Something went wrong. Check System Logs (>_ ) for details.'
+): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  if (raw) {
+    dispatchDebug('error', raw);
+    console.error('[ElToolkit Error]', raw);
+  }
+
+  if (/^RATE_LIMIT:\d+|rate-limit|429|Too Many Requests/i.test(raw)) {
+    return 'Too many requests. Please wait a moment before trying again.';
+  }
+  if (/timed out|error sending request|getaddrinfo|Failed to resolve|Connection refused|Failed to fetch|network/i.test(raw)) {
+    return 'Could not reach the server. Check your internet connection and try again.';
+  }
+  if (/HTTP 5\d\d|Service Unavailable|Bad Gateway|Gateway Timeout/i.test(raw)) {
+    return 'The service is temporarily unavailable. Please try again shortly.';
+  }
+  if (/HTTP 403|Access is denied|PermissionDenied|blocking automated requests/i.test(raw)) {
+    return 'Access was blocked or denied. Check permissions or try again later.';
+  }
+  if (/os error 32|NotFound|No such file|ENOENT/i.test(raw)) {
+    return 'A required file is missing or currently open in another program.';
+  }
+  if (/Exit code|Failed to spawn/i.test(raw)) {
+    return 'Media processing failed. Check System Logs (>_ ) for details.';
+  }
+
+  return fallback;
 }

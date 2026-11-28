@@ -1,5 +1,21 @@
 # Changelog
 
+## [Unreleased]
+
+### Anime Themes Downloader (`animethemes.moe` + AniList)
+- Added opt-in **Anime Themes Downloader** (disabled by default in **Settings → Enable Anime Themes Downloader**).
+- Added GraphQL search and lightweight cached autocomplete across **anime titles** (Romaji + English), **song names**, and **artists** via `rs.animethemes.moe/graphql`.
+- Added lazy-loaded anime cover thumbnails via AniList (`graphql.anilist.co`, `IntersectionObserver` batching + `AppState` cache) and responsive horizontal strip cards on non-fullscreen windows.
+- Added inline `<video>` preview modal (with automatic `$TEMP` + `convertFileSrc` fallback) and WebM → **H.264 MP4** / **H.265 MP4** conversion with clean `<Show Title> - <Theme> (<Res>p NC).mp4` naming and embedded `title`, `artist`, `album`, and `date` metadata.
+
+### Visual Video Trimmer & GIF Maker
+- Enabled Tauri v2 `assetProtocol` (`protocol-asset`) to stream local video files into a `<video>` preview synced directly with `WaveSurfer` in **Trim** mode, plus a **Frame-accurate cut** re-encode toggle.
+- Added **To GIF** mode in **Converter & Trim** using FFmpeg `fps`, `scale`, and `palettegen=stats_mode=diff` / `paletteuse` with optional start/end clip range.
+
+### UX, Diagnostics & Branded Installer
+- Added **Enable debug console logging** in Settings (`dispatchDebug`), modular HTTP `429` cooldown banners (`useRateLimitCooldown` + `RateLimitNotice`), and plain-English `formatFriendlyError` UI messages.
+- Customized Tauri v2 NSIS (`nsis-sidebar.bmp`, `nsis-header.bmp`, `LICENSE`) and macOS DMG (`dmg-background.png`) installer assets.
+
 ## ElToolkitDeRWBU v0.1.4 — Audio Waveform Studio, UI Declutter & Media Pipeline Overhaul
 
 Date: 2026-11-27

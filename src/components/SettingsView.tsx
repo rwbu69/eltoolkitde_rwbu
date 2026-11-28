@@ -28,11 +28,11 @@ export default function SettingsView() {
             <h3 className="flex items-center gap-2 font-zen font-black text-ink text-sm border-b border-subtleborder pb-2">
               <FolderOpen className="w-4 h-4 text-toska" /> General defaults & output
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <FormLabel text="Default output folder" icon={FolderOpen} />
-                <PathPicker 
+                <PathPicker
                   value={settings.defaultOutputDir}
                   onChange={(path) => updateSettings({ defaultOutputDir: path })}
                   placeholder="Not set..."
@@ -41,7 +41,7 @@ export default function SettingsView() {
               </div>
 
               <div className="flex items-center pt-6">
-                <Toggle 
+                <Toggle
                   checked={settings.closeToTray}
                   onChange={(checked) => updateSettings({ closeToTray: checked })}
                   label="Minimize to system tray on close"
@@ -50,6 +50,16 @@ export default function SettingsView() {
                 />
               </div>
             </div>
+
+            <div className="pt-3 border-t border-subtleborder">
+              <Toggle
+                checked={settings.debugMode}
+                onChange={(checked) => updateSettings({ debugMode: checked })}
+                label="Enable debug console logging"
+                description="Logs API queries, FFmpeg arguments, encoder choices, and preview diagnostics to System Logs (>_)."
+                variant="checkbox"
+              />
+            </div>
           </div>
 
           {/* 2. MEDIA PRESETS */}
@@ -57,7 +67,7 @@ export default function SettingsView() {
             <h3 className="flex items-center gap-2 font-zen font-black text-ink text-sm border-b border-subtleborder pb-2">
               <FileBox className="w-4 h-4 text-toska" /> Media quality presets
             </h3>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <FormLabel text="Default video resolution" />
@@ -78,7 +88,7 @@ export default function SettingsView() {
                   className="w-full shrink-0"
                 />
               </div>
-              
+
               <div>
                 <FormLabel text="Default audio bitrate (MP3)" />
                 <CustomSelect
@@ -96,10 +106,10 @@ export default function SettingsView() {
             <h3 className="flex items-center gap-2 font-zen font-black text-ink text-sm border-b border-subtleborder pb-2">
               <Download className="w-4 h-4 text-toska" /> Download & network behavior
             </h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Toggle 
+                <Toggle
                   checked={settings.enableConcurrentDownloads}
                   onChange={(checked) => updateSettings({ enableConcurrentDownloads: checked })}
                   label="Enable parallel downloads"
@@ -177,7 +187,7 @@ export default function SettingsView() {
           {/* 4. KHINSIDER BROWSER */}
           <div className="bg-appbg border border-subtleborder rounded-2xl p-4 space-y-4">
             <h3 className="flex items-center gap-2 font-zen font-black text-ink text-sm border-b border-subtleborder pb-2">
-              <Library className="w-4 h-4 text-toska" /> Game music (Khinsider)
+              <Library className="w-4 h-4 text-toska" /> Enable Other Menus
             </h3>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <Toggle
@@ -201,6 +211,15 @@ export default function SettingsView() {
                 Clear music cache
               </Button>
             </div>
+            <div className="pt-3 border-t border-subtleborder">
+              <Toggle
+                checked={settings.enableAnimeThemes}
+                onChange={(checked) => updateSettings({ enableAnimeThemes: checked })}
+                label="Enable Anime Themes Downloader"
+                description="Shows the Anime Themes Downloader tab on the navigation rail."
+                variant="checkbox"
+              />
+            </div>
           </div>
 
           {/* 5. AUTHENTICATION & COOKIES */}
@@ -213,11 +232,11 @@ export default function SettingsView() {
             <p className="text-xs font-mono text-muted leading-relaxed">
               Use cookies from an installed browser or export a Netscape format <code className="text-ink font-bold">cookies.txt</code> to download private or restricted streams.
             </p>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <FormLabel text="Browser session cookies" />
-                <select 
+                <select
                   value={settings.browserForCookies}
                   onChange={(e) => updateSettings({ browserForCookies: e.target.value, cookiesFilePath: '' })}
                   className="game-select font-bold text-xs bg-panel"
@@ -232,10 +251,10 @@ export default function SettingsView() {
                 </select>
                 <p className="mt-1 text-[10px] font-mono text-muted">Automatically reads session cookies from installed browser profile.</p>
               </div>
-              
+
               <div>
                 <FormLabel text="Or Netscape cookies.txt file" />
-                <PathPicker 
+                <PathPicker
                   value={settings.cookiesFilePath}
                   onChange={(path) => updateSettings({ cookiesFilePath: path })}
                   placeholder="No cookies file selected..."

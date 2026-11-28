@@ -1,7 +1,7 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { Download, Sliders, Edit3, Settings, Moon, Sun, CheckCircle2, Library, Terminal } from 'lucide-react';
+import { Download, Sliders, Edit3, Settings, Moon, Sun, CheckCircle2, Library, Terminal, Tv } from 'lucide-react';
 import DownloaderView from './components/DownloaderView';
 import RenameView from './components/RenameView';
 import SettingsView from './components/SettingsView';
@@ -10,12 +10,14 @@ import { Titlebar } from './components/ui/Titlebar';
 import { Tooltip } from './components/ui/Tooltip';
 import { useAppStore } from './store/useAppStore';
 import { ToastHost } from './components/ui/Toast';
+import { setDebugLoggingEnabled } from './utils/toolkitEvents';
 import appIcon from './assets/icon.png';
 
 const KhinsiderView = lazy(() => import('./components/KhinsiderView'));
+const AnimeThemesView = lazy(() => import('./components/AnimeThemesView'));
 const AudioStudioView = lazy(() => import('./components/AudioStudioView'));
 
-export type MainTab = 'downloader' | 'khinsider' | 'studio' | 'rename' | 'settings';
+export type MainTab = 'downloader' | 'khinsider' | 'animethemes' | 'studio' | 'rename' | 'settings';
 
 function App() {
   const [activeTab, setActiveTab] = useState<MainTab>('downloader');
@@ -34,10 +36,21 @@ function App() {
   }, [settings.enableKhinsider]);
 
   useEffect(() => {
+    invoke('set_animethemes_enabled', { enabled: settings.enableAnimeThemes }).catch(console.error);
+  }, [settings.enableAnimeThemes]);
+
+  useEffect(() => {
+    setDebugLoggingEnabled(settings.debugMode);
+  }, [settings.debugMode]);
+
+  useEffect(() => {
     if (!settings.enableKhinsider && activeTab === 'khinsider') {
       setActiveTab('downloader');
     }
-  }, [settings.enableKhinsider, activeTab]);
+    if (!settings.enableAnimeThemes && activeTab === 'animethemes') {
+      setActiveTab('downloader');
+    }
+  }, [settings.enableKhinsider, settings.enableAnimeThemes, activeTab]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -117,6 +130,22 @@ function App() {
                 </Tooltip>
               )}
 
+              {settings.enableAnimeThemes && (
+                <Tooltip text="Anime Themes Downloader" position="right">
+                  <button
+                    onClick={() => setActiveTab('animethemes')}
+                    className={`w-12 h-12 rounded-2xl border-3 flex items-center justify-center transition-all duration-150 ${
+                      activeTab === 'animethemes'
+                        ? 'bg-oshipink text-buttontext border-gameborder shadow-game-thin scale-105'
+                        : 'bg-panel text-ink border-transparent hover:border-subtleborder hover:text-ink'
+                    }`}
+                    aria-label="Anime Themes Downloader"
+                  >
+                    <Tv className="w-5 h-5" />
+                  </button>
+                </Tooltip>
+              )}
+
               <Tooltip text="Audio Studio" position="right">
                 <button
                   onClick={() => setActiveTab('studio')}
@@ -179,6 +208,7 @@ function App() {
                 <h1 className="text-base lg:text-lg font-black leading-tight font-zen text-ink">
                   {activeTab === 'downloader' && 'Media Downloader'}
                   {activeTab === 'khinsider' && 'Game Music (Khinsider)'}
+                  {activeTab === 'animethemes' && 'Anime Themes Downloader'}
                   {activeTab === 'studio' && 'Audio Studio'}
                   {activeTab === 'rename' && 'Batch Renamer'}
                   {activeTab === 'settings' && 'Settings'}
@@ -247,6 +277,13 @@ function App() {
                   </Suspense>
                 </div>
               )}
+              {settings.enableAnimeThemes && (
+                <div className={activeTab === 'animethemes' ? 'h-full w-full' : 'hidden'}>
+                  <Suspense fallback={null}>
+                    <AnimeThemesView />
+                  </Suspense>
+                </div>
+              )}
               <div className={activeTab === 'studio' ? 'h-full w-full' : 'hidden'}>
                 <Suspense fallback={null}>
                   <AudioStudioView isActive={activeTab === 'studio'} />
@@ -284,6 +321,18 @@ function App() {
           >
             <Library className="w-4 h-4 shrink-0" />
             <span>Music</span>
+          </button>
+        )}
+
+        {settings.enableAnimeThemes && (
+          <button
+            onClick={() => setActiveTab('animethemes')}
+            className={`flex-1 h-12 rounded-xl flex flex-col items-center justify-center gap-0.5 font-zen text-[10px] font-bold transition-all ${
+              activeTab === 'animethemes' ? 'text-oshipink font-black scale-105' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <Tv className="w-4 h-4 shrink-0" />
+            <span>Themes</span>
           </button>
         )}
 

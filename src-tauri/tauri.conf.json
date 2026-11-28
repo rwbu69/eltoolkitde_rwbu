@@ -33,7 +33,11 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:;"
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      },
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; media-src 'self' asset: https://asset.localhost http://asset.localhost blob: https://v.animethemes.moe;"
     }
   },
   "bundle": {

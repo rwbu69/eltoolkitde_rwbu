@@ -35,6 +35,7 @@ src-tauri/node-*
 STYLE_GUIDE.md
 DESIGN.md
 FUTURE_TODO.md
+anime-themes-moe/
 
 build/
 *.spec

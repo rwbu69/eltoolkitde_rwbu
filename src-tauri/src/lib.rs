@@ -114,6 +114,11 @@ pub fn run() {
             commands::audio::write_audio_tags,
             commands::audio::detect_audio_bpm,
             commands::audio::get_audio_waveform,
+            commands::animethemes::set_animethemes_enabled,
+            commands::animethemes::animethemes_search,
+            commands::animethemes::animethemes_suggest,
+            commands::animethemes::animethemes_fetch_covers,
+            commands::animethemes::animethemes_download,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -3,7 +3,7 @@ import { Command } from '@tauri-apps/plugin-shell';
 import { exists, remove, rename } from '@tauri-apps/plugin-fs';
 import type { VideoCodec } from '../config/mediaSettings';
 import { joinPath } from '../utils/path';
-import { dispatchLog, notifySuccess } from '../utils/toolkitEvents';
+import { dispatchDebug, dispatchLog, notifySuccess } from '../utils/toolkitEvents';
 
 export interface PlaylistItem {
   title: string;
@@ -45,7 +45,7 @@ export class YtDlpService {
   private static cachedFfmpegLocation: string | null = null;
   private static cachedJsRuntime: string | null = null;
   private static cachedAvailableEncoders: Set<string> | null = null;
-  private static failedEncoders = new Set<string>();
+  static failedEncoders = new Set<string>();
 
   private static async getFfmpegLocation(): Promise<string | null> {
     if (this.cachedFfmpegLocation) return this.cachedFfmpegLocation;
@@ -111,7 +111,7 @@ export class YtDlpService {
     }
   }
 
-  private static async getMediaDuration(filePath: string): Promise<number> {
+  static async getMediaDuration(filePath: string): Promise<number> {
     try {
       const ffprobe = Command.sidecar('ffprobe', [
         '-v', 'error',
@@ -127,7 +127,7 @@ export class YtDlpService {
     }
   }
 
-  private static async getAvailableEncoders(): Promise<Set<string>> {
+  static async getAvailableEncoders(): Promise<Set<string>> {
     if (this.cachedAvailableEncoders) return this.cachedAvailableEncoders;
     const found = new Set<string>();
     try {
@@ -148,7 +148,7 @@ export class YtDlpService {
     return found;
   }
 
-  private static buildEncoderCandidates(
+  static buildEncoderCandidates(
     targetCodec: 'h264' | 'hevc',
     availableEncoders: Set<string>
   ): { encoder: string; args: string[] }[] {
@@ -190,6 +190,12 @@ export class YtDlpService {
     if (jsRuntime) {
       fetchArgs.push('--js-runtimes', jsRuntime);
     }
+    dispatchDebug('yt-dlp', 'fetchVideoInfo config', {
+      ffmpegLocation,
+      jsRuntime,
+      hasCookiesFile: Boolean(cookiesFilePath),
+      browserForCookies: browserForCookies || null,
+    });
 
     if (browserForCookies) {
       fetchArgs.push('--cookies-from-browser', browserForCookies);

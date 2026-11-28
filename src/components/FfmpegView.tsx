@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, X, FileAudio, Settings2, CheckCircle2 } from 'lucide-react';
+import { Music, Scissors, SplitSquareHorizontal, FolderOpen, Play, X, FileAudio, Settings2, CheckCircle2, Film } from 'lucide-react';
 import { open } from '@tauri-apps/plugin-dialog';
 import { readDir } from '@tauri-apps/plugin-fs';
 import { FfmpegService, FfmpegProgress } from '../services/ffmpeg';
@@ -7,6 +7,7 @@ import { WaveformService } from '../services/waveform';
 import { useAppStore } from '../store/useAppStore';
 import { PageLayout, Column, Panel, PanelScrollArea, FormLabel } from './ui/Layout';
 import { Button } from './ui/Button';
+import { CustomSelect } from './ui/CustomSelect';
 import { PathPicker } from './ui/PathPicker';
 import { Tabs } from './ui/Tabs';
 import { Input } from './ui/Input';
@@ -19,13 +20,18 @@ import { WaveformTrimmer } from './media/WaveformTrimmer';
 
 export default function FfmpegView({ isActive = false }: { isActive?: boolean }) {
   const { settings } = useAppStore();
-  const [mode, setMode] = useState<'mp3' | 'trim' | 'mirror'>('mp3');
+  const [mode, setMode] = useState<'mp3' | 'trim' | 'gif' | 'mirror'>('mp3');
 
   const [inputPaths, setInputPaths] = useState<string[]>([]);
   const [outputDir, setOutputDir] = useState<string>(settings.defaultOutputDir || '');
 
   const [trimStart, setTrimStart] = useState('00:00:00');
   const [trimEnd, setTrimEnd] = useState('00:01:00');
+  const [trimAccurate, setTrimAccurate] = useState(false);
+
+  const [gifFps, setGifFps] = useState<string>('15');
+  const [gifWidth, setGifWidth] = useState<string>('720');
+  const [gifUseRange, setGifUseRange] = useState(false);
 
   const [progresses, setProgresses] = useState<FfmpegProgress[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -91,12 +97,14 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
     }
   };
 
+  const isFirstInputVideo = inputPaths.length > 0 && /\.(mp4|mkv|webm|mov|avi|m4v)$/i.test(inputPaths[0]);
+
   const handleProcess = async () => {
     if (inputPaths.length === 0 || !outputDir) return;
-    if (mode === 'trim') {
+    if (mode === 'trim' || (mode === 'gif' && gifUseRange)) {
       const timePattern = /^\d{1,2}:\d{2}:\d{2}(?:\.\d{1,3})?$/;
       if (!timePattern.test(trimStart.trim()) || !timePattern.test(trimEnd.trim())) {
-        showToast('Enter valid HH:MM:SS timestamps for trim start and end.', 'warning');
+        showToast('Enter valid HH:MM:SS timestamps for start and end.', 'warning');
         return;
       }
       if (WaveformService.parseTimestampToSeconds(trimEnd) <= WaveformService.parseTimestampToSeconds(trimStart)) {
@@ -127,10 +135,21 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
           { inputFiles: inputPaths, outputDir: outputDir },
           upsertProgress
         );
+      } else if (mode === 'gif') {
+        result = await FfmpegService.convertToGif(
+          {
+            inputFiles: inputPaths,
+            outputDir: outputDir,
+            fps: Number(gifFps),
+            width: gifWidth === 'orig' ? null : Number(gifWidth),
+            ...(gifUseRange ? { startTime: trimStart, endTime: trimEnd } : {}),
+          },
+          upsertProgress
+        );
       } else if (mode === 'trim') {
         const inputFile = inputPaths[0];
         result = await FfmpegService.trimMedia(
-          { inputFile, startTime: trimStart, endTime: trimEnd, outputDir: outputDir },
+          { inputFile, startTime: trimStart, endTime: trimEnd, outputDir: outputDir, accurate: isFirstInputVideo && trimAccurate },
           (prog) => setProgresses([prog])
         );
       }
@@ -186,6 +205,7 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                 options={[
                   { value: 'mp3', label: 'To MP3', icon: Music },
                   { value: 'trim', label: 'Trim', icon: Scissors },
+                  { value: 'gif', label: 'To GIF', icon: Film },
                   { value: 'mirror', label: 'Mirror', icon: SplitSquareHorizontal }
                 ]}
                 value={mode}
@@ -302,6 +322,86 @@ export default function FfmpegView({ isActive = false }: { isActive?: boolean })
                       </div>
                     </div>
                   </div>
+
+                  {isFirstInputVideo && (
+                    <label className="flex items-center gap-2 pt-2 border-t border-subtleborder cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={trimAccurate}
+                        onChange={(e) => setTrimAccurate(e.target.checked)}
+                        className="accent-oshipink rounded"
+                      />
+                      <span className="text-[11px] font-mono font-bold text-ink">
+                        Frame-accurate cut <span className="font-normal text-muted">(re-encodes H.264/AAC instead of keyframe copy)</span>
+                      </span>
+                    </label>
+                  )}
+                </div>
+              )}
+
+              {mode === 'gif' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <FormLabel text="Frame rate" />
+                      <CustomSelect
+                        value={gifFps}
+                        onChange={setGifFps}
+                        options={[
+                          { value: '10', label: '10 fps (Small)' },
+                          { value: '15', label: '15 fps (Balanced)' },
+                          { value: '24', label: '24 fps (Smooth)' },
+                        ]}
+                      />
+                    </div>
+                    <div>
+                      <FormLabel text="Width" />
+                      <CustomSelect
+                        value={gifWidth}
+                        onChange={setGifWidth}
+                        options={[
+                          { value: '480', label: '480 px' },
+                          { value: '720', label: '720 px (HD)' },
+                          { value: 'orig', label: 'Original' },
+                        ]}
+                      />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 pt-2 border-t border-subtleborder cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={gifUseRange}
+                      onChange={(e) => setGifUseRange(e.target.checked)}
+                      className="accent-oshipink rounded"
+                    />
+                    <span className="text-[11px] font-mono font-bold text-ink">Clip range (Start / End)</span>
+                  </label>
+
+                  {gifUseRange && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <FormLabel text="Start time (HH:MM:SS)" />
+                        <Input
+                          type="text"
+                          value={trimStart}
+                          onChange={e => setTrimStart(e.target.value)}
+                          className="bg-panel font-mono text-xs"
+                          placeholder="00:00:00"
+                        />
+                      </div>
+                      <div>
+                        <FormLabel text="End time (HH:MM:SS)" />
+                        <Input
+                          type="text"
+                          value={trimEnd}
+                          onChange={e => setTrimEnd(e.target.value)}
+                          className="bg-panel font-mono text-xs"
+                          placeholder="00:01:00"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 

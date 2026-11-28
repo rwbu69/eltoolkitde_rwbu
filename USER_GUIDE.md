@@ -65,16 +65,29 @@ From top to bottom on the left rail (or left to right on the bottom dock):
 
 ---
 
+## 3b. Anime Themes Downloader
+
+1. **Enable the tab**: Open **Settings → Game music (Khinsider)** section and check **Enable Anime Themes Downloader**.
+2. **Search**: Type an anime title (Romaji or English), song name, or artist name—or pick a match from the autocomplete dropdown.
+3. **Preview & Download**:
+   - Click an anime card to view all OP/ED/Insert themes with resolution (`1080p`), creditless (`NC`), and `Subbed` badges.
+   - Click **Preview** to watch the theme inline before downloading.
+   - Choose your output format (**H.264 MP4**, **H.265 / HEVC MP4**, or **Original WebM**) and **Output folder**, then click **Download** (or select multiple themes).
+   - Converted MP4 files are named `<Show Title> - <Theme> (<Res>p NC).mp4` with song **Title**, **Contributing Artist**, **Album**, and **Year** tags embedded.
+
+---
+
 ## 4. Audio Studio
 
 Switch between the three tools using the top deck inside **Audio Studio**:
 
 ### A. Converter & Trim
 - **To MP3**: Click **Select file(s)**, **Batch (folder)**, or drag-and-drop media files, pick your **Output folder**, and click **Process**. Outputs save to `<Output folder>/output_mp3/*.mp3` (existing files are skipped).
-- **Trim**: Select a single audio or video file to load the **Waveform Cutter**:
+- **Trim**: Select a single audio or video file to load the **Waveform Cutter** (and synced `<video>` preview for video files):
   - Drag or resize the pink selection region on the waveform, or fine-tune with **Start / End** `±1s` / `±100ms` buttons and `HH:MM:SS` text boxes.
   - Preview with **Play Selection**, **Full**, **Stop**, **Loop**, and the **Zoom** slider.
-  - Click **Process** to perform a lossless stream-copy trim (`<Name> (trimmed).<ext>`).
+  - Leave **Frame-accurate cut** unchecked for instant lossless `-c copy` trimming, or check it for exact frame-accurate H.264/AAC cuts.
+- **To GIF**: Pick **Frame rate** (`10`, `15`, or `24 fps`), **Width** (`480 px`, `720 px`, or `Original`), and optionally enable **Clip range (Start / End)** to convert video clips to high-quality `.gif` files (`palettegen` + `paletteuse`).
 - **Mirror**: Flips video left-to-right horizontally (`<Name>-MIRROR.<ext>`) with live percentage progress.
 
 ### B. Metadata Editor
@@ -105,7 +118,7 @@ Switch between the three tools using the top deck inside **Audio Studio**:
 
 ## 6. Settings
 
-- **General defaults & output**: Set your default output folder and toggle **Minimize to system tray on close**.
+- **General defaults & output**: Set your default output folder, toggle **Minimize to system tray on close**, and toggle **Enable debug console logging** (sends API, FFmpeg, and preview diagnostics to the `>_` System Logs drawer).
 - **Media quality presets**:
   - **Default video resolution**: `4K (2160p)` down to `360p`.
   - **Default video codec**:
@@ -117,5 +130,5 @@ Switch between the three tools using the top deck inside **Audio Studio**:
   - Toggle **Enable parallel downloads** and set **Max concurrent downloads** (`1–10`; keeping `2–3` helps avoid host rate limits).
   - Set an optional **Speed limit throttle** (e.g., `5M` or `500K`).
   - Click **Check for yt-dlp update** to download and validate the latest `yt-dlp` binary cleanly.
-- **Game music (Khinsider)**: Show/hide the Khinsider navigation tab and clear cached Khinsider pages.
+- **Game music (Khinsider) & Anime Themes Downloader**: Show/hide the Khinsider and Anime Themes Downloader navigation tabs and clear cached Khinsider pages.
 - **Authentication & cookies**: Read session cookies from an installed browser (`Chrome`, `Firefox`, `Edge`, `Brave`, `Safari`, `Opera`) or attach a Netscape `cookies.txt` file for restricted/member streams.
