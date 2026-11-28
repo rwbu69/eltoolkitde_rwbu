@@ -1,80 +1,35 @@
 # Changelog
 
-## [Unreleased]
+## ElToolkitDeRWBU v0.1.4 — The November Update
+
+Date: 2026-11-28
+
+> _"No more opening three terminals just to grab a 1080p clip, convert a WebM OP to H.264, trim a video frame, or make a quick GIF."_
 
 ### Anime Themes Downloader (`animethemes.moe` + AniList)
-- Added opt-in **Anime Themes Downloader** (disabled by default in **Settings → Enable Anime Themes Downloader**).
-- Added GraphQL search and lightweight cached autocomplete across **anime titles** (Romaji + English), **song names**, and **artists** via `rs.animethemes.moe/graphql`.
-- Added lazy-loaded anime cover thumbnails via AniList (`graphql.anilist.co`, `IntersectionObserver` batching + `AppState` cache) and responsive horizontal strip cards on non-fullscreen windows.
-- Added inline `<video>` preview modal (with automatic `$TEMP` + `convertFileSrc` fallback) and WebM → **H.264 MP4** / **H.265 MP4** conversion with clean `<Show Title> - <Theme> (<Res>p NC).mp4` naming and embedded `title`, `artist`, `album`, and `date` metadata.
+- Added an opt-in **Anime Themes Downloader** tab (off by default under **Settings → Enable Anime Themes Downloader** so nothing touches the network unless you want it).
+- Search by **anime title** (Romaji + English), **song name**, or **artist** in one go, with a lightweight debounced autocomplete dropdown so you don't have to guess exact spellings.
+- Added lazy-loaded anime cover art via AniList (`IntersectionObserver` + in-memory cache), responsive horizontal strip cards on smaller windows, and an inline `<video>` preview modal (with automatic local `$TEMP` fallback if direct streaming is blocked).
+- Automatically converts `.webm` themes to **H.264 MP4** (Resolume-safe) or **H.265 MP4** (or keeps **Original WebM**), naming files cleanly as `<Show Title> - <Theme> (<Res>p NC).mp4` with **Title**, **Contributing Artist**, **Album**, and **Year** metadata baked right in.
 
-### Visual Video Trimmer & GIF Maker
-- Enabled Tauri v2 `assetProtocol` (`protocol-asset`) to stream local video files into a `<video>` preview synced directly with `WaveSurfer` in **Trim** mode, plus a **Frame-accurate cut** re-encode toggle.
-- Added **To GIF** mode in **Converter & Trim** using FFmpeg `fps`, `scale`, and `palettegen=stats_mode=diff` / `paletteuse` with optional start/end clip range.
+### Visual Video Trimmer, Waveform Studio & GIF Maker
+- **Visual Video Trimmer:** Enabled Tauri `assetProtocol` streaming so video files open in a `<video>` preview synced directly to `WaveSurfer`, with an optional **Frame-accurate cut** toggle alongside instant lossless `-c copy` trimming.
+- **Audio Waveform Cutter:** Native Rust `symphonia` peak extraction (`< 4 MB` RAM, `< 50ms`) with draggable pink regions, `Play Selection`, `Loop`, zoom, and `±100ms`/`±1s` nudges.
+- **To GIF Maker:** Added a **To GIF** tab in Converter & Trim using FFmpeg `fps`, `scale`, and `palettegen`/`paletteuse` for crisp colors, plus an optional start/end clip range.
 
-### UX, Diagnostics & Branded Installer
-- Added **Enable debug console logging** in Settings (`dispatchDebug`), modular HTTP `429` cooldown banners (`useRateLimitCooldown` + `RateLimitNotice`), and plain-English `formatFriendlyError` UI messages.
-- Customized Tauri v2 NSIS (`nsis-sidebar.bmp`, `nsis-header.bmp`, `LICENSE`) and macOS DMG (`dmg-background.png`) installer assets.
+### Media Downloader & Resolume-Safe Codec Pipeline
+- Removed the hardcoded `youtube:player_client=android,web` override so `360p`–`4K` resolve properly, and bundled **QuickJS (`qjs`)** as a sidecar (`--js-runtimes`) for YouTube's EJS challenges.
+- Switched the default codec to **Smart (`H.264 / H.265 — No AV1/VP9`)**: native H.264/H.265 downloads finish instantly, while AV1/VP9 streams (like 1440p/4K) auto-transcode using GPU encoders (`nvenc`/`qsv`/`amf`/`videotoolbox` → CPU fallback) with `-pix_fmt:v:0 yuv420p` and `-movflags +faststart`.
+- Added 16:9 thumbnails on Active Queue cards, `Transcoding` status with live `%` progress, cancellable FFmpeg spawns, and embed-only cover art (no leftover `.jpg`/`.webp` clutter).
 
-## ElToolkitDeRWBU v0.1.4 — Audio Waveform Studio, UI Declutter & Media Pipeline Overhaul
+### UI Polish, Friendly Errors & Debug Mode
+- Decluttered in-stage headers (letting the Top HUD do its job), moved System Logs to the Top HUD `>_` button, and standardized controls to the 3-Tier Height System with Catppuccin Mocha/Latte contrast fixes.
+- Added **Enable debug console logging** in Settings (`[DEBUG]` logs in `>_` + DevTools), shared HTTP `429` cooldown banners across **Anime Themes Downloader** and **Khinsider**, and plain-English error messages (`formatFriendlyError`) so raw stack traces stay in the console.
+- Pre-filled existing ID3 tags across 7 audio formats in Metadata Editor (with `.metadata-backup.<ext>` restore) and added async `yt-dlp` updates (`Settings → Engine binary updates`).
 
-Date: 2026-11-27
-
-### Interactive Waveform Trimmer & Audio Studio
-
-- Added native audio waveform peak extraction in Rust (`get_audio_waveform` command) using `symphonia` with micro-chunk streaming downsampling (< 4 MB peak RAM, ~800 peak amplitude pairs, < 50ms processing).
-- Added interactive `WaveformTrimmer` in Audio Studio powered by `wavesurfer.js` v7 with `RegionsPlugin`: draggable/resizable region handles, timeline ruler, playback controls (`Play Selection`, `Play Full`, `Stop`, `Loop`), zoom slider, and millisecond nudge buttons.
-- Integrated bidirectional synchronization between waveform region drag handles and start/end timecode inputs.
-- Preserved stream-copy lossless trimming via FFmpeg (`-c copy`).
-
-### Media Downloader & Thumbnail Embedding
-
-- Removed hardcoded `youtube:player_client=android,web` override so all resolutions (`360p`–`4K`) resolve reliably.
-- Added `Smart` (`H.264 / H.265 — No AV1/VP9`) as the default video codec (`settingsVersion: 2` migration) to keep native H.264/H.265 downloads instantaneous while auto-transcoding AV1/VP9 streams (e.g., 1440p/4K) with GPU encoder fallback (`nvenc`/`qsv`/`amf`/`videotoolbox` → CPU), stream-scoped Resolume-safe flags (`-pix_fmt:v:0 yuv420p`, `-tag:v:0 hvc1`, `-movflags +faststart`), and live FFmpeg `time=` progress.
-- Added compact 16:9 thumbnails inside Active Queue cards (`QueueItemCard`) using existing `yt-dlp` metadata and updated Tauri `img-src` CSP (`https: data:`).
-- Added `Transcoding` queue card status, cancellable FFmpeg transcode spawning, session caching for sidecar/encoder probes, and automatic audio stripping (`-an`) if `video-only` falls back to a muxed stream.
-- Bundled lightweight QuickJS (`quickjs-ng` / `qjs`) as a Tauri sidecar and passed `--js-runtimes quickjs:...` to `yt-dlp` for YouTube EJS challenge support.
-- Switched to embed-only thumbnail handling across MP4, MP3, and video-only downloads by removing `--write-thumbnail` and retaining `--embed-thumbnail` with automatic format conversion to JPEG (`--convert-thumbnails jpg`).
-- Fixed post-download FFmpeg video codec optimization to preserve embedded cover art (`-map 0:v:0`, `-map 0:v:1? -c:v:1 copy -disposition:v:1 attached_pic`, `-map 0:a? -c:a copy`), preventing FFmpeg from discarding embedded thumbnail streams when transcoding.
-- Ensured no standalone `.jpg` or `.webp` files remain in output folders after downloads complete.
-
-### UI Decluttering & Sizing Standardization
-
-- Removed redundant in-stage section titles and subheaders across Downloader, Batch Renamer, Audio Studio, and Settings, using the Top HUD as the single source of truth.
-- Removed duplicate cookie/authentication status badges inside view cards, preserving the HUD indicator.
-- Standardized layout to the strict 3-Tier Height System:
-  - Tier 1 (`h-10` / 40px): Standard form inputs, selectors, and secondary buttons.
-  - Tier 2 (`h-11` / 44px): Primary hero action buttons (`Check links`, `Apply to N files`, etc.).
-  - Tier 3 (`h-8` / 32px): Utility actions and toolbar buttons.
-- Simplified Downloader's setup grid (Format, Video Resolution / Audio Bitrate, and full-width Output Folder) by removing the redundant Download Preset selector.
-- Fixed `CustomSelect` dark-mode hover contrast and standardized dropdowns in `DownloaderView`, `BpmModifierView`, and `SettingsView` on `<CustomSelect>`.
-- Pre-filled existing ID3 tags in `MetadataView` and expanded its single-file picker to all 7 supported audio formats (`.mp3`, `.flac`, `.m4a`, `.ogg`, `.wav`, `.opus`, `.aac`), preserving source extensions in `.metadata-backup.<ext>`.
-- Auto-filled `defaultOutputDir` in `BpmModifierView`, refreshed `RenameView` previews after rename/undo, preserved per-line timestamps in `TerminalLogView`, and made `joinPath` separator-aware.
-- Eliminated blurry inset shadows and fuzzy drop shadows on pill buttons and inputs, establishing crisp, solid flat arcade surfaces with `border-2 border-subtleborder` and explicit `box-border`.
-
-### Responsive Layout & Terminal Drawer Redesign
-
-- Removed the floating `>_ SYSTEM LOGS` tab button from the bottom viewport edge, eliminating layout overlap with the Active Queue and mobile bottom navigation dock.
-- Integrated system log toggling into the dedicated Top HUD Terminal button, with unread error indicators.
-- Added mobile safe bottom padding (`pb-20`) to prevent scrolling content from being hidden behind the bottom navigation dock on narrow screens.
-
-### CI/CD & Cross-Platform Release Reliability
-
-- Made scripts/setup-sidecars.cjs target-aware with explicit architecture mapping (bin/darwin/arm64/ffprobe vs bin/darwin/x64/ffprobe), preventing Mach-O CPU architecture mismatch on Intel and Apple Silicon macOS builds.
-- Added non-zero file size validation in sidecar copying to prevent empty cache artifacts from failing build verification.
-- Integrated Apple quarantine flag purge (xattr -dr com.apple.quarantine) in macOS CI build verification to prevent Gatekeeper bundle packaging errors.
-- Added Swatinem/rust-cache@v2 to GitHub Actions ci.yml Rust checks, speeding up PR verification cycles.
-- Synchronized version 0.1.4 across package.json, Cargo.toml, and tauri.conf.json.
-- Removed *.test.ts pattern from .gitignore so all 6 test suites (31 unit tests) are tracked by Git and executed in CI.
-
-### Cleanups & Maintenance
-
-- Added [USER_GUIDE.md](USER_GUIDE.md) and [LOGIC_REFERENCE.md](LOGIC_REFERENCE.md) covering user workflows and code locations for every menu, service, and Rust command.
-- Updated `README.md` with new visual assets (`images/header.png`, refreshed `images/downloader.png`) and synced `.github/` release workflows and templates.
-- Made `update_ytdlp` asynchronous (`tokio::task::spawn_blocking`) so updates do not block the Tauri IPC thread.
-- Lazy-loaded `KhinsiderView` and `AudioStudioView` in `App.tsx`, deduplicated FFmpeg/Symphonia helpers, and removed dead `useSettings.ts` and unused `src-python/` scripts.
-- Removed technical runtime log annotations ("via native Rust...") across BPM detection, metadata tagging, and yt-dlp codec verification.
-- Updated Vitest unit test suite to assert `yt-dlp` resolution sorting, playlist thumbnails, QuickJS runtime wiring, and embed-only thumbnail configurations (6 test files, 31 unit tests passing).
+### Branded Installer, Docs & CI/CD
+- Branded the Windows NSIS (`nsis-sidebar.bmp`, `nsis-header.bmp`, `LICENSE`) and macOS DMG (`dmg-background.png`) installers using existing assets.
+- Updated `scripts/setup-sidecars.cjs` for Intel/Apple Silicon macOS sidecars, upgraded GitHub Actions (`checkout@v7`, `setup-node@v7`, `tauri-action@v1`, `Swatinem/rust-cache@v2`), and added [USER_GUIDE.md](USER_GUIDE.md), [LOGIC_REFERENCE.md](LOGIC_REFERENCE.md), and 8 Vitest test suites (35 passing tests).
 
 ---
 
