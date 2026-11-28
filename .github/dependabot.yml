@@ -5,18 +5,33 @@ updates:
     schedule:
       interval: "weekly"
     groups:
-      npm-dependencies:
+      npm-minor-patch:
+        applies-to: version-updates
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "cargo"
     directory: "/src-tauri"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "symphonia"
+        versions: [">= 0.6.0"]
+      - dependency-name: "reqwest"
+        versions: [">= 0.13.0"]
+      - dependency-name: "lofty"
+        versions: [">= 0.22.0"]
     groups:
-      cargo-dependencies:
+      cargo-minor-patch:
+        applies-to: version-updates
         patterns:
           - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"

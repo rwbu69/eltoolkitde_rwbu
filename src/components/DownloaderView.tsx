@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Download, FolderOpen, Target, Gauge, FileVideo, AlertTriangle, RotateCw, XCircle, Check, Trash2, Globe, Youtube, Twitter, Twitch, Music2, ArrowRight } from 'lucide-react';
+import { Download, FolderOpen, Target, Gauge, FileVideo, AlertTriangle, RotateCw, XCircle, Check, Trash2, Globe, Music2, ArrowRight, type LucideIcon } from 'lucide-react';
+import { Youtube, Twitter, Twitch } from 'lucide-brands';
 import { useAppStore } from '../store/useAppStore';
 import { YtDlpService, type VideoInfo } from '../services/ytdlp';
 import { PageLayout, Column, Panel, PanelScrollArea, FormLabel, PanelHeader } from './ui/Layout';
@@ -19,7 +20,7 @@ const MAX_PLAYLIST_ITEMS = 500;
 interface SupportedPlatform {
   readonly name: string;
   readonly description: string;
-  readonly icon: typeof Youtube;
+  readonly icon: LucideIcon;
 }
 
 const SUPPORTED_PLATFORMS: readonly SupportedPlatform[] = [
